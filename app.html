@@ -334,7 +334,7 @@ tr.addrow td{padding:6px}
       if (label === r.netIncomeLabel && !yearly) { if (v < 0) td.classList.add("bad"); else if (v > 0) td.classList.add("good"); }
       if (label === r.expenseTotalLabel && !yearly) {
         var inc = values[col + r.incomeRow] || 0;
-        if (v > inc) td.classList.add("bad"); else if (v > 0) td.classList.add("good");
+        if (v > inc) td.classList.add("bad");
       }
     });
   }
