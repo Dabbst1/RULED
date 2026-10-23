@@ -4,19 +4,19 @@
  "title": "Monthly Budget",
  "months": true,
  "hint": "Type in the white cells. Totals update on their own. Enter deductions and taxes as positive numbers, and they are subtracted for you. Click any category name to rename it.",
- "firstColWidth": 190,
+ "firstColWidth": 240,
  "cols": [
   {
    "key": "B",
-   "w": 120
+   "w": 150
   },
   {
    "key": "C",
-   "w": 120
+   "w": 150
   },
   {
    "key": "D",
-   "w": 140
+   "w": 170
   }
  ],
  "rows": [

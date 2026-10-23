@@ -144,10 +144,14 @@ tr.addrow td{padding:6px}
   /* ---------- build the table (labels only, no formulas) ---------- */
   function build() {
     var cols = layout.cols, keys = cols.map(function (c) { return c.key; });
-    var width = layout.firstColWidth + cols.reduce(function (a, c) { return a + c.w; }, 0);
-    var colgroup = '<colgroup><col style="width:var(--a)">' + cols.map(function (c) { return '<col style="width:' + c.w + 'px">'; }).join("") + "</colgroup>";
-    var tstart = '<table style="width:calc(var(--a) + ' + (width - layout.firstColWidth) + 'px)">' + colgroup;
-    document.documentElement.style.setProperty("--a", layout.firstColWidth + "px");
+    var phone = window.innerWidth < 600 && cols.length <= 4, fc = phone ? 112 : layout.firstColWidth;
+    var cw = cols.map(function (c) { return phone ? Math.round(c.w * 0.58) : c.w; });
+    var width = fc + cw.reduce(function (a, w) { return a + w; }, 0);
+    var colgroup = '<colgroup><col style="width:var(--a)">' + cw.map(function (w) { return '<col style="width:' + w + 'px">'; }).join("") + "</colgroup>";
+    var narrow = width < 900;
+    var tstart = '<table style="' + (narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
+    $("app").style.maxWidth = narrow ? (width + 40) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow ? "100%" : "";
+    document.documentElement.style.setProperty("--a", fc + "px");
     $("title").textContent = layout.name; $("hint").textContent = layout.hint;
     inputs = {};
     var html = "", open = false;
@@ -241,6 +245,22 @@ tr.addrow td{padding:6px}
     meta.hidden = meta.hidden.filter(function (x) { return x !== r; });
     if (!e.target.checked) meta.hidden.push(r);
     applyHidden(); scheduleSave();
+  });
+  $("sheet").addEventListener("keydown", function (e) {
+    var t = e.target, k = e.key;
+    if (t.tagName !== "INPUT" || ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].indexOf(k) < 0) return;
+    var rows = Array.prototype.filter.call(document.querySelectorAll("#sheet tbody tr"), function (tr) { return !tr.hidden && tr.querySelector("input"); });
+    var tr = t.closest("tr"), ri = rows.indexOf(tr), ins = Array.prototype.slice.call(tr.querySelectorAll("input")), ci = ins.indexOf(t);
+    var nr = ri, nc = ci;
+    if (k === "ArrowUp") nr--;
+    else if (k === "ArrowDown" || k === "Enter") nr++;
+    else if (k === "ArrowLeft") { if (t.selectionStart !== 0) return; nc--; }
+    else if (k === "ArrowRight") { if (t.selectionEnd !== t.value.length) return; nc++; }
+    if (nr < 0 || nr >= rows.length) return;
+    var targets = rows[nr].querySelectorAll("input");
+    if (nc < 0 || nc >= targets.length) { if (nr === ri) return; nc = Math.min(Math.max(nc, 0), targets.length - 1); }
+    e.preventDefault();
+    targets[nc].focus(); targets[nc].select();
   });
   function customMax() { var r = layout.rows.filter(function (x) { return x.type === "custom"; })[0]; return r ? r : null; }
   function updateAdd() {
