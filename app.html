@@ -57,7 +57,7 @@ td.good{background:var(--good-bg)!important;color:var(--good);font-weight:700}
 td.bad{background:var(--bad-bg)!important;color:var(--bad);font-weight:700}
 #sheet{width:max-content;min-width:100%}
 .section{margin:24px 0 8px 8px;font-size:18px;font-weight:800;position:sticky;left:8px;width:max-content}
-input.in{width:100%;height:32px;border:1px solid transparent;border-radius:3px;background:transparent;font:inherit;text-align:right;color:var(--ink);padding:0 4px;font-variant-numeric:tabular-nums}
+input.in{font-size:13px;width:100%;height:32px;border:1px solid transparent;border-radius:3px;background:transparent;font:inherit;text-align:right;color:var(--ink);padding:0 4px;font-variant-numeric:tabular-nums}
 input.in:hover{border-color:var(--rule)}
 input.in:focus{border-color:var(--blue);background:#fff}
 input.in::placeholder{color:#9AAED3}
@@ -77,6 +77,7 @@ input.in::placeholder{color:#9AAED3}
 .picker select{font:inherit;height:40px;padding:0 10px;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink)}
 td.lab input.nm{width:100%;font:inherit;font-weight:600;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:3px;height:32px;padding:0 4px}
 td.lab input.nm:hover{border-color:var(--rule)} td.lab input.nm:focus{border-color:var(--blue);background:#fff}
+.rowspanel{margin:0 0 10px;font-size:14px}.rowspanel summary{cursor:pointer;font-weight:600;color:var(--blue)}.rowspanel .note2{color:var(--muted);margin:6px 0}.rowspanel .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 16px}.rowspanel label{display:flex;gap:8px;align-items:center;min-height:30px}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -113,6 +114,7 @@ tr.addrow td{padding:6px}
   <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
+  <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="scroller"><div id="sheet"></div></div>
 </main>
@@ -128,7 +130,7 @@ tr.addrow td{padding:6px}
   var $ = function (id) { return document.getElementById(id); };
   var money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-  var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [] };
+  var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [], hidden: [] };
   var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
 
   function show(which) { ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; }); }
@@ -162,7 +164,7 @@ tr.addrow td{padding:6px}
         if (!cell) { h += "<td></td>"; return; }
         if (cell.k === "input") {
           inputs[cell.a] = cell.v;
-          h += '<td><input class="in" type="number" step="any" data-a="' + cell.a + '" aria-label="' + esc(label + " " + c) + '" placeholder="0"></td>';
+          h += '<td><input class="in" type="text" inputmode="decimal" autocomplete="off" data-a="' + cell.a + '" aria-label="' + esc(label + " " + c) + '" placeholder="$0.00"></td>';
         } else if (cell.k === "calc") {
           h += '<td class="num calc" data-c="' + cell.a + '" data-col="' + c + '" data-row="' + rowNo + '">…</td>';
         } else if (cell.k === "static") {
@@ -201,6 +203,45 @@ tr.addrow td{padding:6px}
     updateAdd();
   }
 
+  function parseMoney(str) {
+    var s = String(str).trim(), neg = /^\(.*\)$/.test(s) || s.indexOf("-") >= 0;
+    var n = parseFloat(s.replace(/[^0-9.]/g, ""));
+    if (!isFinite(n)) return 0;
+    n = Math.round(n * 100) / 100;
+    return neg ? -n : n;
+  }
+  function fmt(v) { return v ? money.format(v) : ""; }
+  $("sheet").addEventListener("focusin", function (e) {
+    var t = e.target, a = t.getAttribute && t.getAttribute("data-a");
+    if (a) { t.value = inputs[a] ? String(inputs[a]) : ""; }
+  });
+  $("sheet").addEventListener("focusout", function (e) {
+    var t = e.target, a = t.getAttribute && t.getAttribute("data-a");
+    if (a) t.value = fmt(inputs[a]);
+  });
+  function applyHidden() {
+    Array.prototype.forEach.call(document.querySelectorAll("tr[data-row]"), function (tr) {
+      tr.hidden = meta.hidden.indexOf(Number(tr.getAttribute("data-row"))) >= 0;
+    });
+    var h = meta.hidden.length;
+    $("rowsPanel").querySelector("summary").textContent = "Show or hide rows" + (h ? " (" + h + " hidden)" : "");
+  }
+  function buildRowsPanel() {
+    var out = "";
+    layout.rows.forEach(function (row) {
+      if (row.type === "data" && !row.cls) {
+        var name = meta.labels[row.row] || row.label;
+        out += '<label><input type="checkbox" data-vis="' + row.row + '"' + (meta.hidden.indexOf(row.row) < 0 ? " checked" : "") + "> " + esc(name) + "</label>";
+      }
+    });
+    $("rowsList").innerHTML = out; applyHidden();
+  }
+  $("rowsList").addEventListener("change", function (e) {
+    var r = Number(e.target.getAttribute("data-vis")); if (!r) return;
+    meta.hidden = meta.hidden.filter(function (x) { return x !== r; });
+    if (!e.target.checked) meta.hidden.push(r);
+    applyHidden(); scheduleSave();
+  });
   function customMax() { var r = layout.rows.filter(function (x) { return x.type === "custom"; })[0]; return r ? r : null; }
   function updateAdd() {
     var c = customMax(), b = $("addBtn"); if (!c || !b) return;
@@ -211,7 +252,7 @@ tr.addrow td{padding:6px}
   /* ---------- events ---------- */
   $("sheet").addEventListener("input", function (e) {
     var t = e.target, a = t.getAttribute("data-a"), nm = t.getAttribute("data-nm");
-    if (a) { var n = parseFloat(t.value); inputs[a] = isFinite(n) ? n : 0; schedule(); scheduleSave(); }
+    if (a) { inputs[a] = parseMoney(t.value); schedule(); scheduleSave(); }
     else if (nm) {
       var v = t.value.slice(0, 40);
       if (v.trim() && v !== t.getAttribute("data-def")) meta.labels[nm] = v; else delete meta.labels[nm];
@@ -256,11 +297,11 @@ tr.addrow td{padding:6px}
       .then(function (res) {
         if (res.status === 401) { show("login"); throw new Error("stop"); }
         if (res.status === 403) { show("inactive"); throw new Error("stop"); }
-        if (!res.ok) throw new Error("fail");
+        if (!res.ok) throw new Error("fail" + res.status);
         return res.json();
       })
       .then(function (d) { if (mine === seq) { paint(d.values); setStatus("Up to date"); } })
-      .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate. Check your connection and try again.", true); });
+      .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate (" + (String(err.message).indexOf("fail") === 0 ? "error " + err.message.slice(4) : "can’t reach the server") + "). Try again in a moment.", true); });
   }
   function paint(values) {
     var r = layout.rows.length && layout.rules;
@@ -297,11 +338,12 @@ tr.addrow td{padding:6px}
     var m = saved.__meta || {};
     meta.labels = m.labels && typeof m.labels === "object" ? m.labels : {};
     meta.custom = Array.isArray(m.custom) ? m.custom : [];
+    meta.hidden = Array.isArray(m.hidden) ? m.hidden : [];
     Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
   }
   function fillInputs() {
     Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) {
-      var v = inputs[el.getAttribute("data-a")]; el.value = v ? v : "";
+      el.value = fmt(inputs[el.getAttribute("data-a")]);
     });
   }
 
@@ -316,11 +358,11 @@ tr.addrow td{padding:6px}
     });
   }
   function loadData(mine) {
-    meta = { labels: {}, custom: [] };
+    meta = { labels: {}, custom: [], hidden: [] };
     loadSaved(storageKey()).then(function (saved) {
       if (mine !== loadSeq) return;
       inputs = {}; // fresh defaults come from the layout during build
-      buildDefaults(); applySaved(saved); build(); fillInputs(); run();
+      buildDefaults(); applySaved(saved); build(); fillInputs(); buildRowsPanel(); run();
     });
   }
   function buildDefaults() { // collect input addresses so saved values can be matched before building
