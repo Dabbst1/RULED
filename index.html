@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruled. Budgeting spreadsheets that do the math</title>
+<meta name="description" content="Ready-made budgeting spreadsheets for Excel and Google Sheets. Subscribe, copy a sheet, and start budgeting today.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- MEMBERSTACK: replace app_XXXXXXXX with your App ID (Memberstack dashboard > Dev tools) -->
+<script data-memberstack-app="app_XXXXXXXX" src="https://static.memberstack.com/scripts/v2/memberstack.js" type="text/javascript"></script>
+
+<style>
+:root{
+  --u:32px;
+  --paper:#EAF2FF;
+  --ink:#0B1F4D;
+  --muted:#3F5586;
+  --rule:#B8CEF2;
+  --margin:#4C7DF0;
+  --blue:#1D4ED8;
+  --blue-dark:#14307F;
+  --sheet:#FFFFFF;
+  --hl:#CFE0FF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Public Sans',system-ui,sans-serif;
+  font-size:17px;line-height:var(--u);
+  color:var(--ink);
+  background-color:var(--paper);
+  background-image:linear-gradient(to bottom,transparent calc(var(--u) - 1px),var(--rule) calc(var(--u) - 1px));
+  background-size:100% var(--u);
+  background-position:0 0;
+}
+/* margin line, like notebook paper */
+body::before{content:"";position:fixed;top:0;bottom:0;left:clamp(16px,6vw,96px);width:2px;background:var(--margin);opacity:.55;pointer-events:none}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 0 clamp(36px,9vw,128px)}
+
+/* nav */
+nav{display:flex;align-items:center;justify-content:space-between;height:calc(var(--u)*2)}
+.logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:28px;text-decoration:none;letter-spacing:-.02em}
+.logo span{color:var(--blue)}
+.nav-links{display:flex;gap:24px;align-items:center}
+.nav-links a{text-decoration:none;font-weight:500}
+.nav-links a:hover{text-decoration:underline}
+
+/* buttons */
+.btn{display:inline-block;font:600 16px/1 'Public Sans',sans-serif;padding:14px 22px;border-radius:4px;border:2px solid var(--ink);background:var(--blue);color:#fff;border-color:var(--blue);text-decoration:none;cursor:pointer;transition:background .15s}
+.btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:#fff}
+button.btn{appearance:none}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:start;padding-top:calc(var(--u)*2)}
+h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(40px,5.6vw,64px);line-height:calc(var(--u)*2);letter-spacing:-.03em}
+.hero p{max-width:30em;margin-top:var(--u)}
+.cta{display:flex;gap:16px;flex-wrap:wrap;margin-top:var(--u);align-items:center}
+.fine{font-size:14px;color:var(--muted)}
+
+/* sheet mockup */
+.sheet{background:var(--sheet);border:2px solid var(--ink);border-radius:4px;box-shadow:8px 8px 0 var(--ink);font-size:15px;line-height:var(--u);font-variant-numeric:tabular-nums;margin-top:var(--u)}
+.sheet-head{display:flex;justify-content:space-between;padding:0 16px;background:var(--ink);color:#fff;font-weight:600}
+.row{display:grid;grid-template-columns:1fr 80px 80px;padding:0 16px;border-top:1px solid var(--rule)}
+.row span:nth-child(n+2){text-align:right}
+.row.cols{font-weight:600;color:var(--muted);border-top:0}
+.row.total{background:var(--hl);font-weight:600;border-top:2px solid var(--ink)}
+.bar{display:block;height:8px;margin-top:12px;background:var(--rule);border-radius:4px;overflow:hidden;grid-column:1/-1}
+.bar i{display:block;height:100%;background:var(--blue)}
+
+/* sections */
+section{padding-top:calc(var(--u)*3)}
+h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,4vw,40px);line-height:calc(var(--u)*1.5);letter-spacing:-.02em;margin-bottom:var(--u)}
+.lead{max-width:34em}
+
+/* what's inside: ruled list */
+.list{border-top:2px solid var(--ink)}
+.item{display:grid;grid-template-columns:260px 1fr;gap:24px;padding:calc(var(--u)/2) 0 calc(var(--u)/2);border-bottom:1px solid var(--ink)}
+.item h3{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;line-height:var(--u);font-weight:600}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;counter-reset:s;list-style:none}
+.steps li{counter-increment:s;padding-top:var(--u);border-top:2px solid var(--ink)}
+.steps li::before{content:counter(s) ".";display:block;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:32px;color:var(--blue)}
+.steps b{display:block}
+
+/* pricing */
+.plans{display:grid;grid-template-columns:repeat(2,minmax(0,320px));gap:32px}
+.plan{background:var(--sheet);border:2px solid var(--ink);border-radius:4px;padding:var(--u)}
+.plan.best{box-shadow:8px 8px 0 var(--blue)}
+.price{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:48px;line-height:calc(var(--u)*2)}
+.price small{font:500 16px 'Public Sans',sans-serif;color:var(--muted)}
+.plan ul{list-style:none;margin:var(--u) 0}
+.plan li::before{content:"\2713\00a0\00a0";color:var(--blue);font-weight:700}
+
+/* faq */
+details{border-bottom:1px solid var(--ink)}
+details:first-of-type{border-top:2px solid var(--ink)}
+summary{cursor:pointer;font-weight:600;padding:calc(var(--u)/2) 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";float:right;font-size:22px}
+details[open] summary::after{content:"\2212"}
+details p{padding-bottom:var(--u);max-width:38em}
+
+footer{margin-top:calc(var(--u)*4);padding:var(--u) 0 calc(var(--u)*2);border-top:2px solid var(--ink);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font-size:14px;background:var(--paper)}
+footer a{margin-left:20px}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr}
+  .item{grid-template-columns:1fr;gap:0}
+  .steps{grid-template-columns:1fr}
+  .plans{grid-template-columns:1fr}
+  .nav-links .hide-sm{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav aria-label="Main">
+    <a class="logo" href="./">Ruled<span>.</span></a>
+    <div class="nav-links">
+      <a class="hide-sm" href="#inside">What&rsquo;s inside</a>
+      <a class="hide-sm" href="#pricing">Pricing</a>
+      <!-- MEMBERSTACK: opens the login modal -->
+      <a href="#" data-ms-modal="login">Log in</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>Budgeting spreadsheets that do the math.</h1>
+      <p>Ruled. gives you ready-made sheets for Excel and Google Sheets. Enter your income and bills, and the totals, balances, and goals update on their own.</p>
+      <div class="cta">
+        <!-- MEMBERSTACK: opens the signup modal -->
+        <button class="btn" type="button" data-ms-modal="signup">Start budgeting</button>
+        <a class="btn ghost" href="#inside">See what&rsquo;s inside</a>
+      </div>
+      <p class="fine">Cancel any time from your account page.</p>
+    </div>
+
+    <!-- Preview of a sheet. Swap the numbers for ones from your real template. -->
+    <div class="sheet" role="img" aria-label="Example monthly budget sheet showing income, expenses, and money left over">
+      <div class="sheet-head"><span>Monthly budget</span><span>October</span></div>
+      <div class="row cols"><span>Category</span><span>Planned</span><span>Actual</span></div>
+      <div class="row"><span>Income</span><span>4,200</span><span>4,200</span></div>
+      <div class="row"><span>Rent</span><span>1,450</span><span>1,450</span></div>
+      <div class="row"><span>Groceries</span><span>520</span><span>488</span></div>
+      <div class="row"><span>Transport</span><span>260</span><span>301</span></div>
+      <div class="row"><span>Savings</span><span>600</span><span>600</span></div>
+      <div class="row total"><span>Left over</span><span>1,370</span><span>1,361</span></div>
+    </div>
+  </header>
+
+  <section id="inside">
+    <h2>What&rsquo;s inside</h2>
+    <p class="lead">One membership gives you every sheet in the library, plus new ones as they&rsquo;re added.</p>
+    <div class="list" style="margin-top:32px">
+      <!-- Replace these with your actual spreadsheets -->
+      <div class="item"><h3>Monthly budget</h3><p>Plan each category, track what you actually spend, and see what&rsquo;s left at the end of the month.</p></div>
+      <div class="item"><h3>Debt payoff planner</h3><p>List your balances and see how fast each strategy clears them.</p></div>
+      <div class="item"><h3>Savings goals</h3><p>Set savings goals with target dates and see exactly how much to save each month.</p></div>
+      <div class="item"><h3>Yearly overview</h3><p>All twelve months on one page, so you can spot where your money goes.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Subscribe</b>Pick monthly or annual and create your account.</li>
+      <li><b>Copy a sheet</b>Open the members library and make your own copy.</li>
+      <li><b>Fill it in</b>Add your numbers. The formulas handle the rest.</li>
+    </ol>
+  </section>
+
+  <section id="pricing">
+    <h2>Pricing</h2>
+    <p class="lead">Every plan includes the full library. Replace the prices below with your Stripe prices.</p>
+    <div class="plans" style="margin-top:32px">
+      <div class="plan">
+        <b>Monthly</b>
+        <div class="price">$9<small> / month</small></div>
+        <ul><li>All spreadsheets</li><li>New sheets as they&rsquo;re added</li><li>Cancel any time</li></ul>
+        <button class="btn ghost" type="button" data-ms-modal="signup">Choose monthly</button>
+      </div>
+      <div class="plan best">
+        <b>Annual</b>
+        <div class="price">$79<small> / year</small></div>
+        <ul><li>All spreadsheets</li><li>New sheets as they&rsquo;re added</li><li>Two months free</li></ul>
+        <button class="btn" type="button" data-ms-modal="signup">Choose annual</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Questions</h2>
+    <details><summary>Do the sheets work in Excel and Google Sheets?</summary><p>Yes. Each sheet is available for both, so use whichever you prefer.</p></details>
+    <details><summary>Do I need spreadsheet experience?</summary><p>No. Every sheet has labeled cells to fill in, and the formulas are already built.</p></details>
+    <details><summary>Can I cancel?</summary><p>Yes, at any time from your account page. You keep access until the end of the period you paid for.</p></details>
+    <details><summary>Do I keep the sheets if I cancel?</summary><p>Copies you already made are yours. Access to the library ends when your membership does.</p></details>
+  </section>
+
+  <footer>
+    <span>&copy; 2026 Ruled.</span>
+    <span><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="mailto:hello@example.com">Contact</a></span>
+  </footer>
+</div>
+
+</body>
+</html>

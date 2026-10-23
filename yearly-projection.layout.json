@@ -1,0 +1,2144 @@
+{
+ "id": "yearly-projection",
+ "title": "ANNUAL BUDGET PROJECTION",
+ "rows": [
+  {
+   "type": "title",
+   "text": "ANNUAL BUDGET PROJECTION"
+  },
+  {
+   "type": "title",
+   "text": "Income"
+  },
+  {
+   "type": "header",
+   "labels": [
+    "Jan.",
+    "Feb.",
+    "Mar.",
+    "Apr.",
+    "May",
+    "June",
+    "July",
+    "Aug.",
+    "Sep.",
+    "Oct.",
+    "Nov.",
+    "Dec.",
+    "Total Income Per Category",
+    "YEARLY INCOME"
+   ]
+  },
+  {
+   "type": "data",
+   "row": 5,
+   "label": "Paycheck1",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B5",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C5",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D5",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E5",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F5",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G5",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H5",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I5",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J5",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K5",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L5",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M5",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N5"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 6,
+   "label": "Paycheck2",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B6",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C6",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D6",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E6",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F6",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G6",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H6",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I6",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J6",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K6",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L6",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M6",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N6"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 7,
+   "label": "Pre-Tax Deductions",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B7",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C7",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D7",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E7",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F7",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G7",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H7",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I7",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J7",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K7",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L7",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M7",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N7"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 8,
+   "label": "Employee taxes",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B8",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C8",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D8",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E8",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F8",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G8",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H8",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I8",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J8",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K8",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L8",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M8",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N8"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 9,
+   "label": "Post-Tax Deductions",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B9",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C9",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D9",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E9",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F9",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G9",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H9",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I9",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J9",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K9",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L9",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M9",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N9"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 10,
+   "label": "Total Income Per Month",
+   "cls": "total",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B10"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C10"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D10"
+    },
+    "E": {
+     "k": "calc",
+     "a": "E10"
+    },
+    "F": {
+     "k": "calc",
+     "a": "F10"
+    },
+    "G": {
+     "k": "calc",
+     "a": "G10"
+    },
+    "H": {
+     "k": "calc",
+     "a": "H10"
+    },
+    "I": {
+     "k": "calc",
+     "a": "I10"
+    },
+    "J": {
+     "k": "calc",
+     "a": "J10"
+    },
+    "K": {
+     "k": "calc",
+     "a": "K10"
+    },
+    "L": {
+     "k": "calc",
+     "a": "L10"
+    },
+    "M": {
+     "k": "calc",
+     "a": "M10"
+    },
+    "N": {
+     "k": "calc",
+     "a": "N10"
+    },
+    "O": {
+     "k": "calc",
+     "a": "O10"
+    }
+   }
+  },
+  {
+   "type": "title",
+   "text": "Mandatory Expenses"
+  },
+  {
+   "type": "header",
+   "labels": [
+    "Jan.",
+    "Feb.",
+    "Mar.",
+    "Apr.",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug.",
+    "Sep.",
+    "Oct.",
+    "Nov.",
+    "Dec.",
+    "Total Expense Per Category",
+    ""
+   ]
+  },
+  {
+   "type": "data",
+   "row": 14,
+   "label": "Gasoline",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B14",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C14",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D14",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E14",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F14",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G14",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H14",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I14",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J14",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K14",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L14",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M14",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N14"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 15,
+   "label": "Restaurants",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B15",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C15",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D15",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E15",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F15",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G15",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H15",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I15",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J15",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K15",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L15",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M15",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N15"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 16,
+   "label": "Travel",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B16",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C16",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D16",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E16",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F16",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G16",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H16",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I16",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J16",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K16",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L16",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M16",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N16"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 17,
+   "label": "Shopping",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B17",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C17",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D17",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E17",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F17",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G17",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H17",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I17",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J17",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K17",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L17",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M17",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N17"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 18,
+   "label": "Groceries",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B18",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C18",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D18",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E18",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F18",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G18",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H18",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I18",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J18",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K18",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L18",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M18",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N18"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 19,
+   "label": "Transportation",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B19",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C19",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D19",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E19",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F19",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G19",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H19",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I19",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J19",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K19",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L19",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M19",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N19"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 20,
+   "label": "Electronics",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B20",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C20",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D20",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E20",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F20",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G20",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H20",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I20",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J20",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K20",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L20",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M20",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N20"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 21,
+   "label": "Utilities",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B21",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C21",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D21",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E21",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F21",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G21",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H21",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I21",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J21",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K21",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L21",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M21",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N21"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 22,
+   "label": "Clothing",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B22",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C22",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D22",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E22",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F22",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G22",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H22",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I22",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J22",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K22",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L22",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M22",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N22"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 23,
+   "label": "Gaming",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B23",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C23",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D23",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E23",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F23",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G23",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H23",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I23",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J23",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K23",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L23",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M23",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N23"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 24,
+   "label": "Pets",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B24",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C24",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D24",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E24",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F24",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G24",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H24",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I24",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J24",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K24",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L24",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M24",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N24"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 25,
+   "label": "Sports",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B25",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C25",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D25",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E25",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F25",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G25",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H25",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I25",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J25",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K25",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L25",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M25",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N25"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 26,
+   "label": "Healthcare",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B26",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C26",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D26",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E26",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F26",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G26",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H26",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I26",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J26",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K26",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L26",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M26",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N26"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 27,
+   "label": "Personal Care",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B27",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C27",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D27",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E27",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F27",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G27",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H27",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I27",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J27",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K27",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L27",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M27",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N27"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 28,
+   "label": "Digital Entertainment",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B28",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C28",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D28",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E28",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F28",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G28",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H28",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I28",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J28",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K28",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L28",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M28",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N28"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 29,
+   "label": "Home",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B29",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C29",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D29",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E29",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F29",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G29",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H29",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I29",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J29",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K29",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L29",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M29",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N29"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 30,
+   "label": "Rent",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B30",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C30",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D30",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E30",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F30",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G30",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H30",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I30",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J30",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K30",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L30",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M30",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N30"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 31,
+   "label": "Insurance",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B31",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C31",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D31",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E31",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F31",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G31",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H31",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I31",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J31",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K31",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L31",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M31",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N31"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 32,
+   "label": "Professional Services",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B32",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C32",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D32",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E32",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F32",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G32",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H32",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I32",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J32",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K32",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L32",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M32",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N32"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 33,
+   "label": "Tithe",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B33"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C33"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D33"
+    },
+    "E": {
+     "k": "calc",
+     "a": "E33"
+    },
+    "F": {
+     "k": "calc",
+     "a": "F33"
+    },
+    "G": {
+     "k": "calc",
+     "a": "G33"
+    },
+    "H": {
+     "k": "calc",
+     "a": "H33"
+    },
+    "I": {
+     "k": "calc",
+     "a": "I33"
+    },
+    "J": {
+     "k": "calc",
+     "a": "J33"
+    },
+    "K": {
+     "k": "calc",
+     "a": "K33"
+    },
+    "L": {
+     "k": "calc",
+     "a": "L33"
+    },
+    "M": {
+     "k": "calc",
+     "a": "M33"
+    },
+    "N": {
+     "k": "calc",
+     "a": "N33"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 34,
+   "label": "Credit Cards",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B34",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C34",
+     "v": 0
+    },
+    "D": {
+     "k": "input",
+     "a": "D34",
+     "v": 0
+    },
+    "E": {
+     "k": "input",
+     "a": "E34",
+     "v": 0
+    },
+    "F": {
+     "k": "input",
+     "a": "F34",
+     "v": 0
+    },
+    "G": {
+     "k": "input",
+     "a": "G34",
+     "v": 0
+    },
+    "H": {
+     "k": "input",
+     "a": "H34",
+     "v": 0
+    },
+    "I": {
+     "k": "input",
+     "a": "I34",
+     "v": 0
+    },
+    "J": {
+     "k": "input",
+     "a": "J34",
+     "v": 0
+    },
+    "K": {
+     "k": "input",
+     "a": "K34",
+     "v": 0
+    },
+    "L": {
+     "k": "input",
+     "a": "L34",
+     "v": 0
+    },
+    "M": {
+     "k": "input",
+     "a": "M34",
+     "v": 0
+    },
+    "N": {
+     "k": "calc",
+     "a": "N34"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 35,
+   "label": "Total Expense Per Month",
+   "cls": "total",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B35"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C35"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D35"
+    },
+    "E": {
+     "k": "calc",
+     "a": "E35"
+    },
+    "F": {
+     "k": "calc",
+     "a": "F35"
+    },
+    "G": {
+     "k": "calc",
+     "a": "G35"
+    },
+    "H": {
+     "k": "calc",
+     "a": "H35"
+    },
+    "I": {
+     "k": "calc",
+     "a": "I35"
+    },
+    "J": {
+     "k": "calc",
+     "a": "J35"
+    },
+    "K": {
+     "k": "calc",
+     "a": "K35"
+    },
+    "L": {
+     "k": "calc",
+     "a": "L35"
+    },
+    "M": {
+     "k": "calc",
+     "a": "M35"
+    },
+    "N": {
+     "k": "calc",
+     "a": "N35"
+    }
+   }
+  },
+  {
+   "type": "title",
+   "text": "Net Income/loss"
+  },
+  {
+   "type": "header",
+   "labels": [
+    "Jan.",
+    "Feb.",
+    "Mar.",
+    "Apr.",
+    "May",
+    "June",
+    "July",
+    "Aug.",
+    "Sep.",
+    "Oct.",
+    "Nov.",
+    "Dec.",
+    "Total Income",
+    ""
+   ]
+  },
+  {
+   "type": "data",
+   "row": 39,
+   "label": "Net Income",
+   "cls": "net",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B39"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C39"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D39"
+    },
+    "E": {
+     "k": "calc",
+     "a": "E39"
+    },
+    "F": {
+     "k": "calc",
+     "a": "F39"
+    },
+    "G": {
+     "k": "calc",
+     "a": "G39"
+    },
+    "H": {
+     "k": "calc",
+     "a": "H39"
+    },
+    "I": {
+     "k": "calc",
+     "a": "I39"
+    },
+    "J": {
+     "k": "calc",
+     "a": "J39"
+    },
+    "K": {
+     "k": "calc",
+     "a": "K39"
+    },
+    "L": {
+     "k": "calc",
+     "a": "L39"
+    },
+    "M": {
+     "k": "calc",
+     "a": "M39"
+    },
+    "N": {
+     "k": "calc",
+     "a": "N39"
+    }
+   }
+  },
+  {
+   "type": "title",
+   "text": "End of Year Total income"
+  },
+  {
+   "type": "data",
+   "row": 51,
+   "label": "Total Net Income",
+   "cls": "total",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B51"
+    }
+   }
+  }
+ ],
+ "rules": {
+  "netIncomeLabel": "Net Income",
+  "expenseTotalLabel": "Total Expense Per Month",
+  "incomeRow": 10
+ }
+}

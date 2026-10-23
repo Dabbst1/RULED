@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annual budget | Ruled.</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+
+<script>
+/* ---------- SETTINGS: fill these in ----------
+   devMode true  = no login, talks to the local test server (dev/dev-server.mjs). Testing only.
+   devMode false = real login and membership check through Supabase. */
+window.RULED_CONFIG = {
+  devMode: false,
+  calcUrl: "https://qytsgfjyiybxucxtbcne.supabase.co/functions/v1/calc",
+  supabaseUrl: "https://qytsgfjyiybxucxtbcne.supabase.co",
+  supabaseAnonKey: "sb_publishable_Sp2syhCiuMZvNIssD9lpPA_1W3xZ2su",
+  homeUrl: "index.html"
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --paper:#EAF2FF; --ink:#0B1F4D; --muted:#3F5586; --rule:#B8CEF2; --blue:#1D4ED8; --blue-dark:#14307F;
+  --sheet:#FFFFFF; --hl:#CFE0FF; --good-bg:#C6EFCE; --good:#006100; --bad-bg:#FFC7CE; --bad:#9C0006;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--paper);min-height:100vh}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;gap:12px}
+.logo{font-weight:800;font-size:26px;letter-spacing:-.02em;text-decoration:none}
+.logo span{color:var(--blue)}
+.top-right{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--muted)}
+.top-right button{font:inherit;color:var(--ink);background:none;border:0;text-decoration:underline;cursor:pointer}
+main{padding:0 16px 48px}
+h1{font-size:clamp(24px,5vw,34px);letter-spacing:-.02em;line-height:1.2;margin:8px 0 4px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:12px}
+.status{font-size:14px;color:var(--muted);min-height:21px;margin-bottom:8px}
+.status.err{color:var(--bad);font-weight:600}
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border:2px solid var(--ink);border-radius:4px;background:var(--sheet);box-shadow:6px 6px 0 var(--ink)}
+:root{--a:190px}
+table{border-collapse:separate;border-spacing:0;table-layout:fixed;width:calc(var(--a) + 12 * 92px + 260px)}
+col.c-a{width:var(--a)} col.c-m{width:92px} col.c-n{width:130px} col.c-o{width:130px}
+@media (max-width:600px){:root{--a:128px} td.lab,th.lab{font-size:12px} main{padding:0 10px 40px} header.top{padding:12px 10px}}
+th,td{padding:0 6px;height:40px;border-bottom:1px solid var(--rule);font-size:14px;white-space:nowrap}
+td.lab,th.lab{position:sticky;left:0;z-index:1;background:var(--sheet);text-align:left;font-weight:600;border-right:2px solid var(--rule);overflow:hidden;text-overflow:ellipsis}
+th{background:var(--ink);color:#fff;font-weight:600;text-align:right;position:sticky;top:0;white-space:normal;line-height:1.1;font-size:13px;height:46px}
+th.lab{background:var(--ink);color:#fff}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.calc{color:var(--ink);background:#F4F8FF}
+td.note{color:var(--muted);font-size:12px;white-space:normal;line-height:1.2}
+tr.total td, tr.total td.lab{font-weight:700;background:var(--hl)}
+tr.total td.lab{background:var(--hl)}
+td.good{background:var(--good-bg)!important;color:var(--good);font-weight:700}
+td.bad{background:var(--bad-bg)!important;color:var(--bad);font-weight:700}
+#sheet{width:max-content;min-width:100%}
+.section{margin:24px 0 8px 8px;font-size:18px;font-weight:800;position:sticky;left:8px;width:max-content}
+input.in{width:100%;height:32px;border:1px solid transparent;border-radius:3px;background:transparent;font:inherit;text-align:right;color:var(--ink);padding:0 4px;font-variant-numeric:tabular-nums}
+input.in:hover{border-color:var(--rule)}
+input.in:focus{border-color:var(--blue);background:#fff}
+input.in::placeholder{color:#9AAED3}
+.card{max-width:380px;margin:40px auto;background:var(--sheet);border:2px solid var(--ink);border-radius:4px;box-shadow:6px 6px 0 var(--ink);padding:24px}
+.card h2{font-size:22px;margin-bottom:12px}
+.card label{display:block;font-size:14px;font-weight:600;margin-top:12px}
+.card input{width:100%;height:42px;margin-top:4px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px}
+.btn{display:inline-block;margin-top:16px;font:600 16px/1 inherit;padding:13px 20px;border-radius:4px;border:2px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.msg{margin-top:12px;font-size:14px;color:var(--bad)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" id="logo" href="index.html">Ruled<span>.</span></a>
+  <div class="top-right"><span id="who"></span><button id="signout" hidden>Log out</button></div>
+</header>
+
+<!-- Login -->
+<section id="login" class="card" hidden>
+  <h2>Log in</h2>
+  <form id="loginForm">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Log in</button>
+    <p class="msg" id="loginMsg" role="alert"></p>
+  </form>
+</section>
+
+<!-- Membership not active -->
+<section id="inactive" class="card" hidden>
+  <h2>Your membership isn&rsquo;t active</h2>
+  <p>Renew to get back into your sheets. Your saved numbers are still here when you do.</p>
+  <a class="btn" id="renew" href="index.html#pricing">See plans</a>
+</section>
+
+<!-- The tool -->
+<main id="app" hidden>
+  <h1 id="title">Annual budget</h1>
+  <p class="sub">Type in the white cells. Totals update on their own. Enter deductions and taxes as negative numbers.</p>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="scroller"><div id="sheet"></div></div>
+</main>
+
+<script>
+(function () {
+  var CFG = window.RULED_CONFIG;
+  var SHEET_ID = "yearly-projection";
+  var $ = function (id) { return document.getElementById(id); };
+  var money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+  var layout = null, inputs = {}, supa = null, session = null;
+  var seq = 0, ctrl = null, calcTimer = null, saveTimer = null;
+
+  function show(which) {
+    ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; });
+  }
+  function setStatus(text, isErr) {
+    var s = $("status"); s.textContent = text || ""; s.className = "status" + (isErr ? " err" : "");
+  }
+
+  /* ---------- build the table from the layout (labels only, no formulas) ---------- */
+  function build() {
+    $("title").textContent = layout.title.toLowerCase().replace(/(^|\s)\w/g, function (c) { return c.toUpperCase(); });
+    var html = "", open = false, colgroup =
+      '<colgroup><col class="c-a">' + new Array(13).join('<col class="c-m">') + '<col class="c-n"><col class="c-o"></colgroup>';
+    layout.rows.forEach(function (row, i) {
+      if (row.type === "title") {
+        if (open) html += "</tbody></table>";
+        open = false;
+        if (i > 0) html += '<h2 class="section">' + esc(row.text) + "</h2>"; // first title is the page heading
+        return;
+      }
+      if (row.type === "header") {
+        if (open) html += "</tbody></table>";
+        html += "<table>" + colgroup + "<thead><tr><th class=\"lab\">Category</th>";
+        row.labels.forEach(function (l) { html += "<th>" + esc(l) + "</th>"; });
+        html += "</tr></thead><tbody>"; open = true; return;
+      }
+      if (!open) { html += "<table>" + colgroup + "<tbody>"; open = true; }
+      html += '<tr class="' + row.cls + '" data-row="' + row.row + '"><td class="lab" title="' + esc(row.label) + '">' + esc(row.label) + "</td>";
+      "BCDEFGHIJKLMNO".split("").forEach(function (c) {
+        var cell = row.cells[c];
+        if (!cell) { html += "<td></td>"; return; }
+        if (cell.k === "input") {
+          inputs[cell.a] = cell.v;
+          html += '<td><input class="in" type="number" step="any" data-a="' + cell.a + '" aria-label="' + esc(row.label + " " + c) + '"' +
+            (cell.v ? ' value="' + cell.v + '"' : ' placeholder="0"') + "></td>";
+        } else if (cell.k === "calc") {
+          html += '<td class="num calc" data-c="' + cell.a + '" data-col="' + c + '" data-row="' + row.row + '">…</td>';
+        } else if (cell.k === "static") {
+          html += '<td class="num calc">' + money.format(cell.v) + "</td>";
+        } else {
+          html += '<td class="note">' + esc(cell.text) + "</td>";
+        }
+      });
+      html += "</tr>";
+    });
+    if (open) html += "</tbody></table>";
+    $("sheet").innerHTML = html;
+    $("sheet").addEventListener("input", onInput);
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function onInput(e) {
+    var a = e.target.getAttribute && e.target.getAttribute("data-a");
+    if (!a) return;
+    var n = parseFloat(e.target.value);
+    inputs[a] = isFinite(n) ? n : 0;
+    schedule(); scheduleSave();
+  }
+
+  /* ---------- calculation happens on the server ---------- */
+  function schedule() { clearTimeout(calcTimer); setStatus("Calculating…"); calcTimer = setTimeout(run, 300); }
+
+  function authHeaders() {
+    var h = { "Content-Type": "application/json" };
+    if (!CFG.devMode && session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
+    return h;
+  }
+
+  function run() {
+    var mine = ++seq;
+    if (ctrl) ctrl.abort();
+    ctrl = new AbortController();
+    fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), signal: ctrl.signal,
+      body: JSON.stringify({ sheet: SHEET_ID, inputs: inputs }) })
+      .then(function (res) {
+        if (res.status === 401) { show("login"); throw new Error("stop"); }
+        if (res.status === 403) { show("inactive"); throw new Error("stop"); }
+        if (!res.ok) throw new Error("fail");
+        return res.json();
+      })
+      .then(function (data) { if (mine === seq) { paint(data.values); setStatus("Up to date"); } })
+      .catch(function (err) {
+        if (err.name === "AbortError" || err.message === "stop") return;
+        setStatus("Couldn’t calculate. Check your connection and try again.", true);
+      });
+  }
+
+  function paint(values) {
+    var r = layout.rules, cells = document.querySelectorAll("td[data-c]");
+    Array.prototype.forEach.call(cells, function (td) {
+      var v = values[td.getAttribute("data-c")];
+      td.textContent = money.format(v || 0);
+      td.classList.remove("good", "bad");
+      var label = td.parentNode.firstChild.textContent;
+      if (label === r.netIncomeLabel && td.getAttribute("data-col") !== "N") {
+        if (v < 0) td.classList.add("bad"); else if (v > 0) td.classList.add("good");
+      }
+      if (label === r.expenseTotalLabel && td.getAttribute("data-col") !== "N") {
+        var inc = values[td.getAttribute("data-col") + r.incomeRow] || 0;
+        if (v > inc) td.classList.add("bad"); else if (v > 0) td.classList.add("good");
+      }
+    });
+  }
+
+  /* ---------- saving the member's numbers ---------- */
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      if (CFG.devMode) { try { localStorage.setItem("ruled-dev-" + SHEET_ID, JSON.stringify(inputs)); } catch (e) {} return; }
+      supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: SHEET_ID, inputs: inputs, updated_at: new Date().toISOString() })
+        .then(function (r) { if (r.error) setStatus("Couldn’t save your numbers.", true); });
+    }, 1000);
+  }
+  function loadSaved() {
+    if (CFG.devMode) {
+      try { return Promise.resolve(JSON.parse(localStorage.getItem("ruled-dev-" + SHEET_ID) || "null")); } catch (e) { return Promise.resolve(null); }
+    }
+    return supa.from("member_inputs").select("inputs").eq("sheet_id", SHEET_ID).maybeSingle()
+      .then(function (r) { return r.data ? r.data.inputs : null; });
+  }
+  function applySaved(saved) {
+    if (!saved) return;
+    Object.keys(saved).forEach(function (a) {
+      if (!(a in inputs)) return;
+      inputs[a] = saved[a];
+      var el = document.querySelector('input[data-a="' + a + '"]');
+      if (el) el.value = saved[a] ? saved[a] : "";
+    });
+  }
+
+  /* ---------- start ---------- */
+  function startApp() {
+    show("app");
+    loadSaved().then(function (saved) { applySaved(saved); run(); });
+  }
+
+  function boot() {
+    $("logo").href = CFG.homeUrl; $("renew").href = CFG.homeUrl + "#pricing";
+    fetch(SHEET_ID + ".layout.json").then(function (r) { return r.json(); }).then(function (l) {
+      layout = l; build();
+      if (CFG.devMode) { startApp(); return; }
+      supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+      supa.auth.getSession().then(function (r) {
+        session = r.data.session;
+        if (!session) { show("login"); return; }
+        afterLogin();
+      });
+    });
+  }
+  function afterLogin() {
+    $("who").textContent = session.user.email; $("signout").hidden = false; startApp();
+  }
+
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault(); $("loginMsg").textContent = "";
+    supa.auth.signInWithPassword({ email: $("email").value, password: $("password").value }).then(function (r) {
+      if (r.error) { $("loginMsg").textContent = "That email and password don’t match."; return; }
+      session = r.data.session; afterLogin();
+    });
+  });
+  $("signout").addEventListener("click", function () {
+    supa.auth.signOut().then(function () { location.reload(); });
+  });
+
+  if (!CFG.devMode) window.addEventListener("load", boot); else boot();
+})();
+</script>
+</body>
+</html>
