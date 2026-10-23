@@ -1,0 +1,867 @@
+{
+ "id": "monthly-budget",
+ "name": "Monthly budget",
+ "title": "Monthly Budget",
+ "months": true,
+ "hint": "Type in the white cells. Totals update on their own. Enter deductions and taxes as positive numbers, and they are subtracted for you. Click any category name to rename it.",
+ "firstColWidth": 190,
+ "cols": [
+  {
+   "key": "B",
+   "w": 120
+  },
+  {
+   "key": "C",
+   "w": 120
+  },
+  {
+   "key": "D",
+   "w": 140
+  }
+ ],
+ "rows": [
+  {
+   "type": "title",
+   "text": "Monthly Budget",
+   "row": 1
+  },
+  {
+   "type": "header",
+   "labels": [
+    "Paycheck1",
+    "Paycheck2",
+    "Total Per Month"
+   ]
+  },
+  {
+   "type": "data",
+   "row": 3,
+   "label": "Check",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B3",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C3",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D3"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 4,
+   "label": "Pre-Tax Deductions",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B4",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C4",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D4"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 5,
+   "label": "Employee taxes",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B5",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C5",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D5"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 6,
+   "label": "Post-Tax Deductions",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B6",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C6",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D6"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 7,
+   "label": "Net Check",
+   "cls": "total",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B7"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C7"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D7"
+    }
+   }
+  },
+  {
+   "type": "title",
+   "text": "Mandatory Expenses",
+   "row": 9
+  },
+  {
+   "type": "header",
+   "labels": [
+    "Paycheck1",
+    "Paycheck2",
+    "Total Per Month"
+   ]
+  },
+  {
+   "type": "data",
+   "row": 11,
+   "label": "Gasoline",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B11",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C11",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D11"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 12,
+   "label": "Restaurants",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B12",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C12",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D12"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 13,
+   "label": "Travel",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B13",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C13",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D13"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 14,
+   "label": "Shopping",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B14",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C14",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D14"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 15,
+   "label": "Groceries",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B15",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C15",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D15"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 16,
+   "label": "Transportation",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B16",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C16",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D16"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 17,
+   "label": "Electronics",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B17",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C17",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D17"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 18,
+   "label": "Utilities",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B18",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C18",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D18"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 19,
+   "label": "Clothing",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B19",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C19",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D19"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 20,
+   "label": "Gaming",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B20",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C20",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D20"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 21,
+   "label": "Pets",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B21",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C21",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D21"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 22,
+   "label": "Sports",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B22",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C22",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D22"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 23,
+   "label": "Healthcare",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B23",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C23",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D23"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 24,
+   "label": "Personal Care",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B24",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C24",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D24"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 25,
+   "label": "Digital Entertainment",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B25",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C25",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D25"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 26,
+   "label": "Home",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B26",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C26",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D26"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 27,
+   "label": "Rent",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B27",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C27",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D27"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 28,
+   "label": "Insurance",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B28",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C28",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D28"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 29,
+   "label": "Professional Services",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B29",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C29",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D29"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 30,
+   "label": "Tithe",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B30",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C30",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D30"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 31,
+   "label": "Credit Cards",
+   "cls": "",
+   "cells": {
+    "B": {
+     "k": "input",
+     "a": "B31",
+     "v": 0
+    },
+    "C": {
+     "k": "input",
+     "a": "C31",
+     "v": 0
+    },
+    "D": {
+     "k": "calc",
+     "a": "D31"
+    }
+   }
+  },
+  {
+   "type": "custom",
+   "max": 10,
+   "placeholder": "Category name",
+   "slots": [
+    {
+     "row": 40,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B40",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C40",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D40"
+      }
+     }
+    },
+    {
+     "row": 41,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B41",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C41",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D41"
+      }
+     }
+    },
+    {
+     "row": 42,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B42",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C42",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D42"
+      }
+     }
+    },
+    {
+     "row": 43,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B43",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C43",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D43"
+      }
+     }
+    },
+    {
+     "row": 44,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B44",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C44",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D44"
+      }
+     }
+    },
+    {
+     "row": 45,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B45",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C45",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D45"
+      }
+     }
+    },
+    {
+     "row": 46,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B46",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C46",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D46"
+      }
+     }
+    },
+    {
+     "row": 47,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B47",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C47",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D47"
+      }
+     }
+    },
+    {
+     "row": 48,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B48",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C48",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D48"
+      }
+     }
+    },
+    {
+     "row": 49,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B49",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C49",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D49"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "title",
+   "text": "Net Income/Loss",
+   "row": 33
+  },
+  {
+   "type": "data",
+   "row": 34,
+   "label": "Total Expense",
+   "cls": "total",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B34"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C34"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D34"
+    }
+   }
+  },
+  {
+   "type": "data",
+   "row": 35,
+   "label": "Net Income",
+   "cls": "net",
+   "cells": {
+    "B": {
+     "k": "calc",
+     "a": "B35"
+    },
+    "C": {
+     "k": "calc",
+     "a": "C35"
+    },
+    "D": {
+     "k": "calc",
+     "a": "D35"
+    }
+   }
+  }
+ ],
+ "rules": {
+  "netIncomeLabel": "Net Income",
+  "expenseTotalLabel": "Total Expense",
+  "incomeRow": 7
+ }
+}

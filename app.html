@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your tools | Moneres.</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+
+<script>
+/* ---------- SETTINGS: fill these in ----------
+   devMode true  = no login, talks to the local test server (dev/dev-server.mjs). Testing only.
+   devMode false = real login and membership check through Supabase. */
+window.RULED_CONFIG = {
+  devMode: false,
+  calcUrl: "https://qytsgfjyiybxucxtbcne.supabase.co/functions/v1/calc",
+  supabaseUrl: "https://qytsgfjyiybxucxtbcne.supabase.co",
+  supabaseAnonKey: "sb_publishable_Sp2syhCiuMZvNIssD9lpPA_1W3xZ2su",
+  homeUrl: "index.html"
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --paper:#EAF2FF; --ink:#0B1F4D; --muted:#3F5586; --rule:#B8CEF2; --blue:#1D4ED8; --blue-dark:#14307F;
+  --sheet:#FFFFFF; --hl:#CFE0FF; --good-bg:#C6EFCE; --good:#006100; --bad-bg:#FFC7CE; --bad:#9C0006;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--paper);min-height:100vh}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;gap:12px}
+.logo{font-weight:800;font-size:26px;letter-spacing:-.02em;text-decoration:none}
+.logo span{color:var(--blue)}
+.top-right{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--muted)}
+.top-right button{font:inherit;color:var(--ink);background:none;border:0;text-decoration:underline;cursor:pointer}
+main{padding:0 16px 48px}
+h1{font-size:clamp(24px,5vw,34px);letter-spacing:-.02em;line-height:1.2;margin:8px 0 4px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:12px}
+.status{font-size:14px;color:var(--muted);min-height:21px;margin-bottom:8px}
+.status.err{color:var(--bad);font-weight:600}
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border:2px solid var(--ink);border-radius:4px;background:var(--sheet);box-shadow:6px 6px 0 var(--ink)}
+:root{--a:190px}
+table{border-collapse:separate;border-spacing:0;table-layout:fixed}
+@media (max-width:600px){:root{--a:128px} td.lab,th.lab{font-size:12px} main{padding:0 10px 40px} header.top{padding:12px 10px}}
+th,td{padding:0 6px;height:40px;border-bottom:1px solid var(--rule);font-size:14px;white-space:nowrap}
+td.lab,th.lab{position:sticky;left:0;z-index:1;background:var(--sheet);text-align:left;font-weight:600;border-right:2px solid var(--rule);overflow:hidden;text-overflow:ellipsis}
+th{background:var(--ink);color:#fff;font-weight:600;text-align:right;position:sticky;top:0;white-space:normal;line-height:1.1;font-size:13px;height:46px}
+th.lab{background:var(--ink);color:#fff}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.calc{color:var(--ink);background:#F4F8FF}
+td.note{color:var(--muted);font-size:12px;white-space:normal;line-height:1.2}
+tr.total td, tr.total td.lab{font-weight:700;background:var(--hl)}
+tr.total td.lab{background:var(--hl)}
+td.good{background:var(--good-bg)!important;color:var(--good);font-weight:700}
+td.bad{background:var(--bad-bg)!important;color:var(--bad);font-weight:700}
+#sheet{width:max-content;min-width:100%}
+.section{margin:24px 0 8px 8px;font-size:18px;font-weight:800;position:sticky;left:8px;width:max-content}
+input.in{width:100%;height:32px;border:1px solid transparent;border-radius:3px;background:transparent;font:inherit;text-align:right;color:var(--ink);padding:0 4px;font-variant-numeric:tabular-nums}
+input.in:hover{border-color:var(--rule)}
+input.in:focus{border-color:var(--blue);background:#fff}
+input.in::placeholder{color:#9AAED3}
+.card{max-width:380px;margin:40px auto;background:var(--sheet);border:2px solid var(--ink);border-radius:4px;box-shadow:6px 6px 0 var(--ink);padding:24px}
+.card h2{font-size:22px;margin-bottom:12px}
+.card label{display:block;font-size:14px;font-weight:600;margin-top:12px}
+.card input{width:100%;height:42px;margin-top:4px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px}
+.btn{display:inline-block;margin-top:16px;font:600 16px/1 inherit;padding:13px 20px;border-radius:4px;border:2px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.msg{margin-top:12px;font-size:14px;color:var(--bad)}
+[hidden]{display:none!important}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}
+.tab{font:600 15px/1 inherit;padding:10px 16px;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer}
+.tab[aria-selected=true]{background:var(--ink);color:#fff}
+.picker{display:flex;gap:8px;margin:0 0 10px}
+.picker select{font:inherit;height:40px;padding:0 10px;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink)}
+td.lab input.nm{width:100%;font:inherit;font-weight:600;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:3px;height:32px;padding:0 4px}
+td.lab input.nm:hover{border-color:var(--rule)} td.lab input.nm:focus{border-color:var(--blue);background:#fff}
+.lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
+tr.addrow td{padding:6px}
+.add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
+.add[disabled]{opacity:.5;cursor:default}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" id="logo" href="index.html">Moneres<span>.</span></a>
+  <div class="top-right"><span id="who"></span><button id="signout" hidden>Log out</button></div>
+</header>
+
+<section id="login" class="card" hidden>
+  <h2>Log in</h2>
+  <form id="loginForm">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Log in</button>
+    <p class="msg" id="loginMsg" role="alert"></p>
+  </form>
+</section>
+
+<section id="inactive" class="card" hidden>
+  <h2>Your membership isn&rsquo;t active</h2>
+  <p>Renew to get back into your tools. Your saved numbers are still here when you do.</p>
+  <a class="btn" id="renew" href="index.html#pricing">See plans</a>
+</section>
+
+<main id="app" hidden>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select></div>
+  <h1 id="title"></h1>
+  <p class="sub" id="hint"></p>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="scroller"><div id="sheet"></div></div>
+</main>
+
+<script>
+(function () {
+  var CFG = window.RULED_CONFIG;
+  var TOOLS = [
+    { id: "yearly-projection", name: "Annual budget" },
+    { id: "monthly-budget", name: "Monthly budget" }
+  ];
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var $ = function (id) { return document.getElementById(id); };
+  var money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+  var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [] };
+  var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
+
+  function show(which) { ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; }); }
+  function setStatus(t, err) { var s = $("status"); s.textContent = t || ""; s.className = "status" + (err ? " err" : ""); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function storageKey() {
+    return layout.months ? layout.id + ":" + $("selYear").value + "-" + $("selMonth").value : layout.id;
+  }
+
+  /* ---------- build the table (labels only, no formulas) ---------- */
+  function build() {
+    var cols = layout.cols, keys = cols.map(function (c) { return c.key; });
+    var width = layout.firstColWidth + cols.reduce(function (a, c) { return a + c.w; }, 0);
+    var colgroup = '<colgroup><col style="width:var(--a)">' + cols.map(function (c) { return '<col style="width:' + c.w + 'px">'; }).join("") + "</colgroup>";
+    var tstart = '<table style="width:calc(var(--a) + ' + (width - layout.firstColWidth) + 'px)">' + colgroup;
+    document.documentElement.style.setProperty("--a", layout.firstColWidth + "px");
+    $("title").textContent = layout.name; $("hint").textContent = layout.hint;
+    inputs = {};
+    var html = "", open = false;
+
+    function labelCell(row) {
+      var name = meta.labels[row.row] || row.label;
+      if (row.cls) return '<td class="lab" title="' + esc(name) + '">' + esc(name) + "</td>";
+      return '<td class="lab"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name"></td>';
+    }
+    function cellsHtml(rowNo, label, cells) {
+      var h = "";
+      keys.concat(layout.cols.some(function (c) { return c.key === "O"; }) ? [] : []).forEach(function (c) {
+        var cell = cells[c];
+        if (!cell) { h += "<td></td>"; return; }
+        if (cell.k === "input") {
+          inputs[cell.a] = cell.v;
+          h += '<td><input class="in" type="number" step="any" data-a="' + cell.a + '" aria-label="' + esc(label + " " + c) + '" placeholder="0"></td>';
+        } else if (cell.k === "calc") {
+          h += '<td class="num calc" data-c="' + cell.a + '" data-col="' + c + '" data-row="' + rowNo + '">…</td>';
+        } else if (cell.k === "static") {
+          h += '<td class="num calc">' + money.format(cell.v) + "</td>";
+        } else { h += '<td class="note">' + esc(cell.text) + "</td>"; }
+      });
+      return h;
+    }
+
+    layout.rows.forEach(function (row, i) {
+      if (row.type === "title") {
+        if (open) html += "</tbody></table>"; open = false;
+        if (i > 0) html += '<h2 class="section">' + esc(row.text) + "</h2>";
+        return;
+      }
+      if (row.type === "header") {
+        if (open) html += "</tbody></table>";
+        html += tstart + '<thead><tr><th class="lab">Category</th>';
+        keys.forEach(function (k, j) { html += "<th>" + esc(row.labels[j] || "") + "</th>"; });
+        html += "</tr></thead><tbody>"; open = true; return;
+      }
+      if (!open) { html += tstart + "<tbody>"; open = true; }
+      if (row.type === "custom") {
+        row.slots.forEach(function (sl) {
+          var on = meta.custom.indexOf(sl.row) >= 0;
+          html += '<tr data-slot="' + sl.row + '"' + (on ? "" : " hidden") + '><td class="lab"><div class="lw"><input class="nm" data-nm="' + sl.row + '" data-custom="1" placeholder="' + esc(row.placeholder) + '" value="' + esc(meta.labels[sl.row] || "") + '" aria-label="Custom category name"><button class="rm" data-rm="' + sl.row + '" title="Remove this category" aria-label="Remove category">&times;</button></div></td>' +
+            cellsHtml(sl.row, "Custom " + sl.row, sl.cells) + "</tr>";
+        });
+        html += '<tr class="addrow"><td colspan="' + (keys.length + 1) + '"><button class="add" id="addBtn" type="button">+ Add a category</button></td></tr>';
+        return;
+      }
+      html += '<tr class="' + row.cls + '" data-row="' + row.row + '">' + labelCell(row) + cellsHtml(row.row, row.label, row.cells) + "</tr>";
+    });
+    if (open) html += "</tbody></table>";
+    $("sheet").innerHTML = html;
+    updateAdd();
+  }
+
+  function customMax() { var r = layout.rows.filter(function (x) { return x.type === "custom"; })[0]; return r ? r : null; }
+  function updateAdd() {
+    var c = customMax(), b = $("addBtn"); if (!c || !b) return;
+    var full = meta.custom.length >= c.max;
+    b.disabled = full; b.textContent = full ? "Limit reached (" + c.max + " custom categories)" : "+ Add a category";
+  }
+
+  /* ---------- events ---------- */
+  $("sheet").addEventListener("input", function (e) {
+    var t = e.target, a = t.getAttribute("data-a"), nm = t.getAttribute("data-nm");
+    if (a) { var n = parseFloat(t.value); inputs[a] = isFinite(n) ? n : 0; schedule(); scheduleSave(); }
+    else if (nm) {
+      var v = t.value.slice(0, 40);
+      if (v.trim() && v !== t.getAttribute("data-def")) meta.labels[nm] = v; else delete meta.labels[nm];
+      scheduleSave();
+    }
+  });
+  $("sheet").addEventListener("focusout", function (e) { // empty built-in name goes back to default
+    var t = e.target, def = t.getAttribute && t.getAttribute("data-def");
+    if (def && !t.value.trim()) t.value = def;
+  });
+  $("sheet").addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.id === "addBtn") {
+      var c = customMax(); if (meta.custom.length >= c.max) return;
+      var slot = c.slots.filter(function (s) { return meta.custom.indexOf(s.row) < 0; })[0];
+      meta.custom.push(slot.row);
+      var tr = document.querySelector('tr[data-slot="' + slot.row + '"]'); tr.hidden = false;
+      tr.querySelector("input.nm").focus(); updateAdd(); scheduleSave(); return;
+    }
+    var rm = t.getAttribute && t.getAttribute("data-rm");
+    if (rm) {
+      rm = Number(rm);
+      meta.custom = meta.custom.filter(function (r) { return r !== rm; }); delete meta.labels[rm];
+      var tr2 = document.querySelector('tr[data-slot="' + rm + '"]'); tr2.hidden = true;
+      Array.prototype.forEach.call(tr2.querySelectorAll("input"), function (el) {
+        el.value = ""; var a = el.getAttribute("data-a"); if (a) inputs[a] = 0;
+      });
+      updateAdd(); schedule(); scheduleSave();
+    }
+  });
+
+  /* ---------- calculation happens on the server ---------- */
+  function schedule() { clearTimeout(calcTimer); setStatus("Calculating…"); calcTimer = setTimeout(run, 300); }
+  function authHeaders() {
+    var h = { "Content-Type": "application/json" };
+    if (!CFG.devMode && session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
+    return h;
+  }
+  function run() {
+    var mine = ++seq; if (ctrl) ctrl.abort(); ctrl = new AbortController();
+    fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), signal: ctrl.signal, body: JSON.stringify({ sheet: layout.id, inputs: inputs }) })
+      .then(function (res) {
+        if (res.status === 401) { show("login"); throw new Error("stop"); }
+        if (res.status === 403) { show("inactive"); throw new Error("stop"); }
+        if (!res.ok) throw new Error("fail");
+        return res.json();
+      })
+      .then(function (d) { if (mine === seq) { paint(d.values); setStatus("Up to date"); } })
+      .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate. Check your connection and try again.", true); });
+  }
+  function paint(values) {
+    var r = layout.rows.length && layout.rules;
+    Array.prototype.forEach.call(document.querySelectorAll("td[data-c]"), function (td) {
+      var v = values[td.getAttribute("data-c")];
+      td.textContent = money.format(v || 0);
+      td.classList.remove("good", "bad");
+      var label = td.parentNode.firstChild.textContent, col = td.getAttribute("data-col");
+      var yearly = col === "N" || col === "O" || (layout.months && col === "D");
+      if (label === r.netIncomeLabel && !yearly) { if (v < 0) td.classList.add("bad"); else if (v > 0) td.classList.add("good"); }
+      if (label === r.expenseTotalLabel && !yearly) {
+        var inc = values[col + r.incomeRow] || 0;
+        if (v > inc) td.classList.add("bad"); else if (v > 0) td.classList.add("good");
+      }
+    });
+  }
+
+  /* ---------- saving ---------- */
+  function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; return o; }
+  function scheduleSave() {
+    clearTimeout(saveTimer); var key = storageKey(), data = payload();
+    saveTimer = setTimeout(function () {
+      if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); } catch (e) {} return; }
+      supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
+        .then(function (r) { if (r.error) setStatus("Couldn’t save your numbers.", true); });
+    }, 1000);
+  }
+  function loadSaved(key) {
+    if (CFG.devMode) { try { return Promise.resolve(JSON.parse(localStorage.getItem("moneres-dev-" + key) || "null")); } catch (e) { return Promise.resolve(null); } }
+    return supa.from("member_inputs").select("inputs").eq("sheet_id", key).maybeSingle().then(function (r) { return r.data ? r.data.inputs : null; });
+  }
+  function applySaved(saved) {
+    if (!saved) return;
+    var m = saved.__meta || {};
+    meta.labels = m.labels && typeof m.labels === "object" ? m.labels : {};
+    meta.custom = Array.isArray(m.custom) ? m.custom : [];
+    Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
+  }
+  function fillInputs() {
+    Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) {
+      var v = inputs[el.getAttribute("data-a")]; el.value = v ? v : "";
+    });
+  }
+
+  /* ---------- open a tool / month ---------- */
+  function openTool() {
+    var mine = ++loadSeq; clearTimeout(saveTimer);
+    show("app"); setStatus("Loading…");
+    $("picker").hidden = true;
+    fetch(tool.id + ".layout.json").then(function (r) { return r.json(); }).then(function (l) {
+      if (mine !== loadSeq) return;
+      layout = l; $("picker").hidden = !l.months; loadData(mine);
+    });
+  }
+  function loadData(mine) {
+    meta = { labels: {}, custom: [] };
+    loadSaved(storageKey()).then(function (saved) {
+      if (mine !== loadSeq) return;
+      inputs = {}; // fresh defaults come from the layout during build
+      buildDefaults(); applySaved(saved); build(); fillInputs(); run();
+    });
+  }
+  function buildDefaults() { // collect input addresses so saved values can be matched before building
+    layout.rows.forEach(function (row) {
+      var cs = row.type === "custom" ? [].concat.apply([], row.slots.map(function (s) { return Object.keys(s.cells).map(function (k) { return s.cells[k]; }); })) :
+        Object.keys(row.cells || {}).map(function (k) { return row.cells[k]; });
+      cs.forEach(function (c) { if (c.k === "input") inputs[c.a] = c.v || 0; });
+    });
+  }
+  /* build() resets inputs, so keep saved ones across it */
+  var _build = build;
+  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); };
+
+  function makeTabs() {
+    $("tabs").innerHTML = TOOLS.map(function (t) {
+      return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '">' + t.name + "</button>";
+    }).join("");
+  }
+  $("tabs").addEventListener("click", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-t"); if (!id || id === tool.id) return;
+    tool = TOOLS.filter(function (t) { return t.id === id; })[0]; history.replaceState(null, "", "#" + id);
+    makeTabs(); openTool();
+  });
+  $("selMonth").addEventListener("change", openTool);
+  $("selYear").addEventListener("change", openTool);
+
+  function boot() {
+    $("logo").href = CFG.homeUrl; $("renew").href = CFG.homeUrl + "#pricing";
+    var now = new Date();
+    $("selMonth").innerHTML = MONTHS.map(function (m, i) { return '<option value="' + (i < 9 ? "0" : "") + (i + 1) + '"' + (i === now.getMonth() ? " selected" : "") + ">" + m + "</option>"; }).join("");
+    var y = now.getFullYear();
+    $("selYear").innerHTML = [y - 1, y, y + 1].map(function (v) { return '<option' + (v === y ? " selected" : "") + ">" + v + "</option>"; }).join("");
+    var h = location.hash.slice(1); tool = TOOLS.filter(function (t) { return t.id === h; })[0] || TOOLS[0];
+    makeTabs();
+    if (CFG.devMode) { openTool(); return; }
+    supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+    supa.auth.getSession().then(function (r) { session = r.data.session; if (!session) { show("login"); return; } afterLogin(); });
+  }
+  function afterLogin() { $("who").textContent = session.user.email; $("signout").hidden = false; openTool(); }
+
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault(); $("loginMsg").textContent = "";
+    supa.auth.signInWithPassword({ email: $("email").value, password: $("password").value }).then(function (r) {
+      if (r.error) { $("loginMsg").textContent = "That email and password don’t match."; return; }
+      session = r.data.session; afterLogin();
+    });
+  });
+  $("signout").addEventListener("click", function () { supa.auth.signOut().then(function () { location.reload(); }); });
+
+  if (!CFG.devMode) window.addEventListener("load", boot); else boot();
+})();
+</script>
+</body>
+</html>
