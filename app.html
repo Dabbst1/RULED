@@ -39,7 +39,7 @@ main{padding:0 16px 48px}
 h1{font-size:clamp(24px,5vw,34px);letter-spacing:-.02em;line-height:1.2;margin:8px 0 4px}
 .sub{color:var(--muted);font-size:14px;margin-bottom:12px}
 .status{font-size:14px;color:var(--muted);min-height:21px;margin-bottom:8px}
-.status.err{color:var(--bad);font-weight:600}
+.status.err{color:var(--bad);font-weight:600;position:sticky;top:0;z-index:5;background:var(--bad-bg);padding:8px 12px;border-radius:4px}
 .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border:2px solid var(--ink);border-radius:4px;background:var(--sheet);box-shadow:6px 6px 0 var(--ink)}
 :root{--a:190px}
 table{border-collapse:separate;border-spacing:0;table-layout:fixed}
@@ -317,7 +317,7 @@ tr.addrow td{padding:6px}
       .then(function (res) {
         if (res.status === 401) { show("login"); throw new Error("stop"); }
         if (res.status === 403) { show("inactive"); throw new Error("stop"); }
-        if (!res.ok) throw new Error("fail" + res.status);
+        if (!res.ok) return res.text().then(function (t) { var c = ""; try { c = JSON.parse(t).error || ""; } catch (x) {} throw new Error("fail" + res.status + (c ? " " + c : "")); });
         return res.json();
       })
       .then(function (d) { if (mine === seq) { paint(d.values); setStatus("Up to date"); } })
