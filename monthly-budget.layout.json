@@ -3,7 +3,7 @@
  "name": "Monthly budget",
  "title": "Monthly Budget",
  "months": true,
- "hint": "Type in the white cells. Totals update on their own. Enter deductions and taxes as positive numbers, and they are subtracted for you. Click any category name to rename it.",
+ "hint": "Type in the white cells. Totals update on their own. Click any category name to rename it.",
  "firstColWidth": 240,
  "cols": [
   {
@@ -52,72 +52,6 @@
     "D": {
      "k": "calc",
      "a": "D3"
-    }
-   }
-  },
-  {
-   "type": "data",
-   "row": 4,
-   "label": "Pre-Tax Deductions",
-   "cls": "",
-   "cells": {
-    "B": {
-     "k": "input",
-     "a": "B4",
-     "v": 0
-    },
-    "C": {
-     "k": "input",
-     "a": "C4",
-     "v": 0
-    },
-    "D": {
-     "k": "calc",
-     "a": "D4"
-    }
-   }
-  },
-  {
-   "type": "data",
-   "row": 5,
-   "label": "Employee taxes",
-   "cls": "",
-   "cells": {
-    "B": {
-     "k": "input",
-     "a": "B5",
-     "v": 0
-    },
-    "C": {
-     "k": "input",
-     "a": "C5",
-     "v": 0
-    },
-    "D": {
-     "k": "calc",
-     "a": "D5"
-    }
-   }
-  },
-  {
-   "type": "data",
-   "row": 6,
-   "label": "Post-Tax Deductions",
-   "cls": "",
-   "cells": {
-    "B": {
-     "k": "input",
-     "a": "B6",
-     "v": 0
-    },
-    "C": {
-     "k": "input",
-     "a": "C6",
-     "v": 0
-    },
-    "D": {
-     "k": "calc",
-     "a": "D6"
     }
    }
   },
@@ -323,7 +257,7 @@
   {
    "type": "data",
    "row": 7,
-   "label": "Net Check",
+   "label": "Total Income",
    "cls": "total",
    "cells": {
     "B": {
