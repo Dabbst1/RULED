@@ -130,7 +130,7 @@ footer a{margin-left:20px}
       <a class="hide-sm" href="#inside">What&rsquo;s inside</a>
       <a class="hide-sm" href="#pricing">Pricing</a>
       <!-- Log in goes to the tool page, which shows the login box -->
-      <a href="app.html">Log in</a>
+      <a href="app.html" id="navLogin">Log in</a>
     </div>
   </nav>
 
@@ -213,5 +213,21 @@ footer a{margin-left:20px}
   </footer>
 </div>
 
+<script>
+/* If this browser already has a Moneres login, swap "Log in" for "View my budget".
+   The login is stored by the app page on this same site, so we only read whether it exists and hasn't expired. */
+(function () {
+  try {
+    var key = "sb-qytsgfjyiybxucxtbcne-auth-token", raw = localStorage.getItem(key);
+    if (!raw) return;
+    var t = JSON.parse(raw), exp = t && (t.expires_at || (t.currentSession && t.currentSession.expires_at));
+    var hasToken = t && (t.access_token || (t.currentSession && t.currentSession.access_token) || t.refresh_token);
+    if (!hasToken) return;
+    if (exp && exp * 1000 < Date.now() && !t.refresh_token) return;
+    var a = document.getElementById("navLogin");
+    if (a) { a.textContent = "View my budget"; a.className = "btn"; a.style.padding = "10px 16px"; }
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>

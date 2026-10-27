@@ -133,6 +133,10 @@ dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink)
 #wizard h2{font-size:22px}#wizard .wizlist{max-height:48vh;overflow:auto;border:1px solid var(--rule);border-radius:4px;padding:2px 10px 8px;margin:10px 0}
 #wizard input.wiztxt{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px;width:100%}
 #wizard .wizown{display:flex;gap:8px}#wizard .wizown .btn{margin:0;height:42px;padding:0 16px}
+.acform label{display:block;font-weight:600;font-size:14px;margin-top:10px}
+.acform input{width:100%;max-width:380px;height:42px;margin-top:3px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink)}
+.acform .btn{margin-top:14px}
+#who{font:inherit;color:var(--muted);background:none;border:0;text-decoration:underline;cursor:pointer}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -143,7 +147,7 @@ tr.addrow td{padding:6px}
 
 <header class="top">
   <a class="logo" id="logo" href="index.html">Moneres<span>.</span></a>
-  <div class="top-right"><span id="saved"></span><span id="who"></span><button id="signout" hidden>Log out</button></div>
+  <div class="top-right"><span id="saved"></span><button type="button" id="who" title="My account"></button><button id="signout" hidden>Log out</button></div>
 </header>
 
 <section id="login" class="card" hidden>
@@ -189,6 +193,26 @@ tr.addrow td{padding:6px}
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="scroller"><div id="sheet"></div></div>
   </div>
+  <section id="accountView" hidden>
+    <h1>My account</h1>
+    <div class="panel acform"><h2>Profile</h2>
+      <form id="profForm">
+        <label for="acName">Name</label><input id="acName" maxlength="60" autocomplete="name" placeholder="Your name">
+        <label for="acEmail">Email</label><input id="acEmail" type="email" autocomplete="email" required>
+        <p class="sub" style="margin-top:6px">If you change your email, we send a confirmation link to the new address first.</p>
+        <button class="btn" type="submit">Save changes</button>
+        <p class="pickmsg" id="acMsg" role="status"></p>
+      </form></div>
+    <div class="panel"><h2>Membership</h2><div id="acMember" class="sub">Loading…</div></div>
+    <div class="panel acform"><h2>Password</h2>
+      <form id="pwForm">
+        <label for="acPw">New password</label><input id="acPw" type="password" minlength="8" autocomplete="new-password" required>
+        <label for="acPw2">Confirm new password</label><input id="acPw2" type="password" minlength="8" autocomplete="new-password" required>
+        <button class="btn" type="submit">Change password</button>
+        <p class="pickmsg" id="pwMsg" role="status"></p>
+      </form></div>
+    <div class="panel"><button class="btn ghost" type="button" id="acOut">Log out</button></div>
+  </section>
   <section id="setupView" hidden>
     <div class="panel" id="wizard"></div>
   </section>
@@ -230,7 +254,8 @@ tr.addrow td{padding:6px}
     { id: "monthly-budget", name: "Monthly budget" },
     { id: "bills", name: "Bills", type: "bills" },
     { id: "goals", name: "Goals", type: "goals" },
-    { id: "setup", name: "My categories", type: "setup", hidden: true }
+    { id: "setup", name: "My categories", type: "setup", hidden: true },
+    { id: "account", name: "Account", type: "account", hidden: true }
   ];
   var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   var $ = function (id) { return document.getElementById(id); };
@@ -631,8 +656,9 @@ tr.addrow td{padding:6px}
     var mine = ++loadSeq; flushSave();
     show("app");
     var tp = tool.type;
-    $("sheetView").hidden = !!tp; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup";
+    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup";
     renderBanner();
+    if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
@@ -874,6 +900,51 @@ tr.addrow td{padding:6px}
     else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); saveGoals(); renderGoals(); } }
   });
 
+  /* ---------- account ---------- */
+  function displayName(u) { return (u && u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || ""; }
+  function shortDate(v) { return v ? new Date(v).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : ""; }
+  function currentUser() { return CFG.devMode ? { email: "you@example.com", created_at: new Date().toISOString(), user_metadata: {} } : (session && session.user); }
+  function renderAccount() {
+    var u = currentUser(); if (!u) return;
+    $("acName").value = displayName(u); $("acEmail").value = u.email || ""; $("acMsg").textContent = ""; $("pwMsg").textContent = "";
+    $("pwForm").reset();
+    if (CFG.devMode) { $("acMember").textContent = "Active (test mode)."; return; }
+    supa.from("members").select("status,current_period_end").eq("user_id", u.id).maybeSingle().then(function (r) {
+      var m = r.data, h = "";
+      if (!m) h = "No active membership found.";
+      else {
+        var on = (m.status === "active" || m.status === "trialing") && (!m.current_period_end || new Date(m.current_period_end) > new Date());
+        h = "<p><b>Status:</b> " + (on ? "Active" : "Not active") + "</p>" +
+          (m.current_period_end ? "<p><b>" + (on ? "Current period ends" : "Ended") + ":</b> " + shortDate(m.current_period_end) + "</p>" : "");
+      }
+      h += (u.created_at ? "<p><b>Member since:</b> " + shortDate(u.created_at) + "</p>" : "");
+      $("acMember").innerHTML = h;
+    });
+  }
+  $("who").addEventListener("click", function () {
+    tool = TOOLS.filter(function (t) { return t.id === "account"; })[0]; history.replaceState(null, "", "#account"); makeTabs(); openTool();
+  });
+  $("profForm").addEventListener("submit", function (e) {
+    e.preventDefault(); var u = currentUser(), name = $("acName").value.trim().slice(0, 60), email = $("acEmail").value.trim();
+    if (CFG.devMode) { $("acMsg").textContent = "Saved (test mode)."; return; }
+    var msg = [], jobs = [];
+    if (name !== displayName(u)) jobs.push(supa.auth.updateUser({ data: { full_name: name } }).then(function (r) { if (r.error) throw r.error; session.user = r.data.user; msg.push("Name saved."); }));
+    if (email && email.toLowerCase() !== (u.email || "").toLowerCase()) jobs.push(supa.auth.updateUser({ email: email }).then(function (r) { if (r.error) throw r.error; msg.push("Check your new email for a confirmation link."); }));
+    if (!jobs.length) { $("acMsg").textContent = "Nothing to change."; return; }
+    Promise.all(jobs).then(function () { $("acMsg").textContent = msg.join(" "); $("who").textContent = displayName(session.user) || session.user.email; })
+      .catch(function (err) { $("acMsg").textContent = "Couldn’t save: " + (err.message || "try again"); });
+  });
+  $("pwForm").addEventListener("submit", function (e) {
+    e.preventDefault(); var a = $("acPw").value, b = $("acPw2").value;
+    if (a.length < 8) { $("pwMsg").textContent = "Use at least 8 characters."; return; }
+    if (a !== b) { $("pwMsg").textContent = "The two passwords don’t match."; return; }
+    if (CFG.devMode) { $("pwMsg").textContent = "Password changed (test mode)."; return; }
+    supa.auth.updateUser({ password: a }).then(function (r) {
+      $("pwMsg").textContent = r.error ? "Couldn’t change it: " + r.error.message : "Password changed."; if (!r.error) $("pwForm").reset();
+    });
+  });
+  $("acOut").addEventListener("click", function () { if (CFG.devMode) { location.reload(); return; } supa.auth.signOut().then(function () { location.reload(); }); });
+
   /* ---------- guided setup ---------- */
   var setup = null, setupLoaded = false;
   var WIZ_INCOME_MAX = 11, WIZ_EXPENSE_MAX = 31;
@@ -1084,11 +1155,11 @@ tr.addrow td{padding:6px}
     $("selYear").innerHTML = [y - 1, y, y + 1].map(function (v) { return '<option' + (v === y ? " selected" : "") + ">" + v + "</option>"; }).join("");
     var h = location.hash.slice(1); tool = TOOLS.filter(function (t) { return t.id === h; })[0] || TOOLS[0];
     makeTabs();
-    if (CFG.devMode) { start(h); return; }
+    if (CFG.devMode) { $("who").textContent = "you@example.com"; start(h); return; }
     supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
     supa.auth.getSession().then(function (r) { session = r.data.session; if (!session) { show("login"); return; } afterLogin(); });
   }
-  function afterLogin() { $("who").textContent = session.user.email; $("signout").hidden = false; start(location.hash.slice(1)); }
+  function afterLogin() { $("who").textContent = displayName(session.user) || session.user.email; $("signout").hidden = false; start(location.hash.slice(1)); }
   function start(h) {
     loadBills(); loadSetup().then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
