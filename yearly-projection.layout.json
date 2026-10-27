@@ -1018,7 +1018,7 @@
     "Nov.",
     "Dec.",
     "Total Expense Per Category",
-    ""
+    "YEARLY EXPENSES"
    ]
   },
   {
@@ -2447,7 +2447,8 @@
      "k": "calc",
      "a": "N33"
     }
-   }
+   },
+   "toggle": "Q33"
   },
   {
    "type": "data",
@@ -3273,18 +3274,10 @@
     "M": {
      "k": "calc",
      "a": "M35"
-    }
-   }
-  },
-  {
-   "type": "data",
-   "row": 36,
-   "label": "Total Annual Expense",
-   "cls": "total",
-   "cells": {
-    "N": {
+    },
+    "O": {
      "k": "calc",
-     "a": "N36"
+     "a": "O35"
     }
    }
   },
