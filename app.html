@@ -125,7 +125,7 @@ dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink)
 .chip{font:inherit;font-size:14px;padding:7px 12px;margin:0 6px 6px 0;border:2px solid var(--blue);border-radius:99px;background:#fff;color:var(--blue-dark);cursor:pointer}
 .chip:hover{background:var(--hl)}
 .pickcustom{display:flex;gap:8px}.pickcustom .btn{margin:0;height:42px;padding:0 16px}
-.pickmsg{font-size:14px;color:var(--muted);min-height:20px}dialog>.btn{margin:0;align-self:flex-start}
+.pickmsg{font-size:14px;color:var(--muted);min-height:20px}.pickbtns{display:flex;gap:10px;flex-wrap:wrap}.pickbtns .btn{margin:0}.btn.danger{background:#fff;color:var(--bad);border-color:var(--bad)}.btn.danger:hover{background:var(--bad-bg);color:var(--bad)}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -163,7 +163,7 @@ tr.addrow td{padding:6px}
   <div id="pickList"></div>
   <div class="pickcustom"><input id="pickCustom" maxlength="40" placeholder="Or type your own name" autocomplete="off" aria-label="Your own category name"><button type="button" class="btn" id="pickCustomBtn">Add</button></div>
   <p class="pickmsg" id="pickMsg" role="status"></p>
-  <button type="button" class="btn" id="pickDone">Done</button>
+  <div class="pickbtns"><button type="button" class="btn" id="pickDone">Done</button><button type="button" class="btn danger" id="pickRemove" hidden>Remove this category</button></div>
 </dialog>
 
 <main id="app" hidden>
@@ -225,7 +225,7 @@ tr.addrow td{padding:6px}
   var $ = function (id) { return document.getElementById(id); };
   var money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-  var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [], hidden: [] };
+  var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [], hidden: [], removed: [] };
   var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
 
   function show(which) { ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; }); }
@@ -254,7 +254,8 @@ tr.addrow td{padding:6px}
     function labelCell(row) {
       var name = meta.labels[row.row] || row.label;
       if (row.cls) return '<td class="lab" title="' + esc(name) + '">' + esc(name) + "</td>";
-      return '<td class="lab"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name"></td>';
+      var sw = rowInputs(row.row).length && rowGroups()[row.row] ? '<button type="button" class="rm" data-swap="' + row.row + '" title="Replace or remove this category" aria-label="Replace or remove ' + esc(name) + '">&#8645;</button>' : "";
+      return '<td class="lab"><div class="lw"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name">' + sw + "</div></td>";
     }
     function cellsHtml(rowNo, label, cells) {
       var h = "";
@@ -320,7 +321,8 @@ tr.addrow td{padding:6px}
   });
   function applyHidden() {
     Array.prototype.forEach.call(document.querySelectorAll("tr[data-row]"), function (tr) {
-      tr.hidden = meta.hidden.indexOf(Number(tr.getAttribute("data-row"))) >= 0;
+      var rn = Number(tr.getAttribute("data-row"));
+      tr.hidden = meta.hidden.indexOf(rn) >= 0 || meta.removed.indexOf(rn) >= 0;
     });
     Array.prototype.forEach.call(document.querySelectorAll("tr[data-slot]"), function (tr) {
       var r = Number(tr.getAttribute("data-slot"));
@@ -336,6 +338,7 @@ tr.addrow td{padding:6px}
       if (r.type === "custom") r.slots.forEach(function (sl) { ok[sl.row] = 1; });
     });
     meta.hidden = meta.hidden.filter(function (x) { return ok[x]; });
+    meta.removed = meta.removed.filter(function (x) { return ok[x]; });
     meta.custom = meta.custom.filter(function (x) { return ok[x]; });
     Object.keys(meta.labels).forEach(function (k) { if (!ok[k]) delete meta.labels[k]; });
   }
@@ -343,7 +346,7 @@ tr.addrow td{padding:6px}
     pruneMeta();
     var out = "";
     layout.rows.forEach(function (row) {
-      if (row.type === "data" && !row.cls) {
+      if (row.type === "data" && !row.cls && meta.removed.indexOf(row.row) < 0) {
         var name = meta.labels[row.row] || row.label;
         out += '<label><input type="checkbox" data-vis="' + row.row + '"' + (meta.hidden.indexOf(row.row) < 0 ? " checked" : "") + "> " + esc(name) + "</label>";
       }
@@ -414,25 +417,46 @@ tr.addrow td{padding:6px}
     ]
   };
   function customBlocks() { return layout.rows.filter(function (x) { return x.type === "custom"; }); }
-  var pickBlock = 0;
+  var pick = { mode: "add", idx: 0, row: 0 };
+  function rowGroups() { // which pool (income or expense) each built-in row belongs to
+    var map = {}, g = null;
+    for (var i = layout.rows.length - 1; i >= 0; i--) {
+      var r = layout.rows[i];
+      if (r.type === "custom") g = r.group === "income" ? "income" : "expense";
+      else if (r.type === "data") map[r.row] = g;
+    }
+    return map;
+  }
+  function rowInputs(rowNo) {
+    var out = [];
+    layout.rows.forEach(function (r) { if (r.type === "data" && r.row === rowNo) Object.keys(r.cells).forEach(function (c) { if (r.cells[c].k === "input") out.push(r.cells[c].a); }); });
+    return out;
+  }
+  function builtinName(rowNo) { var r = layout.rows.filter(function (x) { return x.type === "data" && x.row === rowNo; })[0]; return meta.labels[rowNo] || (r && r.label) || ""; }
   function usedNames() {
     var u = {};
     layout.rows.forEach(function (r) {
-      if (r.type === "data") u[(meta.labels[r.row] || r.label).toLowerCase()] = 1;
+      if (r.type === "data" && meta.removed.indexOf(r.row) < 0) u[(meta.labels[r.row] || r.label).toLowerCase()] = 1;
       if (r.type === "custom") r.slots.forEach(function (sl) { if (meta.custom.indexOf(sl.row) >= 0 && meta.labels[sl.row]) u[meta.labels[sl.row].toLowerCase()] = 1; });
     });
     return u;
   }
-  function openPicker(idx) {
-    pickBlock = idx; var blk = customBlocks()[idx];
-    $("pickTitle").textContent = blk.group === "income" ? "Add an income source" : "Add an expense category";
+  function pickGroup() { return pick.mode === "swap" ? (rowGroups()[pick.row] || "expense") : (customBlocks()[pick.idx].group === "income" ? "income" : "expense"); }
+  function showPicker(title, swap) {
+    $("pickTitle").textContent = title; $("pickRemove").hidden = !swap;
     $("pickSearch").value = ""; $("pickCustom").value = ""; $("pickMsg").textContent = ""; drawPick();
     if (!$("pickDlg").open) $("pickDlg").showModal();
     $("pickSearch").focus();
   }
+  function openPicker(idx) { pick = { mode: "add", idx: idx }; showPicker(pickGroup() === "income" ? "Add an income source" : "Add an expense category", false); }
+  function openSwap(row) { pick = { mode: "swap", row: row }; showPicker("Replace “" + builtinName(row) + "”", true); }
   function drawPick() {
-    var q = $("pickSearch").value.trim().toLowerCase(), blk = customBlocks()[pickBlock], used = usedNames(), h = "";
-    POOL[blk.group === "income" ? "income" : "expense"].forEach(function (g) {
+    var q = $("pickSearch").value.trim().toLowerCase(), grp = pickGroup(), used = usedNames(), h = "";
+    if (pick.mode === "add") {
+      var back = layout.rows.filter(function (r) { return r.type === "data" && meta.removed.indexOf(r.row) >= 0 && rowGroups()[r.row] === grp && (!q || builtinName(r.row).toLowerCase().indexOf(q) >= 0); });
+      if (back.length) h += "<h3>Add back</h3>" + '<div class="chips">' + back.map(function (r) { return '<button type="button" class="chip" data-restore="' + r.row + '">' + esc(builtinName(r.row)) + "</button>"; }).join("") + "</div>";
+    }
+    POOL[grp].forEach(function (g) {
       var items = g.items.filter(function (n) { return !used[n.toLowerCase()] && (!q || n.toLowerCase().indexOf(q) >= 0 || g.g.toLowerCase().indexOf(q) >= 0); });
       if (items.length) h += "<h3>" + esc(g.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip" data-pick="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
     });
@@ -440,7 +464,13 @@ tr.addrow td{padding:6px}
   }
   function addNamed(name) {
     name = String(name).trim().slice(0, 40); if (!name) return;
-    var blk = customBlocks()[pickBlock];
+    if (pick.mode === "swap") {
+      var def = (layout.rows.filter(function (x) { return x.type === "data" && x.row === pick.row; })[0] || {}).label;
+      if (name === def) delete meta.labels[pick.row]; else meta.labels[pick.row] = name;
+      var inp = document.querySelector('input[data-nm="' + pick.row + '"]'); if (inp) inp.value = name;
+      buildRowsPanel(); scheduleSave(); $("pickDlg").close(); return;
+    }
+    var blk = customBlocks()[pick.idx];
     var slot = blk.slots.filter(function (sl) { return meta.custom.indexOf(sl.row) < 0; })[0];
     if (!slot) { $("pickMsg").textContent = "You’ve reached the limit of " + blk.max + "."; return; }
     meta.custom.push(slot.row); meta.labels[slot.row] = name;
@@ -451,12 +481,26 @@ tr.addrow td{padding:6px}
     $("pickCustom").value = ""; drawPick();
     if (blk.slots.every(function (sl) { return meta.custom.indexOf(sl.row) >= 0; })) closePicker(tr);
   }
+  function restoreRow(row) {
+    meta.removed = meta.removed.filter(function (x) { return x !== row; });
+    buildRowsPanel(); scheduleSave(); $("pickMsg").textContent = "Added back " + builtinName(row) + "."; drawPick();
+  }
+  function removeRow(row) {
+    rowInputs(row).forEach(function (a) { inputs[a] = 0; var el = document.querySelector('input[data-a="' + a + '"]'); if (el) el.value = ""; });
+    if (meta.removed.indexOf(row) < 0) meta.removed.push(row);
+    buildRowsPanel(); schedule(); scheduleSave(); $("pickDlg").close();
+  }
   function closePicker(tr) {
     $("pickDlg").close();
+    if (pick.mode === "swap") return;
     var last = tr || document.querySelector("tr[data-slot]:not([hidden])"); var inp = last && last.querySelector("input.in"); if (inp) inp.focus();
   }
   $("pickSearch").addEventListener("input", drawPick);
-  $("pickList").addEventListener("click", function (e) { var n = e.target.getAttribute && e.target.getAttribute("data-pick"); if (n) addNamed(n); });
+  $("pickList").addEventListener("click", function (e) {
+    var n = e.target.getAttribute && e.target.getAttribute("data-pick"); if (n) { addNamed(n); return; }
+    var r = e.target.getAttribute && e.target.getAttribute("data-restore"); if (r) restoreRow(Number(r));
+  });
+  $("pickRemove").addEventListener("click", function () { if (window.confirm("Remove “" + builtinName(pick.row) + "”? Any amounts in it will be cleared.")) removeRow(pick.row); });
   $("pickCustomBtn").addEventListener("click", function () { addNamed($("pickCustom").value); });
   $("pickCustom").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addNamed($("pickCustom").value); } });
   $("pickDone").addEventListener("click", function () { closePicker(); });
@@ -478,6 +522,8 @@ tr.addrow td{padding:6px}
   });
   $("sheet").addEventListener("click", function (e) {
     var t = e.target;
+    var sw = t.getAttribute && t.getAttribute("data-swap");
+    if (sw) { openSwap(Number(sw)); return; }
     var addIdx = t.getAttribute && t.getAttribute("data-add");
     if (addIdx !== null && addIdx !== undefined && addIdx !== "") { openPicker(Number(addIdx)); return; }
     var rm = t.getAttribute && t.getAttribute("data-rm");
@@ -555,6 +601,7 @@ tr.addrow td{padding:6px}
     meta.labels = m.labels && typeof m.labels === "object" ? m.labels : {};
     meta.custom = Array.isArray(m.custom) ? m.custom : [];
     meta.hidden = Array.isArray(m.hidden) ? m.hidden : [];
+    meta.removed = Array.isArray(m.removed) ? m.removed : [];
     pruneMeta();
     Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
   }
@@ -583,7 +630,7 @@ tr.addrow td{padding:6px}
     });
   }
   function loadData(mine) {
-    meta = { labels: {}, custom: [], hidden: [] };
+    meta = { labels: {}, custom: [], hidden: [], removed: [] };
     loadSaved(storageKey()).then(function (saved) {
       if (mine !== loadSeq) return;
       inputs = {}; // fresh defaults come from the layout during build
@@ -876,7 +923,7 @@ tr.addrow td{padding:6px}
     loadSaved(key).then(function (saved) {
       if (!saved) { setStatus("Nothing saved for " + name + " yet.", true); return; }
       Object.keys(inputs).forEach(function (a) { inputs[a] = 0; });
-      meta = { labels: {}, custom: [], hidden: [] };
+      meta = { labels: {}, custom: [], hidden: [], removed: [] };
       applySaved(saved); build(); fillInputs(); buildRowsPanel(); run(); scheduleSave();
       setStatus("Copied from " + name);
     });
