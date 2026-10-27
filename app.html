@@ -329,7 +329,18 @@ tr.addrow td{padding:6px}
     var h = meta.hidden.length;
     $("rowsPanel").querySelector("summary").textContent = "Show or hide rows" + (h ? " (" + h + " hidden)" : "");
   }
+  function pruneMeta() { // forget saved choices for rows that no longer exist
+    var ok = {};
+    layout.rows.forEach(function (r) {
+      if (r.type === "data") ok[r.row] = 1;
+      if (r.type === "custom") r.slots.forEach(function (sl) { ok[sl.row] = 1; });
+    });
+    meta.hidden = meta.hidden.filter(function (x) { return ok[x]; });
+    meta.custom = meta.custom.filter(function (x) { return ok[x]; });
+    Object.keys(meta.labels).forEach(function (k) { if (!ok[k]) delete meta.labels[k]; });
+  }
   function buildRowsPanel() {
+    pruneMeta();
     var out = "";
     layout.rows.forEach(function (row) {
       if (row.type === "data" && !row.cls) {
@@ -380,7 +391,7 @@ tr.addrow td{padding:6px}
   /* ---------- category pool ---------- */
   var POOL = {
     expense: [
-      { g: "Housing", items: ["Mortgage", "Property Taxes", "HOA Fees", "Home Insurance", "Renters Insurance", "Home Repairs", "Home Maintenance", "Furniture", "Appliances", "Lawn Care", "Pest Control", "Security System", "Cleaning Supplies", "Moving Costs", "Storage Unit", "Home Improvement", "Decor"] },
+      { g: "Housing", items: ["Mortgage", "HOA Fees", "Home Insurance", "Renters Insurance", "Home Repairs", "Home Maintenance", "Furniture", "Appliances", "Lawn Care", "Pest Control", "Security System", "Cleaning Supplies", "Moving Costs", "Storage Unit", "Home Improvement", "Decor"] },
       { g: "Utilities and services", items: ["Electric", "Water and Sewer", "Natural Gas", "Trash and Recycling", "Internet", "Cell Phone", "Cable TV", "Streaming Services", "Software Subscriptions", "Cloud Storage", "Phone Insurance", "Memberships"] },
       { g: "Transportation", items: ["Car Payment", "Auto Insurance", "Car Maintenance", "Oil Changes", "Tires", "Vehicle Repairs", "Registration and Tags", "Parking", "Tolls", "Public Transit", "Rideshare", "Car Wash", "Car Rental", "Bike Expenses", "Fines and Tickets", "Motorcycle Expenses"] },
       { g: "Food and drink", items: ["Coffee", "Takeout and Delivery", "Meal Kits", "Snacks", "Alcohol", "Work Lunches", "School Lunches", "Bakery", "Fast Food", "Specialty Groceries", "Water Delivery"] },
@@ -389,16 +400,16 @@ tr.addrow td{padding:6px}
       { g: "Family and kids", items: ["Childcare", "Daycare", "Child Support", "Alimony", "Kids Activities", "Allowance", "Baby Supplies", "Diapers and Formula", "Toys", "Elder Care", "Family Support", "Summer Camp", "Kids Clothing", "Babysitter"] },
       { g: "Pets", items: ["Pet Food", "Vet Bills", "Pet Insurance", "Pet Grooming", "Pet Sitting", "Pet Supplies", "Pet Medication"] },
       { g: "Education", items: ["Tuition", "Student Loan Payment", "School Supplies", "Textbooks", "Courses and Training", "Certifications", "Exam Fees", "Tutoring", "School Fees", "Online Learning"] },
-      { g: "Debt and financial", items: ["Personal Loan Payment", "Medical Debt Payment", "Back Taxes", "Income Taxes", "Bank Fees", "Overdraft Fees", "Late Fees", "Interest Charges", "Loan Payment", "Buy Now Pay Later", "Collections Payment", "Savings Transfer", "Emergency Fund", "Retirement Contribution", "Investments", "Brokerage Deposit", "Sinking Fund", "Down Payment Fund", "Vacation Fund"] },
-      { g: "Work and business", items: ["Business Expenses", "Work Supplies", "Work Uniforms", "Tools and Equipment", "Licenses and Permits", "Professional Dues", "Home Office", "Coworking Space", "Advertising", "Accounting and Tax Prep", "Legal Fees", "Business Insurance", "Business Travel", "Inventory", "Website and Hosting", "Contractors"] },
+      { g: "Debt and financial", items: ["Personal Loan Payment", "Medical Debt Payment", "Bank Fees", "Overdraft Fees", "Late Fees", "Interest Charges", "Loan Payment", "Buy Now Pay Later", "Collections Payment", "Savings Transfer", "Emergency Fund", "Retirement Contribution", "Investments", "Brokerage Deposit", "Sinking Fund", "Down Payment Fund", "Vacation Fund"] },
+      { g: "Work and business", items: ["Business Expenses", "Work Supplies", "Work Uniforms", "Tools and Equipment", "Licenses and Permits", "Professional Dues", "Home Office", "Coworking Space", "Advertising", "Legal Fees", "Business Insurance", "Business Travel", "Inventory", "Website and Hosting", "Contractors"] },
       { g: "Fun and lifestyle", items: ["Entertainment", "Movies and Events", "Concerts", "Sporting Events", "Vacations", "Hotels", "Flights", "Souvenirs", "Games and Apps", "Nightlife", "Club Dues", "Hobby Supplies", "Camping and Outdoors", "Boating", "Photography"] },
       { g: "Other", items: ["Postage and Shipping", "Cash Withdrawals", "Miscellaneous", "Church Offering", "Tips", "Emergency Expenses", "Lost or Stolen Items", "Legal Settlements", "Funeral Costs", "Notary and Document Fees", "Dues and Fees"] }
     ],
     income: [
-      { g: "Wages and salary", items: ["Salary", "Hourly Wages", "Overtime", "Bonus", "Commission", "Tips Received", "Tax Refund", "Second Job", "Holiday Pay", "Per Diem", "Severance"] },
+      { g: "Wages and salary", items: ["Salary", "Hourly Wages", "Overtime", "Bonus", "Commission", "Tips Received", "Second Job", "Holiday Pay", "Per Diem", "Severance"] },
       { g: "Self-employment", items: ["Freelance", "Side Hustle", "Consulting", "Business Income", "Contract Work", "Gig Work", "Online Sales", "Royalties", "Client Payments", "Sponsorships", "Affiliate Income", "Content Creator Income", "Teaching and Tutoring Income"] },
       { g: "Investments", items: ["Dividends", "Interest Income", "Capital Gains", "Rental Income", "Stock Sales", "Crypto Gains", "Business Distributions", "Annuity Payments"] },
-      { g: "Benefits and support", items: ["Social Security", "Pension", "Retirement Withdrawal", "Unemployment", "Disability Benefits", "Veterans Benefits", "Government Assistance", "Child Tax Credit", "Child Support Received", "Alimony Received", "Survivor Benefits", "Workers Compensation", "Food Assistance", "Housing Assistance"] },
+      { g: "Benefits and support", items: ["Social Security", "Pension", "Retirement Withdrawal", "Unemployment", "Disability Benefits", "Veterans Benefits", "Government Assistance", "Child Support Received", "Alimony Received", "Survivor Benefits", "Workers Compensation", "Food Assistance", "Housing Assistance"] },
       { g: "Other income", items: ["Gifts Received", "Inheritance", "Reimbursements", "Scholarships", "Grants", "Stipend", "Selling Items", "Cash Back", "Rewards", "Settlement", "Allowance Received", "Family Support Received", "Roommate Contribution", "Spouse or Partner Income", "Refunds", "Garage Sale", "Prize Money"] }
     ]
   };
@@ -544,6 +555,7 @@ tr.addrow td{padding:6px}
     meta.labels = m.labels && typeof m.labels === "object" ? m.labels : {};
     meta.custom = Array.isArray(m.custom) ? m.custom : [];
     meta.hidden = Array.isArray(m.hidden) ? m.hidden : [];
+    pruneMeta();
     Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
   }
   function fillInputs() {
