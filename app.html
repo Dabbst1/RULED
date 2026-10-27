@@ -103,6 +103,19 @@ td.lab input.nm:hover{border-color:var(--rule)} td.lab input.nm:focus{border-col
 .step .st{flex:1}.step .st span{display:block;font-size:13px;color:var(--muted);text-decoration:none}
 .step button,.panel .linkbtn{font:600 14px/1 inherit;padding:9px 12px;border:2px solid var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer}
 #saved{font-size:13px;color:var(--muted)}
+.goalcard{background:#fff;border:2px solid var(--ink);border-radius:4px;padding:14px 16px;margin:0 0 12px}
+.goalcard header{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.goalcard h3{font-size:18px}.goalcard .meta{font-size:13px;color:var(--muted)}
+.kind{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--hl);color:var(--blue-dark);margin-right:6px}
+.bar{height:14px;background:var(--hl);border-radius:99px;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;background:var(--blue)}
+.bar.full i{background:var(--good)}
+.goalcard .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.goalcard .row input[type=text]{height:36px;padding:0 8px;font:inherit;border:2px solid var(--ink);border-radius:4px;width:150px}
+.goalcard .row input.stepin{flex:1;min-width:150px;width:auto}
+.goalcard button.sm{font:600 13px/1 inherit;padding:8px 10px;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer}
+.goalcard button.x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer}
+.chk{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--rule)}
+.chk input{width:20px;height:20px;accent-color:var(--blue)}.chk span{flex:1}.chk.done span{text-decoration:line-through;color:var(--muted)}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -150,6 +163,20 @@ tr.addrow td{padding:6px}
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="scroller"><div id="sheet"></div></div>
   </div>
+  <section id="goalsView" hidden>
+    <h1>Goals</h1>
+    <p class="sub">Pick a goal, follow the checklist, and watch your progress. Change any step to fit your plan.</p>
+    <form class="billform" id="goalForm">
+      <label>Goal type<select id="gKind"><option value="debt">Pay off debt</option><option value="save">Save for something</option><option value="credit">Raise my credit score</option><option value="custom">Something else</option></select></label>
+      <label>Goal name<input id="gName" maxlength="50" required placeholder="Pay off Visa"></label>
+      <label id="gl1">Starting balance<input id="g1" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
+      <label id="gl2">Balance now<input id="g2" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
+      <label id="gl3" hidden>Target score<input id="g3" inputmode="numeric" autocomplete="off" placeholder="740"></label>
+      <label>Target date (optional)<input id="gDate" type="date"></label>
+      <div><button class="btn" type="submit">Add goal</button></div>
+    </form>
+    <div id="goalList"></div>
+  </section>
   <section id="billsView" hidden>
     <h1>Bills</h1>
     <p class="sub">Add your bills and Moneres will flag the ones coming up whenever you open it. Tap Paid after you pay one.</p>
@@ -172,7 +199,8 @@ tr.addrow td{padding:6px}
     { id: "home", name: "Home", type: "home" },
     { id: "yearly-projection", name: "Annual budget" },
     { id: "monthly-budget", name: "Monthly budget" },
-    { id: "bills", name: "Bills", type: "bills" }
+    { id: "bills", name: "Bills", type: "bills" },
+    { id: "goals", name: "Goals", type: "goals" }
   ];
   var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   var $ = function (id) { return document.getElementById(id); };
@@ -442,8 +470,9 @@ tr.addrow td{padding:6px}
     var mine = ++loadSeq; flushSave();
     show("app");
     var tp = tool.type;
-    $("sheetView").hidden = tp === "bills" || tp === "home"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home";
+    $("sheetView").hidden = tp === "bills" || tp === "home" || tp === "goals"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals";
     renderBanner();
+    if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     var isBills = tp === "bills";
     if (isBills) { loadBills().then(function () { if (mine === loadSeq) renderBills(); }); return; }
@@ -589,6 +618,97 @@ tr.addrow td{padding:6px}
     tool = TOOLS.filter(function (x) { return x.id === "bills"; })[0]; history.replaceState(null, "", "#bills"); makeTabs(); openTool();
   });
 
+  /* ---------- goals ---------- */
+  var goals = [], goalsLoaded = false, goalTimer = null;
+  var STARTERS = {
+    debt: ["List every debt with its balance, interest rate and minimum payment", "Pay every minimum on time, every month", "Choose a target: highest interest rate first, or smallest balance first", "Put every extra dollar on the target debt", "Stop adding new charges to the cards you’re paying off"],
+    save: ["Decide the exact amount and the date you need it by", "Open a separate savings account just for this goal", "Set an automatic transfer for every payday", "Check your progress once a month"],
+    credit: ["Check your credit reports for mistakes and dispute any you find", "Pay every bill on time", "Keep card balances under 30% of each limit", "Keep your oldest card open", "Avoid applying for new credit you don’t need"],
+    custom: []
+  };
+  var KIND = { debt: "Pay off debt", save: "Save", credit: "Credit", custom: "Goal" };
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function loadGoals() {
+    if (goalsLoaded) return Promise.resolve();
+    return loadSaved("goals").then(function (saved) {
+      goals = saved && Array.isArray(saved.__goals) ? saved.__goals : []; goalsLoaded = true;
+    }).catch(function () { goalsLoaded = true; });
+  }
+  function saveGoals() { clearTimeout(goalTimer); goalTimer = setTimeout(function () { doSave("goals", { __goals: goals }); }, 500); }
+  function stepsRatio(g) { var n = g.steps.length; return n ? g.steps.filter(function (x) { return x.done; }).length / n : 0; }
+  function goalPct(g) {
+    var p = null;
+    if (g.kind === "save" && g.target > 0) p = g.current / g.target;
+    else if (g.kind === "debt" && g.start > 0) p = (g.start - g.current) / g.start;
+    else if (g.kind === "credit" && g.target !== g.start) p = (g.current - g.start) / (g.target - g.start);
+    if (p === null) p = stepsRatio(g);
+    return Math.max(0, Math.min(1, p || 0));
+  }
+  function fmtGoal(g, v) { return g.kind === "credit" ? String(v) : money.format(v); }
+  function goalLine(g) {
+    if (g.kind === "save" && g.target > 0) return money.format(g.current) + " of " + money.format(g.target);
+    if (g.kind === "debt" && g.start > 0) return money.format(g.current) + " left of " + money.format(g.start);
+    if (g.kind === "credit" && g.target !== g.start) return "Score " + g.current + ", target " + g.target;
+    return "";
+  }
+  function goalForm() {
+    var k = $("gKind").value, L = { debt: ["Starting balance", "Balance now"], save: ["Goal amount", "Saved so far"], credit: ["Starting score", "Current score"] }[k];
+    $("gl1").hidden = $("gl2").hidden = !L; $("gl3").hidden = k !== "credit";
+    if (L) { $("gl1").firstChild.textContent = L[0]; $("gl2").firstChild.textContent = L[1]; }
+    var money_ = k === "debt" || k === "save"; ["g1", "g2"].forEach(function (id) { $(id).placeholder = money_ ? "$0.00" : "600"; });
+    $("gName").placeholder = { debt: "Pay off Visa", save: "Emergency fund", credit: "Reach a 700 score", custom: "My goal" }[k];
+  }
+  $("gKind").addEventListener("change", goalForm);
+  function num(k, v) { return k === "credit" ? (parseFloat(v) || 0) : parseMoney(v); }
+  $("goalForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var k = $("gKind").value, name = $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
+    var g = { id: newId(), kind: k, name: name, start: 0, current: 0, target: 0, due: $("gDate").value || "",
+      steps: STARTERS[k].map(function (t) { return { id: newId(), t: t, done: false }; }) };
+    if (k === "save") { g.target = num(k, $("g1").value); g.current = num(k, $("g2").value); }
+    if (k === "debt") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value); }
+    if (k === "credit") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value) || g.start; g.target = num(k, $("g3").value); }
+    goals.unshift(g); $("goalForm").reset(); goalForm(); saveGoals(); renderGoals();
+  });
+  function renderGoals() {
+    goalForm();
+    $("goalList").innerHTML = goals.length ? goals.map(function (g) {
+      var pc = Math.round(goalPct(g) * 100), done = g.steps.filter(function (x) { return x.done; }).length, due = "";
+      if (g.due) { var n = daysUntil(parseD(g.due)); due = n < 0 ? "Target date passed" : n === 0 ? "Target date is today" : n + " days to go"; }
+      var upd = g.kind === "custom" ? "" : '<div class="row"><label for="cur' + g.id + '" class="meta">' + (g.kind === "debt" ? "Balance now" : g.kind === "save" ? "Saved so far" : "Current score") + '</label><input type="text" id="cur' + g.id + '" inputmode="decimal" data-cur="' + g.id + '" value="' + esc(g.kind === "credit" ? g.current : money.format(g.current)) + '"></div>';
+      return '<article class="goalcard"><header><div><h3>' + esc(g.name) + '</h3><div class="meta"><span class="kind">' + KIND[g.kind] + "</span>" + [goalLine(g), due].filter(Boolean).join(" · ") + "</div></div>" +
+        '<button class="sm" data-delgoal="' + g.id + '">Delete goal</button></header>' +
+        '<div class="bar' + (pc >= 100 ? " full" : "") + '" role="progressbar" aria-valuenow="' + pc + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pc + '%"></i></div>' +
+        '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + upd +
+        g.steps.map(function (x) {
+          return '<label class="chk' + (x.done ? " done" : "") + '"><input type="checkbox" data-step="' + g.id + ":" + x.id + '"' + (x.done ? " checked" : "") + "><span>" + esc(x.t) + '</span><button type="button" class="x" data-delstep="' + g.id + ":" + x.id + '" aria-label="Remove step">&times;</button></label>';
+        }).join("") +
+        '<div class="row"><input type="text" class="stepin" maxlength="120" placeholder="Add a step" data-stepin="' + g.id + '" aria-label="New step"><button class="sm" data-addstep="' + g.id + '">Add step</button></div></article>';
+    }).join("") : '<p class="sub">No goals yet. Choose a type above to get a starter checklist.</p>';
+  }
+  function goalById(id) { return goals.filter(function (g) { return g.id === id; })[0]; }
+  function addStep(id) {
+    var inp = document.querySelector('input[data-stepin="' + id + '"]'), g = goalById(id), t = inp && inp.value.trim().slice(0, 120);
+    if (!g || !t || g.steps.length >= 40) return;
+    g.steps.push({ id: newId(), t: t, done: false }); saveGoals(); renderGoals();
+    var again = document.querySelector('input[data-stepin="' + id + '"]'); if (again) again.focus();
+  }
+  $("goalList").addEventListener("click", function (e) {
+    var t = e.target, v, p;
+    if ((v = t.getAttribute("data-delgoal"))) { if (window.confirm("Delete this goal and its checklist?")) { goals = goals.filter(function (g) { return g.id !== v; }); saveGoals(); renderGoals(); } }
+    else if ((v = t.getAttribute("data-addstep"))) addStep(v);
+    else if ((v = t.getAttribute("data-delstep"))) { p = v.split(":"); var g = goalById(p[0]); if (g) { g.steps = g.steps.filter(function (x) { return x.id !== p[1]; }); saveGoals(); renderGoals(); } }
+  });
+  $("goalList").addEventListener("keydown", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-stepin");
+    if (id && e.key === "Enter") { e.preventDefault(); addStep(id); }
+  });
+  $("goalList").addEventListener("change", function (e) {
+    var t = e.target, v, p;
+    if ((v = t.getAttribute("data-step"))) { p = v.split(":"); var g = goalById(p[0]); if (g) g.steps.forEach(function (x) { if (x.id === p[1]) x.done = t.checked; }); saveGoals(); renderGoals(); }
+    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); saveGoals(); renderGoals(); } }
+  });
+
   /* ---------- home screen ---------- */
   function dueSoon() {
     var soon = [];
@@ -599,7 +719,7 @@ tr.addrow td{padding:6px}
     var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1);
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
-    loadBills().then(function () { return loadSaved(key); }).then(function (saved) {
+    loadBills().then(loadGoals).then(function () { return loadSaved(key); }).then(function (saved) {
       var ins = {};
       if (saved) Object.keys(saved).forEach(function (k) { if (typeof saved[k] === "number") ins[k] = saved[k]; });
       if (!Object.keys(ins).some(function (k) { return ins[k] !== 0; })) return {};
@@ -634,6 +754,12 @@ tr.addrow td{padding:6px}
     h += '<div class="panel"><h2>Bills coming up</h2>' + (soon.length ? soon.slice(0, 5).map(function (x) {
       return '<div class="step"><div class="st">' + esc(x.b.name) + "<span>" + (x.b.amount ? money.format(x.b.amount) + " · " : "") + dueText(x.n) + "</span></div></div>";
     }).join("") : '<p class="sub">Nothing due in the next few days.</p>') + '<p style="margin-top:10px"><button class="linkbtn" data-go="bills">Open Bills</button></p></div>';
+    if (goals.length) {
+      h += '<div class="panel"><h2>Goals</h2>' + goals.slice(0, 4).map(function (g) {
+        var pc = Math.round(goalPct(g) * 100);
+        return '<div class="step"><div class="st">' + esc(g.name) + "<span>" + pc + "% there</span></div></div>";
+      }).join("") + '<p style="margin-top:10px"><button class="linkbtn" data-go="goals">Open Goals</button></p></div>';
+    }
     h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button></p></div>';
     $("homeBody").innerHTML = h;
   }
