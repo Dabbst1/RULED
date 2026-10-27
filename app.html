@@ -126,6 +126,13 @@ dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink)
 .chip:hover{background:var(--hl)}
 .pickcustom{display:flex;gap:8px}.pickcustom .btn{margin:0;height:42px;padding:0 16px}
 .pickmsg{font-size:14px;color:var(--muted);min-height:20px}.pickbtns{display:flex;gap:10px;flex-wrap:wrap}.pickbtns .btn{margin:0}.btn.danger{background:#fff;color:var(--bad);border-color:var(--bad)}.btn.danger:hover{background:var(--bad-bg);color:var(--bad)}
+.chip.on{background:var(--blue);color:#fff}
+.wizsteps{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.wizbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.wizbtns .btn{margin:0}
+.btn.ghost{background:#fff;color:var(--blue);border-color:var(--blue)}.btn.ghost:hover{background:var(--hl);color:var(--blue-dark)}
+#wizard h2{font-size:22px}#wizard .wizlist{max-height:48vh;overflow:auto;border:1px solid var(--rule);border-radius:4px;padding:2px 10px 8px;margin:10px 0}
+#wizard input.wiztxt{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px;width:100%}
+#wizard .wizown{display:flex;gap:8px}#wizard .wizown .btn{margin:0;height:42px;padding:0 16px}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -182,6 +189,9 @@ tr.addrow td{padding:6px}
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="scroller"><div id="sheet"></div></div>
   </div>
+  <section id="setupView" hidden>
+    <div class="panel" id="wizard"></div>
+  </section>
   <section id="goalsView" hidden>
     <h1>Goals</h1>
     <p class="sub">Pick a goal, follow the checklist, and watch your progress. Change any step to fit your plan.</p>
@@ -219,7 +229,8 @@ tr.addrow td{padding:6px}
     { id: "yearly-projection", name: "Annual budget" },
     { id: "monthly-budget", name: "Monthly budget" },
     { id: "bills", name: "Bills", type: "bills" },
-    { id: "goals", name: "Goals", type: "goals" }
+    { id: "goals", name: "Goals", type: "goals" },
+    { id: "setup", name: "My categories", type: "setup", hidden: true }
   ];
   var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   var $ = function (id) { return document.getElementById(id); };
@@ -254,7 +265,7 @@ tr.addrow td{padding:6px}
     function labelCell(row) {
       var name = meta.labels[row.row] || row.label;
       if (row.cls) return '<td class="lab" title="' + esc(name) + '">' + esc(name) + "</td>";
-      var sw = rowInputs(row.row).length && rowGroups()[row.row] ? '<button type="button" class="rm" data-swap="' + row.row + '" title="Replace or remove this category" aria-label="Replace or remove ' + esc(name) + '">&#8645;</button>' : "";
+      var sw = (rowInputs(row.row).length || row.toggle) && rowGroups()[row.row] ? '<button type="button" class="rm" data-swap="' + row.row + '" title="Replace or remove this category" aria-label="Replace or remove ' + esc(name) + '">&#8645;</button>' : "";
       return '<td class="lab"><div class="lw"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name">' + sw + "</div></td>";
     }
     function cellsHtml(rowNo, label, cells) {
@@ -296,6 +307,7 @@ tr.addrow td{padding:6px}
         html += '<tr class="addrow"><td colspan="' + (keys.length + 1) + '"><button class="add" data-add="' + (blkIdx++) + '" type="button">+ ' + esc(row.addLabel || "Add a category") + '</button></td></tr>';
         return;
       }
+      if (row.toggle) inputs[row.toggle] = 1;
       html += '<tr class="' + row.cls + '" data-row="' + row.row + '">' + labelCell(row) + cellsHtml(row.row, row.label, row.cells) + "</tr>";
     });
     if (open) html += "</tbody></table>";
@@ -418,18 +430,19 @@ tr.addrow td{padding:6px}
   };
   function customBlocks() { return layout.rows.filter(function (x) { return x.type === "custom"; }); }
   var pick = { mode: "add", idx: 0, row: 0 };
-  function rowGroups() { // which pool (income or expense) each built-in row belongs to
-    var map = {}, g = null;
-    for (var i = layout.rows.length - 1; i >= 0; i--) {
-      var r = layout.rows[i];
+  function rowGroups(L) { // which pool (income or expense) each built-in row belongs to
+    L = L || layout; var map = {}, g = null;
+    for (var i = L.rows.length - 1; i >= 0; i--) {
+      var r = L.rows[i];
       if (r.type === "custom") g = r.group === "income" ? "income" : "expense";
       else if (r.type === "data") map[r.row] = g;
     }
     return map;
   }
-  function rowInputs(rowNo) {
-    var out = [];
-    layout.rows.forEach(function (r) { if (r.type === "data" && r.row === rowNo) Object.keys(r.cells).forEach(function (c) { if (r.cells[c].k === "input") out.push(r.cells[c].a); }); });
+  function rowObj(rowNo, L) { return (L || layout).rows.filter(function (x) { return x.type === "data" && x.row === rowNo; })[0]; }
+  function rowInputs(rowNo, L) {
+    var out = [], r = rowObj(rowNo, L);
+    if (r) Object.keys(r.cells).forEach(function (c) { if (r.cells[c].k === "input") out.push(r.cells[c].a); });
     return out;
   }
   function builtinName(rowNo) { var r = layout.rows.filter(function (x) { return x.type === "data" && x.row === rowNo; })[0]; return meta.labels[rowNo] || (r && r.label) || ""; }
@@ -483,9 +496,11 @@ tr.addrow td{padding:6px}
   }
   function restoreRow(row) {
     meta.removed = meta.removed.filter(function (x) { return x !== row; });
+    var ro = rowObj(row); if (ro && ro.toggle) { inputs[ro.toggle] = 1; schedule(); }
     buildRowsPanel(); scheduleSave(); $("pickMsg").textContent = "Added back " + builtinName(row) + "."; drawPick();
   }
   function removeRow(row) {
+    var ro = rowObj(row); if (ro && ro.toggle) inputs[ro.toggle] = 0;
     rowInputs(row).forEach(function (a) { inputs[a] = 0; var el = document.querySelector('input[data-a="' + a + '"]'); if (el) el.value = ""; });
     if (meta.removed.indexOf(row) < 0) meta.removed.push(row);
     buildRowsPanel(); schedule(); scheduleSave(); $("pickDlg").close();
@@ -578,8 +593,8 @@ tr.addrow td{padding:6px}
   function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; return o; }
   var pendingSave = null;
   function doSave(key, data) {
-    if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return; }
-    supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
+    if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return Promise.resolve(); }
+    return supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
       .then(function (r) {
         if (r.error) { setStatus("Couldn’t save your numbers.", true); $("saved").textContent = ""; }
         else $("saved").textContent = "Saved " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -616,15 +631,16 @@ tr.addrow td{padding:6px}
     var mine = ++loadSeq; flushSave();
     show("app");
     var tp = tool.type;
-    $("sheetView").hidden = tp === "bills" || tp === "home" || tp === "goals"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals";
+    $("sheetView").hidden = !!tp; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup";
     renderBanner();
+    if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     var isBills = tp === "bills";
     if (isBills) { loadBills().then(function () { if (mine === loadSeq) renderBills(); }); return; }
     setStatus("Loading…");
     $("picker").hidden = true;
-    fetch(tool.id + ".layout.json").then(function (r) { return r.json(); }).then(function (l) {
+    fetch(tool.id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (l) {
       if (mine !== loadSeq) return;
       layout = l; $("picker").hidden = !l.months; loadData(mine);
     });
@@ -634,7 +650,9 @@ tr.addrow td{padding:6px}
     loadSaved(storageKey()).then(function (saved) {
       if (mine !== loadSeq) return;
       inputs = {}; // fresh defaults come from the layout during build
-      buildDefaults(); applySaved(saved); build(); fillInputs(); buildRowsPanel(); run();
+      buildDefaults();
+      if (!saved && setup && setup.done) { var r = metaFromSetup(layout, setup); meta = r.meta; Object.keys(r.toggles).forEach(function (a) { inputs[a] = r.toggles[a]; }); }
+      applySaved(saved); build(); fillInputs(); buildRowsPanel(); run();
     });
   }
   function buildDefaults() { // collect input addresses so saved values can be matched before building
@@ -642,6 +660,7 @@ tr.addrow td{padding:6px}
       var cs = row.type === "custom" ? [].concat.apply([], row.slots.map(function (s) { return Object.keys(s.cells).map(function (k) { return s.cells[k]; }); })) :
         Object.keys(row.cells || {}).map(function (k) { return row.cells[k]; });
       cs.forEach(function (c) { if (c.k === "input") inputs[c.a] = c.v || 0; });
+      if (row.toggle) inputs[row.toggle] = 1;
     });
   }
   /* build() resets inputs, so keep saved ones across it */
@@ -855,6 +874,120 @@ tr.addrow td{padding:6px}
     else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); saveGoals(); renderGoals(); } }
   });
 
+  /* ---------- guided setup ---------- */
+  var setup = null, setupLoaded = false;
+  var WIZ_INCOME_MAX = 11, WIZ_EXPENSE_MAX = 31;
+  var BUILTIN_INCOME = ["Paycheck1", "Paycheck2", "Check"];
+  var BUILTIN_EXPENSE = ["Gasoline", "Restaurants", "Travel", "Shopping", "Groceries", "Transportation", "Electronics", "Utilities", "Clothing", "Gaming", "Pets", "Sports", "Healthcare", "Personal Care", "Digital Entertainment", "Home", "Rent", "Insurance", "Professional Services", "Tithe", "Credit Cards"];
+  var wiz = { step: 0, income: [], expense: [], q: "" };
+  function loadSetup() {
+    if (setupLoaded) return Promise.resolve();
+    return loadSaved("setup").then(function (saved) { setup = saved && saved.__setup ? saved.__setup : null; setupLoaded = true; }).catch(function () { setupLoaded = true; });
+  }
+  function startWizard() {
+    wiz = { step: 0, income: setup && setup.income ? setup.income.slice() : [], expense: setup && setup.expense ? setup.expense.slice() : [], q: "" };
+    drawWizard();
+  }
+  function wizPool(group) {
+    var base = POOL[group].slice();
+    if (group === "income") return [{ g: "Pay", items: ["Paycheck 1", "Paycheck 2", "Paycheck"] }].concat(base);
+    return [{ g: "Everyday", items: BUILTIN_EXPENSE.slice() }].concat(base);
+  }
+  function wizHas(list, name) { return list.some(function (x) { return x.toLowerCase() === name.toLowerCase(); }); }
+  function drawWizard() {
+    var h = "", st = wiz.step, el = $("wizard");
+    if (st === 0) {
+      h = '<div class="wizsteps">Welcome</div><h2>Let’s build your budget</h2>' +
+        '<p class="sub" style="margin-top:6px">Answer two quick questions and Moneres builds a table with only the categories you care about.</p>' +
+        '<ol style="margin:10px 0 0 20px;line-height:1.8"><li>Choose where your money comes from</li><li>Choose what you spend it on</li><li>Review, and your tables are ready</li></ol>' +
+        '<div class="wizbtns"><button class="btn" data-w="next">Start</button><button class="btn ghost" data-w="standard">Use the standard set</button>' + (setup ? "" : '<button class="btn ghost" data-w="skip">Skip for now</button>') + "</div>";
+    } else if (st === 1 || st === 2) {
+      var g = st === 1 ? "income" : "expense", sel = wiz[g], max = g === "income" ? WIZ_INCOME_MAX : WIZ_EXPENSE_MAX, q = wiz.q.toLowerCase();
+      h = '<div class="wizsteps">Step ' + st + " of 3</div><h2>" + (st === 1 ? "Where does your money come from?" : "What do you spend money on?") + "</h2>" +
+        '<p class="sub" style="margin-top:4px">Tap everything that applies. You can change this later. <b>' + sel.length + " of " + max + " picked</b></p>" +
+        '<input class="wiztxt" id="wizSearch" type="search" placeholder="Search" autocomplete="off" value="' + esc(wiz.q) + '" aria-label="Search categories"><div class="wizlist">';
+      wizPool(g).forEach(function (grp) {
+        var items = grp.items.filter(function (n) { return !q || n.toLowerCase().indexOf(q) >= 0 || grp.g.toLowerCase().indexOf(q) >= 0; });
+        if (items.length) h += "<h3>" + esc(grp.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip' + (wizHas(sel, n) ? " on" : "") + '" aria-pressed="' + wizHas(sel, n) + '" data-wp="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
+      });
+      var own = sel.filter(function (n) { return !wizPool(g).some(function (grp) { return wizHas(grp.items, n); }); });
+      if (own.length) h += "<h3>Your own</h3><div class=\"chips\">" + own.map(function (n) { return '<button type="button" class="chip on" aria-pressed="true" data-wp="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
+      h += '</div><div class="wizown"><input class="wiztxt" id="wizOwn" maxlength="40" placeholder="Not listed? Type your own" autocomplete="off" aria-label="Your own category"><button type="button" class="btn" data-w="own">Add</button></div>' +
+        '<p class="pickmsg" id="wizMsg" role="status"></p><div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="next"' + (sel.length ? "" : " disabled") + ">" + (st === 1 ? "Next: expenses" : "Next: review") + "</button></div>";
+    } else {
+      h = '<div class="wizsteps">Step 3 of 3</div><h2>Looks good?</h2>' +
+        '<h3 style="margin-top:10px;font-size:14px">Income (' + wiz.income.length + ")</h3><p>" + wiz.income.map(esc).join(", ") + "</p>" +
+        '<h3 style="margin-top:10px;font-size:14px">Expenses (' + wiz.expense.length + ")</h3><p>" + wiz.expense.map(esc).join(", ") + "</p>" +
+        (setup && setup.done ? '<p class="sub" style="margin-top:10px">Building replaces your Annual table and this month’s Monthly table with these categories, and clears the amounts in them. Other months you’ve already filled in aren’t changed.</p>' : "") +
+        '<div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="build">Build my tables</button></div>';
+    }
+    el.innerHTML = h;
+  }
+  $("wizard").addEventListener("input", function (e) { if (e.target.id === "wizSearch") { wiz.q = e.target.value; var pos = e.target.selectionStart; drawWizard(); var s2 = $("wizSearch"); s2.focus(); s2.setSelectionRange(pos, pos); } });
+  $("wizard").addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "wizOwn") { e.preventDefault(); wizAddOwn(); } });
+  function wizAddOwn() {
+    var inp = $("wizOwn"), n = inp.value.trim().slice(0, 40), g = wiz.step === 1 ? "income" : "expense", max = g === "income" ? WIZ_INCOME_MAX : WIZ_EXPENSE_MAX;
+    if (!n) return;
+    if (wiz[g].length >= max) { $("wizMsg").textContent = "That’s the limit of " + max + "."; return; }
+    if (!wizHas(wiz[g], n)) wiz[g].push(n);
+    wiz.q = ""; drawWizard(); $("wizOwn").focus();
+  }
+  $("wizard").addEventListener("click", function (e) {
+    var t = e.target, w = t.getAttribute && t.getAttribute("data-w"), p = t.getAttribute && t.getAttribute("data-wp");
+    if (p !== null && p !== undefined && p !== "") {
+      var g = wiz.step === 1 ? "income" : "expense", max = g === "income" ? WIZ_INCOME_MAX : WIZ_EXPENSE_MAX, list = wiz[g];
+      if (wizHas(list, p)) wiz[g] = list.filter(function (x) { return x.toLowerCase() !== p.toLowerCase(); });
+      else if (list.length < max) list.push(p);
+      else { var keep = $("wizard").querySelector(".wizlist").scrollTop; drawWizard(); $("wizMsg").textContent = "That’s the limit of " + max + ". Tap one to unselect it first."; $("wizard").querySelector(".wizlist").scrollTop = keep; return; }
+      var sc = $("wizard").querySelector(".wizlist").scrollTop; drawWizard(); $("wizard").querySelector(".wizlist").scrollTop = sc; return;
+    }
+    if (!w) return;
+    if (w === "next") { wiz.step++; wiz.q = ""; drawWizard(); window.scrollTo(0, 0); }
+    else if (w === "back") { wiz.step--; wiz.q = ""; drawWizard(); window.scrollTo(0, 0); }
+    else if (w === "own") wizAddOwn();
+    else if (w === "standard") { wiz.income = ["Paycheck 1", "Paycheck 2"]; wiz.expense = BUILTIN_EXPENSE.slice(); wiz.step = 3; drawWizard(); }
+    else if (w === "skip") { setup = { skipped: true }; doSave("setup", { __setup: setup }); goHome(); }
+    else if (w === "build") buildFromWizard();
+  });
+  function goHome() { tool = TOOLS[0]; history.replaceState(null, "", "#home"); makeTabs(); openTool(); }
+
+  // Turn a member's picks into table settings for one tool's layout.
+  function metaFromSetup(L, su) {
+    var m = { labels: {}, custom: [], hidden: [], removed: [] }, toggles = {}, groups = rowGroups(L);
+    ["income", "expense"].forEach(function (g) {
+      var names = (su[g] || []).slice(), rows = [];
+      L.rows.forEach(function (r) { if (r.type === "data" && !r.cls && groups[r.row] === g && (rowInputs(r.row, L).length || r.toggle)) rows.push(r); });
+      var blk = L.rows.filter(function (x) { return x.type === "custom" && (x.group === "income" ? "income" : "expense") === g; })[0];
+      var rest = [];
+      names.forEach(function (n) {
+        var tg = rows.filter(function (r) { return r.toggle && r.label.toLowerCase().replace(/\s+/g, "") === n.toLowerCase().replace(/\s+/g, ""); })[0];
+        if (tg) tg._keep = true; else rest.push(n);          // a calculated row (like the annual tithe) stays as it is
+      });
+      rows.forEach(function (r) {
+        if (r.toggle) { if (!r._keep) { m.removed.push(r.row); toggles[r.toggle] = 0; } return; }
+        if (rest.length) { var nm = rest.shift(); if (nm.toLowerCase() !== r.label.toLowerCase()) m.labels[r.row] = nm; }
+        else m.removed.push(r.row);                           // not enough picks to fill this row
+      });
+      if (blk) blk.slots.forEach(function (sl) { if (rest.length) { m.custom.push(sl.row); m.labels[sl.row] = rest.shift(); } });
+    });
+    return { meta: m, toggles: toggles };
+  }
+  function buildFromWizard() {
+    setup = { done: true, income: wiz.income.slice(), expense: wiz.expense.slice() };
+    var now = new Date(), mm = pad(now.getMonth() + 1), jobs = [doSave("setup", { __setup: setup })];
+    ["yearly-projection", "monthly-budget"].forEach(function (id) {
+      jobs.push(fetch(id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
+        var r = metaFromSetup(L, setup), doc = { __meta: r.meta };
+        Object.keys(r.toggles).forEach(function (a) { doc[a] = r.toggles[a]; });
+        return doSave(L.months ? L.id + ":" + now.getFullYear() + "-" + mm : L.id, doc);
+      }));
+    });
+    $("wizard").innerHTML = '<h2>Building your tables…</h2>';
+    Promise.all(jobs).then(function () {
+      tool = TOOLS.filter(function (t) { return t.id === "yearly-projection"; })[0]; history.replaceState(null, "", "#yearly-projection"); makeTabs(); openTool();
+    });
+  }
+
   /* ---------- home screen ---------- */
   function dueSoon() {
     var soon = [];
@@ -865,7 +998,7 @@ tr.addrow td{padding:6px}
     var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1);
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
-    loadBills().then(loadGoals).then(function () { return loadSaved(key); }).then(function (saved) {
+    loadBills().then(loadGoals).then(loadSetup).then(function () { return loadSaved(key); }).then(function (saved) {
       var ins = {};
       if (saved) Object.keys(saved).forEach(function (k) { if (typeof saved[k] === "number") ins[k] = saved[k]; });
       if (!Object.keys(ins).some(function (k) { return ins[k] !== 0; })) return {};
@@ -886,6 +1019,7 @@ tr.addrow td{padding:6px}
       '<div class="stat"><small>Total expenses</small><b>' + m(v && v.D34) + '</b></div>' +
       '<div class="stat' + (net > 0 ? " good" : net < 0 ? " bad" : "") + '"><small>Net income</small><b>' + m(net) + "</b></div></div>";
     var steps = [
+      { done: !!(setup && setup.done), t: "Choose your categories", s: "Pick the income and expenses you want to track. Takes about two minutes.", go: "setup", b: "Choose categories" },
       { done: !!(v && v.D3 > 0), t: "Enter your pay", s: "Add your paychecks for this month.", go: "monthly-budget", b: "Open Monthly budget" },
       { done: !!(v && v.D34 > 0), t: "Add your expenses", s: "Rent, groceries, gas. Rename or add categories to fit your life.", go: "monthly-budget", b: "Add expenses" },
       { done: bills.length > 0, t: "Add your bills", s: "Get a reminder before they’re due.", go: "bills", b: "Add bills" }
@@ -906,7 +1040,7 @@ tr.addrow td{padding:6px}
         return '<div class="step"><div class="st">' + esc(g.name) + "<span>" + pc + "% there</span></div></div>";
       }).join("") + '<p style="margin-top:10px"><button class="linkbtn" data-go="goals">Open Goals</button></p></div>';
     }
-    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button></p></div>';
+    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button><button class="linkbtn" data-go="setup">Change my categories</button></p></div>';
     $("homeBody").innerHTML = h;
   }
   $("homeBody").addEventListener("click", function (e) {
@@ -930,7 +1064,7 @@ tr.addrow td{padding:6px}
   });
 
   function makeTabs() {
-    $("tabs").innerHTML = TOOLS.map(function (t) {
+    $("tabs").innerHTML = TOOLS.filter(function (t) { return !t.hidden; }).map(function (t) {
       return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '">' + t.name + "</button>";
     }).join("");
   }
@@ -950,11 +1084,17 @@ tr.addrow td{padding:6px}
     $("selYear").innerHTML = [y - 1, y, y + 1].map(function (v) { return '<option' + (v === y ? " selected" : "") + ">" + v + "</option>"; }).join("");
     var h = location.hash.slice(1); tool = TOOLS.filter(function (t) { return t.id === h; })[0] || TOOLS[0];
     makeTabs();
-    if (CFG.devMode) { loadBills(); openTool(); return; }
+    if (CFG.devMode) { start(h); return; }
     supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
     supa.auth.getSession().then(function (r) { session = r.data.session; if (!session) { show("login"); return; } afterLogin(); });
   }
-  function afterLogin() { $("who").textContent = session.user.email; $("signout").hidden = false; loadBills(); openTool(); }
+  function afterLogin() { $("who").textContent = session.user.email; $("signout").hidden = false; start(location.hash.slice(1)); }
+  function start(h) {
+    loadBills(); loadSetup().then(function () {
+      if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
+      makeTabs(); openTool();
+    });
+  }
 
   $("loginForm").addEventListener("submit", function (e) {
     e.preventDefault(); $("loginMsg").textContent = "";
