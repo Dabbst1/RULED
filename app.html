@@ -116,6 +116,16 @@ td.lab input.nm:hover{border-color:var(--rule)} td.lab input.nm:focus{border-col
 .goalcard button.x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer}
 .chk{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--rule)}
 .chk input{width:20px;height:20px;accent-color:var(--blue)}.chk span{flex:1}.chk.done span{text-decoration:line-through;color:var(--muted)}
+dialog{margin:auto;border:2px solid var(--ink);border-radius:6px;padding:18px;width:calc(100% - 24px);max-width:600px;max-height:85vh;box-shadow:6px 6px 0 var(--ink);color:var(--ink);background:#fff}
+dialog[open]{display:flex;flex-direction:column;gap:10px}
+dialog::backdrop{background:rgba(11,31,77,.55)}
+dialog h2{font-size:20px}dialog h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:12px 0 6px}
+dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px;width:100%}
+#pickList{overflow:auto;flex:1;min-height:120px;max-height:45vh;border:1px solid var(--rule);border-radius:4px;padding:2px 10px 8px}
+.chip{font:inherit;font-size:14px;padding:7px 12px;margin:0 6px 6px 0;border:2px solid var(--blue);border-radius:99px;background:#fff;color:var(--blue-dark);cursor:pointer}
+.chip:hover{background:var(--hl)}
+.pickcustom{display:flex;gap:8px}.pickcustom .btn{margin:0;height:42px;padding:0 16px}
+.pickmsg{font-size:14px;color:var(--muted);min-height:20px}dialog>.btn{margin:0;align-self:flex-start}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -146,6 +156,15 @@ tr.addrow td{padding:6px}
   <p>Renew to get back into your tools. Your saved numbers are still here when you do.</p>
   <a class="btn" id="renew" href="index.html#pricing">See plans</a>
 </section>
+
+<dialog id="pickDlg" aria-labelledby="pickTitle">
+  <h2 id="pickTitle">Add a category</h2>
+  <input id="pickSearch" type="search" placeholder="Search, for example “gym” or “salary”" autocomplete="off" aria-label="Search categories">
+  <div id="pickList"></div>
+  <div class="pickcustom"><input id="pickCustom" maxlength="40" placeholder="Or type your own name" autocomplete="off" aria-label="Your own category name"><button type="button" class="btn" id="pickCustomBtn">Add</button></div>
+  <p class="pickmsg" id="pickMsg" role="status"></p>
+  <button type="button" class="btn" id="pickDone">Done</button>
+</dialog>
 
 <main id="app" hidden>
   <div class="tabs" id="tabs" role="tablist"></div>
@@ -230,7 +249,7 @@ tr.addrow td{padding:6px}
     document.documentElement.style.setProperty("--a", fc + "px");
     $("title").textContent = layout.name; $("hint").textContent = layout.hint;
     inputs = {};
-    var html = "", open = false;
+    var html = "", open = false, blkIdx = 0;
 
     function labelCell(row) {
       var name = meta.labels[row.row] || row.label;
@@ -273,7 +292,7 @@ tr.addrow td{padding:6px}
           html += '<tr data-slot="' + sl.row + '"' + (on ? "" : " hidden") + '><td class="lab"><div class="lw"><input class="nm" data-nm="' + sl.row + '" data-custom="1" placeholder="' + esc(row.placeholder) + '" value="' + esc(meta.labels[sl.row] || "") + '" aria-label="Custom category name"><button class="rm" data-rm="' + sl.row + '" title="Remove this category" aria-label="Remove category">&times;</button></div></td>' +
             cellsHtml(sl.row, "Custom " + sl.row, sl.cells) + "</tr>";
         });
-        html += '<tr class="addrow"><td colspan="' + (keys.length + 1) + '"><button class="add" id="addBtn" type="button">+ Add a category</button></td></tr>';
+        html += '<tr class="addrow"><td colspan="' + (keys.length + 1) + '"><button class="add" data-add="' + (blkIdx++) + '" type="button">+ ' + esc(row.addLabel || "Add a category") + '</button></td></tr>';
         return;
       }
       html += '<tr class="' + row.cls + '" data-row="' + row.row + '">' + labelCell(row) + cellsHtml(row.row, row.label, row.cells) + "</tr>";
@@ -350,12 +369,86 @@ tr.addrow td{padding:6px}
     e.preventDefault();
     targets[nc].focus(); targets[nc].select();
   });
-  function customMax() { var r = layout.rows.filter(function (x) { return x.type === "custom"; })[0]; return r ? r : null; }
   function updateAdd() {
-    var c = customMax(), b = $("addBtn"); if (!c || !b) return;
-    var full = meta.custom.length >= c.max;
-    b.disabled = full; b.textContent = full ? "Limit reached (" + c.max + " custom categories)" : "+ Add a category";
+    Array.prototype.forEach.call(document.querySelectorAll("[data-add]"), function (btn) {
+      var blk = customBlocks()[Number(btn.getAttribute("data-add"))]; if (!blk) return;
+      var n = blk.slots.filter(function (sl) { return meta.custom.indexOf(sl.row) >= 0; }).length, full = n >= blk.max;
+      btn.disabled = full; btn.textContent = full ? "Limit reached (" + blk.max + ")" : "+ " + (blk.addLabel || "Add a category");
+    });
   }
+
+  /* ---------- category pool ---------- */
+  var POOL = {
+    expense: [
+      { g: "Housing", items: ["Mortgage", "Property Taxes", "HOA Fees", "Home Insurance", "Renters Insurance", "Home Repairs", "Home Maintenance", "Furniture", "Appliances", "Lawn Care", "Pest Control", "Security System", "Cleaning Supplies", "Moving Costs", "Storage Unit", "Home Improvement", "Decor"] },
+      { g: "Utilities and services", items: ["Electric", "Water and Sewer", "Natural Gas", "Trash and Recycling", "Internet", "Cell Phone", "Cable TV", "Streaming Services", "Software Subscriptions", "Cloud Storage", "Phone Insurance", "Memberships"] },
+      { g: "Transportation", items: ["Car Payment", "Auto Insurance", "Car Maintenance", "Oil Changes", "Tires", "Vehicle Repairs", "Registration and Tags", "Parking", "Tolls", "Public Transit", "Rideshare", "Car Wash", "Car Rental", "Bike Expenses", "Fines and Tickets", "Motorcycle Expenses"] },
+      { g: "Food and drink", items: ["Coffee", "Takeout and Delivery", "Meal Kits", "Snacks", "Alcohol", "Work Lunches", "School Lunches", "Bakery", "Fast Food", "Specialty Groceries", "Water Delivery"] },
+      { g: "Health", items: ["Doctor Visits", "Dental", "Vision and Glasses", "Prescriptions", "Therapy and Counseling", "Gym Membership", "Vitamins and Supplements", "Medical Equipment", "Health Insurance", "Life Insurance", "Disability Insurance", "Urgent Care", "Hospital Bills", "Physical Therapy", "Fitness Classes", "Personal Training"] },
+      { g: "Personal", items: ["Haircuts and Salon", "Cosmetics", "Laundry and Dry Cleaning", "Hobbies", "Books", "Magazines and News", "Gifts", "Donations and Charity", "Holidays", "Birthdays", "Wedding Costs", "Jewelry", "Self-Care", "Beauty Products", "Tattoos and Piercings"] },
+      { g: "Family and kids", items: ["Childcare", "Daycare", "Child Support", "Alimony", "Kids Activities", "Allowance", "Baby Supplies", "Diapers and Formula", "Toys", "Elder Care", "Family Support", "Summer Camp", "Kids Clothing", "Babysitter"] },
+      { g: "Pets", items: ["Pet Food", "Vet Bills", "Pet Insurance", "Pet Grooming", "Pet Sitting", "Pet Supplies", "Pet Medication"] },
+      { g: "Education", items: ["Tuition", "Student Loan Payment", "School Supplies", "Textbooks", "Courses and Training", "Certifications", "Exam Fees", "Tutoring", "School Fees", "Online Learning"] },
+      { g: "Debt and financial", items: ["Personal Loan Payment", "Medical Debt Payment", "Back Taxes", "Income Taxes", "Bank Fees", "Overdraft Fees", "Late Fees", "Interest Charges", "Loan Payment", "Buy Now Pay Later", "Collections Payment", "Savings Transfer", "Emergency Fund", "Retirement Contribution", "Investments", "Brokerage Deposit", "Sinking Fund", "Down Payment Fund", "Vacation Fund"] },
+      { g: "Work and business", items: ["Business Expenses", "Work Supplies", "Work Uniforms", "Tools and Equipment", "Licenses and Permits", "Professional Dues", "Home Office", "Coworking Space", "Advertising", "Accounting and Tax Prep", "Legal Fees", "Business Insurance", "Business Travel", "Inventory", "Website and Hosting", "Contractors"] },
+      { g: "Fun and lifestyle", items: ["Entertainment", "Movies and Events", "Concerts", "Sporting Events", "Vacations", "Hotels", "Flights", "Souvenirs", "Games and Apps", "Nightlife", "Club Dues", "Hobby Supplies", "Camping and Outdoors", "Boating", "Photography"] },
+      { g: "Other", items: ["Postage and Shipping", "Cash Withdrawals", "Miscellaneous", "Church Offering", "Tips", "Emergency Expenses", "Lost or Stolen Items", "Legal Settlements", "Funeral Costs", "Notary and Document Fees", "Dues and Fees"] }
+    ],
+    income: [
+      { g: "Wages and salary", items: ["Salary", "Hourly Wages", "Overtime", "Bonus", "Commission", "Tips Received", "Tax Refund", "Second Job", "Holiday Pay", "Per Diem", "Severance"] },
+      { g: "Self-employment", items: ["Freelance", "Side Hustle", "Consulting", "Business Income", "Contract Work", "Gig Work", "Online Sales", "Royalties", "Client Payments", "Sponsorships", "Affiliate Income", "Content Creator Income", "Teaching and Tutoring Income"] },
+      { g: "Investments", items: ["Dividends", "Interest Income", "Capital Gains", "Rental Income", "Stock Sales", "Crypto Gains", "Business Distributions", "Annuity Payments"] },
+      { g: "Benefits and support", items: ["Social Security", "Pension", "Retirement Withdrawal", "Unemployment", "Disability Benefits", "Veterans Benefits", "Government Assistance", "Child Tax Credit", "Child Support Received", "Alimony Received", "Survivor Benefits", "Workers Compensation", "Food Assistance", "Housing Assistance"] },
+      { g: "Other income", items: ["Gifts Received", "Inheritance", "Reimbursements", "Scholarships", "Grants", "Stipend", "Selling Items", "Cash Back", "Rewards", "Settlement", "Allowance Received", "Family Support Received", "Roommate Contribution", "Spouse or Partner Income", "Refunds", "Garage Sale", "Prize Money"] }
+    ]
+  };
+  function customBlocks() { return layout.rows.filter(function (x) { return x.type === "custom"; }); }
+  var pickBlock = 0;
+  function usedNames() {
+    var u = {};
+    layout.rows.forEach(function (r) {
+      if (r.type === "data") u[(meta.labels[r.row] || r.label).toLowerCase()] = 1;
+      if (r.type === "custom") r.slots.forEach(function (sl) { if (meta.custom.indexOf(sl.row) >= 0 && meta.labels[sl.row]) u[meta.labels[sl.row].toLowerCase()] = 1; });
+    });
+    return u;
+  }
+  function openPicker(idx) {
+    pickBlock = idx; var blk = customBlocks()[idx];
+    $("pickTitle").textContent = blk.group === "income" ? "Add an income source" : "Add an expense category";
+    $("pickSearch").value = ""; $("pickCustom").value = ""; $("pickMsg").textContent = ""; drawPick();
+    if (!$("pickDlg").open) $("pickDlg").showModal();
+    $("pickSearch").focus();
+  }
+  function drawPick() {
+    var q = $("pickSearch").value.trim().toLowerCase(), blk = customBlocks()[pickBlock], used = usedNames(), h = "";
+    POOL[blk.group === "income" ? "income" : "expense"].forEach(function (g) {
+      var items = g.items.filter(function (n) { return !used[n.toLowerCase()] && (!q || n.toLowerCase().indexOf(q) >= 0 || g.g.toLowerCase().indexOf(q) >= 0); });
+      if (items.length) h += "<h3>" + esc(g.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip" data-pick="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
+    });
+    $("pickList").innerHTML = h || '<p class="sub">Nothing matches. Type your own name below.</p>';
+  }
+  function addNamed(name) {
+    name = String(name).trim().slice(0, 40); if (!name) return;
+    var blk = customBlocks()[pickBlock];
+    var slot = blk.slots.filter(function (sl) { return meta.custom.indexOf(sl.row) < 0; })[0];
+    if (!slot) { $("pickMsg").textContent = "You’ve reached the limit of " + blk.max + "."; return; }
+    meta.custom.push(slot.row); meta.labels[slot.row] = name;
+    meta.hidden = meta.hidden.filter(function (x) { return x !== slot.row; });
+    var tr = document.querySelector('tr[data-slot="' + slot.row + '"]'); tr.hidden = false; tr.querySelector("input.nm").value = name;
+    updateAdd(); buildRowsPanel(); scheduleSave();
+    $("pickMsg").textContent = "Added " + name + ". Pick more, or tap Done.";
+    $("pickCustom").value = ""; drawPick();
+    if (blk.slots.every(function (sl) { return meta.custom.indexOf(sl.row) >= 0; })) closePicker(tr);
+  }
+  function closePicker(tr) {
+    $("pickDlg").close();
+    var last = tr || document.querySelector("tr[data-slot]:not([hidden])"); var inp = last && last.querySelector("input.in"); if (inp) inp.focus();
+  }
+  $("pickSearch").addEventListener("input", drawPick);
+  $("pickList").addEventListener("click", function (e) { var n = e.target.getAttribute && e.target.getAttribute("data-pick"); if (n) addNamed(n); });
+  $("pickCustomBtn").addEventListener("click", function () { addNamed($("pickCustom").value); });
+  $("pickCustom").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addNamed($("pickCustom").value); } });
+  $("pickDone").addEventListener("click", function () { closePicker(); });
 
   /* ---------- events ---------- */
   $("sheet").addEventListener("input", function (e) {
@@ -374,14 +467,8 @@ tr.addrow td{padding:6px}
   });
   $("sheet").addEventListener("click", function (e) {
     var t = e.target;
-    if (t.id === "addBtn") {
-      var c = customMax(); if (meta.custom.length >= c.max) return;
-      var slot = c.slots.filter(function (s) { return meta.custom.indexOf(s.row) < 0; })[0];
-      meta.custom.push(slot.row);
-      meta.hidden = meta.hidden.filter(function (x) { return x !== slot.row; });
-      var tr = document.querySelector('tr[data-slot="' + slot.row + '"]'); tr.hidden = false;
-      tr.querySelector("input.nm").focus(); updateAdd(); buildRowsPanel(); scheduleSave(); return;
-    }
+    var addIdx = t.getAttribute && t.getAttribute("data-add");
+    if (addIdx !== null && addIdx !== undefined && addIdx !== "") { openPicker(Number(addIdx)); return; }
     var rm = t.getAttribute && t.getAttribute("data-rm");
     if (rm) {
       rm = Number(rm);

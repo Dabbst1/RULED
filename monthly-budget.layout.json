@@ -122,6 +122,205 @@
    }
   },
   {
+   "type": "custom",
+   "group": "income",
+   "max": 10,
+   "addLabel": "Add an income source",
+   "placeholder": "Income source",
+   "slots": [
+    {
+     "row": 50,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B50",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C50",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D50"
+      }
+     }
+    },
+    {
+     "row": 51,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B51",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C51",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D51"
+      }
+     }
+    },
+    {
+     "row": 52,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B52",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C52",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D52"
+      }
+     }
+    },
+    {
+     "row": 53,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B53",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C53",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D53"
+      }
+     }
+    },
+    {
+     "row": 54,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B54",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C54",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D54"
+      }
+     }
+    },
+    {
+     "row": 55,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B55",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C55",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D55"
+      }
+     }
+    },
+    {
+     "row": 56,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B56",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C56",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D56"
+      }
+     }
+    },
+    {
+     "row": 57,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B57",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C57",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D57"
+      }
+     }
+    },
+    {
+     "row": 58,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B58",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C58",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D58"
+      }
+     }
+    },
+    {
+     "row": 59,
+     "cells": {
+      "B": {
+       "k": "input",
+       "a": "B59",
+       "v": 0
+      },
+      "C": {
+       "k": "input",
+       "a": "C59",
+       "v": 0
+      },
+      "D": {
+       "k": "calc",
+       "a": "D59"
+      }
+     }
+    }
+   ]
+  },
+  {
    "type": "data",
    "row": 7,
    "label": "Net Check",
@@ -618,7 +817,9 @@
   },
   {
    "type": "custom",
+   "group": "expense",
    "max": 10,
+   "addLabel": "Add an expense category",
    "placeholder": "Category name",
    "slots": [
     {
