@@ -149,8 +149,8 @@
   {
    "type": "header",
    "labels": [
-    "Paycheck1",
-    "Paycheck2",
+    "Paid from Paycheck1",
+    "Paid from Paycheck2",
     "Total Per Month"
    ]
   },

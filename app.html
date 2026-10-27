@@ -78,6 +78,31 @@ input.in::placeholder{color:#9AAED3}
 td.lab input.nm{width:100%;font:inherit;font-weight:600;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:3px;height:32px;padding:0 4px}
 td.lab input.nm:hover{border-color:var(--rule)} td.lab input.nm:focus{border-color:var(--blue);background:#fff}
 .rowspanel{margin:0 0 10px;font-size:14px}.rowspanel summary{cursor:pointer;font-weight:600;color:var(--blue)}.rowspanel .note2{color:var(--muted);margin:6px 0}.rowspanel .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 16px}.rowspanel label{display:flex;gap:8px;align-items:center;min-height:30px}
+.due{margin:0 0 12px;padding:10px 14px;border:2px solid #B88700;border-radius:4px;background:#FFF4CC;color:#4A3700;font-size:15px}
+.due button{font:inherit;font-weight:700;color:#4A3700;background:none;border:0;text-decoration:underline;cursor:pointer;margin-left:6px}
+.billform{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;background:#fff;border:2px solid var(--ink);border-radius:4px;padding:14px;margin:0 0 16px}
+.billform label{font-size:13px;font-weight:600;display:block}
+.billform input,.billform select{width:100%;height:40px;margin-top:3px;padding:0 8px;font:inherit;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink)}
+.billform .btn{margin:0;height:40px;padding:0 16px}
+.bill{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fff;border:2px solid var(--ink);border-radius:4px;padding:10px 14px;margin:0 0 8px}
+.bill.soon{border-color:#B88700;background:#FFFAE6}.bill.late{border-color:var(--bad);background:#FFF1F2}.bill.done{opacity:.6}
+.bill .bn{flex:1 1 180px}.bill .bn span{display:block;font-size:13px;color:var(--muted)}
+.bill .bd{flex:0 0 150px;font-weight:600;font-size:14px}.bill .bd span{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.bill .ba button{font:600 13px/1 inherit;padding:8px 10px;margin-left:4px;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer}
+.bill .ba button.go{background:var(--blue);border-color:var(--blue);color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 16px}
+.stat{background:#fff;border:2px solid var(--ink);border-radius:4px;padding:12px 14px}
+.stat small{display:block;color:var(--muted);font-weight:600;font-size:13px}.stat b{display:block;font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat.good b{color:var(--good)}.stat.bad b{color:var(--bad)}
+.panel{background:#fff;border:2px solid var(--ink);border-radius:4px;padding:14px 16px;margin:0 0 16px}
+.panel h2{font-size:18px;margin-bottom:8px}
+.step{display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--rule)}
+.step:first-of-type{border-top:0}
+.tick{flex:0 0 26px;height:26px;border-radius:50%;border:2px solid var(--blue);display:grid;place-items:center;font-weight:800;color:#fff;font-size:15px}
+.step.done .tick{background:var(--blue)}.step.done .st{text-decoration:line-through;color:var(--muted)}
+.step .st{flex:1}.step .st span{display:block;font-size:13px;color:var(--muted);text-decoration:none}
+.step button,.panel .linkbtn{font:600 14px/1 inherit;padding:9px 12px;border:2px solid var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer}
+#saved{font-size:13px;color:var(--muted)}
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
@@ -88,7 +113,7 @@ tr.addrow td{padding:6px}
 
 <header class="top">
   <a class="logo" id="logo" href="index.html">Moneres<span>.</span></a>
-  <div class="top-right"><span id="who"></span><button id="signout" hidden>Log out</button></div>
+  <div class="top-right"><span id="saved"></span><span id="who"></span><button id="signout" hidden>Log out</button></div>
 </header>
 
 <section id="login" class="card" hidden>
@@ -111,20 +136,43 @@ tr.addrow td{padding:6px}
 
 <main id="app" hidden>
   <div class="tabs" id="tabs" role="tablist"></div>
-  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select></div>
+  <div class="due" id="dueBanner" role="status" hidden></div>
+  <section id="homeView" hidden>
+    <h1>Welcome back</h1>
+    <p class="sub" id="homeSub"></p>
+    <div id="homeBody"></div>
+  </section>
+  <div id="sheetView">
+  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="scroller"><div id="sheet"></div></div>
+  </div>
+  <section id="billsView" hidden>
+    <h1>Bills</h1>
+    <p class="sub">Add your bills and Moneres will flag the ones coming up whenever you open it. Tap Paid after you pay one.</p>
+    <form class="billform" id="billForm">
+      <label>Bill name<input id="bName" maxlength="40" required placeholder="Rent"></label>
+      <label>Amount<input id="bAmt" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
+      <label>Next due date<input id="bDate" type="date" required></label>
+      <label>Repeats<select id="bFreq"><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="once">One time</option></select></label>
+      <label>Remind me<select id="bRemind"><option value="1">1 day before</option><option value="3" selected>3 days before</option><option value="7">7 days before</option><option value="14">14 days before</option></select></label>
+      <div><button class="btn" type="submit" id="bSave">Add bill</button> <button type="button" class="tab" id="bCancel" hidden>Cancel</button></div>
+    </form>
+    <div id="billList"></div>
+  </section>
 </main>
 
 <script>
 (function () {
   var CFG = window.RULED_CONFIG;
   var TOOLS = [
+    { id: "home", name: "Home", type: "home" },
     { id: "yearly-projection", name: "Annual budget" },
-    { id: "monthly-budget", name: "Monthly budget" }
+    { id: "monthly-budget", name: "Monthly budget" },
+    { id: "bills", name: "Bills", type: "bills" }
   ];
   var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   var $ = function (id) { return document.getElementById(id); };
@@ -356,14 +404,21 @@ tr.addrow td{padding:6px}
 
   /* ---------- saving ---------- */
   function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; return o; }
+  var pendingSave = null;
+  function doSave(key, data) {
+    if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return; }
+    supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
+      .then(function (r) {
+        if (r.error) { setStatus("Couldn’t save your numbers.", true); $("saved").textContent = ""; }
+        else $("saved").textContent = "Saved " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      });
+  }
   function scheduleSave() {
     clearTimeout(saveTimer); var key = storageKey(), data = payload();
-    saveTimer = setTimeout(function () {
-      if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); } catch (e) {} return; }
-      supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
-        .then(function (r) { if (r.error) setStatus("Couldn’t save your numbers.", true); });
-    }, 1000);
+    pendingSave = function () { doSave(key, data); };
+    saveTimer = setTimeout(function () { var f = pendingSave; pendingSave = null; if (f) f(); }, 1000);
   }
+  function flushSave() { clearTimeout(saveTimer); var f = pendingSave; pendingSave = null; if (f) f(); }
   function loadSaved(key) {
     if (CFG.devMode) { try { return Promise.resolve(JSON.parse(localStorage.getItem("moneres-dev-" + key) || "null")); } catch (e) { return Promise.resolve(null); } }
     return supa.from("member_inputs").select("inputs").eq("sheet_id", key).maybeSingle().then(function (r) { return r.data ? r.data.inputs : null; });
@@ -384,8 +439,15 @@ tr.addrow td{padding:6px}
 
   /* ---------- open a tool / month ---------- */
   function openTool() {
-    var mine = ++loadSeq; clearTimeout(saveTimer);
-    show("app"); setStatus("Loading…");
+    var mine = ++loadSeq; flushSave();
+    show("app");
+    var tp = tool.type;
+    $("sheetView").hidden = tp === "bills" || tp === "home"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home";
+    renderBanner();
+    if (tp === "home") { renderHome(mine); return; }
+    var isBills = tp === "bills";
+    if (isBills) { loadBills().then(function () { if (mine === loadSeq) renderBills(); }); return; }
+    setStatus("Loading…");
     $("picker").hidden = true;
     fetch(tool.id + ".layout.json").then(function (r) { return r.json(); }).then(function (l) {
       if (mine !== loadSeq) return;
@@ -411,6 +473,190 @@ tr.addrow td{padding:6px}
   var _build = build;
   build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); };
 
+  /* ---------- bills and reminders ---------- */
+  var bills = [], billsLoaded = false, billTimer = null, editingId = null;
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseD(str) { var p = String(str).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function todayD() { var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+  function dim(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  function occ(b, n) {
+    var base = parseD(b.date);
+    if (b.freq === "monthly") {
+      var m = base.getMonth() + n, y = base.getFullYear() + Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+      return new Date(y, m, Math.min(base.getDate(), dim(y, m)));
+    }
+    if (b.freq === "yearly") {
+      var y2 = base.getFullYear() + n; return new Date(y2, base.getMonth(), Math.min(base.getDate(), dim(y2, base.getMonth())));
+    }
+    return base;
+  }
+  function nextDue(b) {
+    var floor = todayD(); floor.setDate(floor.getDate() - 5);
+    var paid = b.paidThrough ? parseD(b.paidThrough) : null;
+    if (b.freq === "once") return paid ? null : occ(b, 0);
+    for (var n = 0; n < 1200; n++) {
+      var d = occ(b, n);
+      if (d < floor) continue;
+      if (paid && d <= paid) continue;
+      return d;
+    }
+    return null;
+  }
+  function daysUntil(d) { return Math.round((d - todayD()) / 86400000); }
+  function dueText(n) {
+    if (n < 0) return "Overdue by " + (-n) + (n === -1 ? " day" : " days");
+    if (n === 0) return "Due today";
+    if (n === 1) return "Due tomorrow";
+    return "Due in " + n + " days";
+  }
+  var dateFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+  function billsKey() { return "bills"; }
+  function loadBills() {
+    if (billsLoaded) return Promise.resolve();
+    return loadSaved(billsKey()).then(function (saved) {
+      bills = saved && Array.isArray(saved.__bills) ? saved.__bills : [];
+      billsLoaded = true; renderBanner();
+    }).catch(function () { billsLoaded = true; });
+  }
+  function saveBills() {
+    clearTimeout(billTimer);
+    billTimer = setTimeout(function () { doSave(billsKey(), { __bills: bills }); }, 500);
+  }
+  function renderBanner() {
+    var soon = [];
+    bills.forEach(function (b) {
+      var d = nextDue(b); if (!d) return;
+      var n = daysUntil(d); if (n <= (b.remind || 3)) soon.push({ b: b, n: n });
+    });
+    soon.sort(function (x, y) { return x.n - y.n; });
+    var el = $("dueBanner");
+    if (!soon.length || tool.type === "home") { el.hidden = true; return; }
+    el.innerHTML = "<strong>" + (soon.length === 1 ? "1 bill" : soon.length + " bills") + " coming up:</strong> " +
+      soon.slice(0, 4).map(function (x) { return esc(x.b.name) + (x.b.amount ? " " + money.format(x.b.amount) : "") + " (" + dueText(x.n).toLowerCase() + ")"; }).join(", ") +
+      (soon.length > 4 ? " and " + (soon.length - 4) + " more" : "") + '. <button type="button" data-t="bills">Open Bills</button>';
+    el.hidden = false;
+  }
+  function renderBills() {
+    var items = bills.map(function (b) { return { b: b, d: nextDue(b) }; });
+    var active = items.filter(function (x) { return x.d; }).sort(function (x, y) { return x.d - y.d; });
+    var done = items.filter(function (x) { return !x.d; });
+    function card(x, isDone) {
+      var b = x.b, n = x.d ? daysUntil(x.d) : 0, cls = "bill";
+      if (isDone) cls += " done"; else if (n < 0) cls += " late"; else if (n <= (b.remind || 3)) cls += " soon";
+      var rep = b.freq === "monthly" ? "Every month" : b.freq === "yearly" ? "Every year" : "One time";
+      return '<div class="' + cls + '"><div class="bn"><strong>' + esc(b.name) + "</strong><span>" + (b.amount ? money.format(b.amount) : "No amount") + " · " + rep + "</span></div>" +
+        '<div class="bd">' + (isDone ? "Paid" : dueText(n) + "<span>" + dateFmt.format(x.d) + "</span>") + "</div>" +
+        '<div class="ba">' + (isDone ? "" : '<button class="go" data-paid="' + b.id + '">Paid</button>') +
+        '<button data-edit="' + b.id + '">Edit</button><button data-del="' + b.id + '">Delete</button></div></div>';
+    }
+    var html = active.map(function (x) { return card(x, false); }).join("") + done.map(function (x) { return card(x, true); }).join("");
+    $("billList").innerHTML = html || '<p class="sub">No bills yet. Add your first one above.</p>';
+    renderBanner();
+  }
+  $("billForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = { name: $("bName").value.trim().slice(0, 40), amount: parseMoney($("bAmt").value), date: $("bDate").value, freq: $("bFreq").value, remind: Number($("bRemind").value) };
+    if (!f.name || !f.date) return;
+    if (editingId) {
+      bills.forEach(function (b) { if (b.id === editingId) { var dateChanged = b.date !== f.date || b.freq !== f.freq; Object.keys(f).forEach(function (k) { b[k] = f[k]; }); if (dateChanged) b.paidThrough = null; } });
+    } else {
+      if (bills.length >= 100) return;
+      f.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); f.paidThrough = null; bills.push(f);
+    }
+    resetBillForm(); saveBills(); renderBills();
+  });
+  function resetBillForm() {
+    editingId = null; $("billForm").reset(); $("bSave").textContent = "Add bill"; $("bCancel").hidden = true;
+  }
+  $("bCancel").addEventListener("click", resetBillForm);
+  $("billList").addEventListener("click", function (e) {
+    var t = e.target, id;
+    if ((id = t.getAttribute("data-paid"))) {
+      bills.forEach(function (b) { if (b.id === id) { var d = nextDue(b); if (d) b.paidThrough = iso(d); } });
+      saveBills(); renderBills();
+    } else if ((id = t.getAttribute("data-del"))) {
+      bills = bills.filter(function (b) { return b.id !== id; }); if (editingId === id) resetBillForm(); saveBills(); renderBills();
+    } else if ((id = t.getAttribute("data-edit"))) {
+      var b = bills.filter(function (x) { return x.id === id; })[0]; if (!b) return;
+      editingId = id; $("bName").value = b.name; $("bAmt").value = b.amount ? String(b.amount) : ""; $("bDate").value = b.date;
+      $("bFreq").value = b.freq; $("bRemind").value = String(b.remind || 3); $("bSave").textContent = "Save changes"; $("bCancel").hidden = false;
+      $("bName").focus(); window.scrollTo(0, 0);
+    }
+  });
+  $("dueBanner").addEventListener("click", function (e) {
+    if (e.target.getAttribute("data-t") !== "bills") return;
+    tool = TOOLS.filter(function (x) { return x.id === "bills"; })[0]; history.replaceState(null, "", "#bills"); makeTabs(); openTool();
+  });
+
+  /* ---------- home screen ---------- */
+  function dueSoon() {
+    var soon = [];
+    bills.forEach(function (b) { var d = nextDue(b); if (!d) return; var n = daysUntil(d); if (n <= (b.remind || 3)) soon.push({ b: b, n: n }); });
+    return soon.sort(function (x, y) { return x.n - y.n; });
+  }
+  function renderHome(mine) {
+    var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1);
+    $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
+    $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
+    loadBills().then(function () { return loadSaved(key); }).then(function (saved) {
+      var ins = {};
+      if (saved) Object.keys(saved).forEach(function (k) { if (typeof saved[k] === "number") ins[k] = saved[k]; });
+      if (!Object.keys(ins).some(function (k) { return ins[k] !== 0; })) return {};
+      return fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), body: JSON.stringify({ sheet: "monthly-budget", inputs: ins }) })
+        .then(function (res) {
+          if (res.status === 401) { show("login"); throw new Error("stop"); }
+          if (res.status === 403) { show("inactive"); throw new Error("stop"); }
+          if (!res.ok) throw new Error("fail");
+          return res.json();
+        }).then(function (j) { return j.values; });
+    }).then(function (v) { if (mine === loadSeq) drawHome(v || {}); })
+      .catch(function (err) { if (err.message !== "stop" && mine === loadSeq) drawHome(null); });
+  }
+  function drawHome(v) {
+    function m(x) { return v && typeof x === "number" ? money.format(x) : "—"; }
+    var net = v ? v.D35 : null, h = "";
+    h += '<div class="cards"><div class="stat"><small>Take-home pay</small><b>' + m(v && v.D7) + '</b></div>' +
+      '<div class="stat"><small>Total expenses</small><b>' + m(v && v.D34) + '</b></div>' +
+      '<div class="stat' + (net > 0 ? " good" : net < 0 ? " bad" : "") + '"><small>Net income</small><b>' + m(net) + "</b></div></div>";
+    var steps = [
+      { done: !!(v && v.D3 > 0), t: "Enter your pay", s: "Add your paychecks for this month.", go: "monthly-budget", b: "Open Monthly budget" },
+      { done: !!(v && v.D34 > 0), t: "Add your expenses", s: "Rent, groceries, gas. Rename or add categories to fit your life.", go: "monthly-budget", b: "Add expenses" },
+      { done: bills.length > 0, t: "Add your bills", s: "Get a reminder before they’re due.", go: "bills", b: "Add bills" }
+    ];
+    if (!steps.every(function (x) { return x.done; })) {
+      h += '<div class="panel"><h2>Start here</h2>' + steps.map(function (x) {
+        return '<div class="step' + (x.done ? " done" : "") + '"><div class="tick">' + (x.done ? "&#10003;" : "") + '</div><div class="st">' + x.t + "<span>" + x.s + "</span></div>" +
+          (x.done ? "" : '<button data-go="' + x.go + '">' + x.b + "</button>") + "</div>";
+      }).join("") + "</div>";
+    }
+    var soon = dueSoon();
+    h += '<div class="panel"><h2>Bills coming up</h2>' + (soon.length ? soon.slice(0, 5).map(function (x) {
+      return '<div class="step"><div class="st">' + esc(x.b.name) + "<span>" + (x.b.amount ? money.format(x.b.amount) + " · " : "") + dueText(x.n) + "</span></div></div>";
+    }).join("") : '<p class="sub">Nothing due in the next few days.</p>') + '<p style="margin-top:10px"><button class="linkbtn" data-go="bills">Open Bills</button></p></div>';
+    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button></p></div>';
+    $("homeBody").innerHTML = h;
+  }
+  $("homeBody").addEventListener("click", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-go"); if (!id) return;
+    tool = TOOLS.filter(function (x) { return x.id === id; })[0]; history.replaceState(null, "", "#" + id); makeTabs(); openTool();
+  });
+
+  /* ---------- copy last month ---------- */
+  $("copyPrev").addEventListener("click", function () {
+    var y = Number($("selYear").value), mo = Number($("selMonth").value) - 1; mo--; if (mo < 0) { mo = 11; y--; }
+    var key = layout.id + ":" + y + "-" + pad(mo + 1), name = MONTHS[mo] + " " + y;
+    var hasData = Object.keys(inputs).some(function (k) { return inputs[k] !== 0; });
+    if (hasData && !window.confirm("Replace this month’s amounts with " + name + "’s?")) return;
+    loadSaved(key).then(function (saved) {
+      if (!saved) { setStatus("Nothing saved for " + name + " yet.", true); return; }
+      Object.keys(inputs).forEach(function (a) { inputs[a] = 0; });
+      meta = { labels: {}, custom: [], hidden: [] };
+      applySaved(saved); build(); fillInputs(); buildRowsPanel(); run(); scheduleSave();
+      setStatus("Copied from " + name);
+    });
+  });
+
   function makeTabs() {
     $("tabs").innerHTML = TOOLS.map(function (t) {
       return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '">' + t.name + "</button>";
@@ -432,11 +678,11 @@ tr.addrow td{padding:6px}
     $("selYear").innerHTML = [y - 1, y, y + 1].map(function (v) { return '<option' + (v === y ? " selected" : "") + ">" + v + "</option>"; }).join("");
     var h = location.hash.slice(1); tool = TOOLS.filter(function (t) { return t.id === h; })[0] || TOOLS[0];
     makeTabs();
-    if (CFG.devMode) { openTool(); return; }
+    if (CFG.devMode) { loadBills(); openTool(); return; }
     supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
     supa.auth.getSession().then(function (r) { session = r.data.session; if (!session) { show("login"); return; } afterLogin(); });
   }
-  function afterLogin() { $("who").textContent = session.user.email; $("signout").hidden = false; openTool(); }
+  function afterLogin() { $("who").textContent = session.user.email; $("signout").hidden = false; loadBills(); openTool(); }
 
   $("loginForm").addEventListener("submit", function (e) {
     e.preventDefault(); $("loginMsg").textContent = "";
