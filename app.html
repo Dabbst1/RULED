@@ -206,6 +206,9 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
 .fit th,.fit td{padding:0 1px}.fit th{font-size:11.5px;padding:0 4px}
 .fit td,.fit input.in{font-size:12px;letter-spacing:-.02em}.fit td{overflow:hidden}.fit input.in{padding:0 2px}
 .fit td.lab,.fit th.lab{padding:0 6px}
+.scroller.snap{scroll-snap-type:x mandatory;scroll-padding-left:var(--a);overscroll-behavior-x:contain}
+.scroller.snap tr>:nth-child(even){scroll-snap-align:start}
+.scroller.snap td,.scroller.snap th{padding:0 4px}
 @media (max-width:600px){header.top{padding:12px 12px}main{padding:0 12px 48px}.tabs,#tabs{border-radius:16px}.card{padding:22px}}
 </style>
 </head>
@@ -347,20 +350,24 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
     var cols = layout.cols, keys = cols.map(function (c) { return c.key; });
     var phone = window.innerWidth < 600 && cols.length <= 4, fc = phone ? 112 : layout.firstColWidth;
     var cw = cols.map(function (c) { return phone ? Math.round(c.w * 0.58) : c.w; });
+    // Phone + wide table: size the month columns so exactly two fit, and let swiping snap two months at a time.
+    var snapMode = window.innerWidth < 700 && cols.length > 4;
+    if (snapMode) { fc = 104; var pw = Math.floor((window.innerWidth - 24 - 2 - fc) / 2); cw = cols.map(function () { return pw; }); }
     var width = fc + cw.reduce(function (a, w) { return a + w; }, 0);
     var colgroup = '<colgroup><col style="width:var(--a)">' + cw.map(function (w) { return '<col style="width:' + w + 'px">'; }).join("") + "</colgroup>";
     var narrow = width < 900;
     // Wide tables (the Annual budget): squeeze every column to fit the screen so nothing scrolls sideways.
     var availW = Math.min(window.innerWidth, 1680) - 56, fcFit = 150;
-    fitMode = !narrow && !phone && (availW - fcFit) / cols.length >= 60;
+    fitMode = !narrow && !phone && !snapMode && (availW - fcFit) / cols.length >= 60;
     if (fitMode) {
       colgroup = '<colgroup><col style="width:' + fcFit + 'px">' + cols.map(function () { return "<col>"; }).join("") + "</colgroup>"; fc = fcFit;
     }
     var tstart = '<table style="' + (fitMode ? 'width:100%' : narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
     $("app").style.maxWidth = fitMode ? "1680px" : narrow ? (width + 64) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow || fitMode ? "100%" : "";
     $("sheet").className = fitMode ? "fit" : "";
+    $("sheet").parentNode.className = "scroller" + (snapMode ? " snap" : "");
     document.documentElement.style.setProperty("--a", fc + "px");
-    $("title").textContent = layout.name; $("hint").textContent = layout.hint;
+    $("title").textContent = layout.name; $("hint").textContent = layout.hint + (snapMode ? " Swipe sideways. It snaps two months at a time." : "");
     inputs = {};
     var html = "", open = false, blkIdx = 0;
 
