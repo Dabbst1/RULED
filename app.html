@@ -1381,11 +1381,16 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
     tool = TOOLS.filter(function (t) { return t.id === id; })[0]; history.replaceState(null, "", "#" + id);
     makeTabs(); openTool();
   });
-  var rzT = null;
+  var rzT = null, lastW = window.innerWidth;
   window.addEventListener("resize", function () {
+    // The phone keyboard changes only the height. Rebuilding then would close the keyboard, so only react to width changes.
+    if (window.innerWidth === lastW) return;
     clearTimeout(rzT); rzT = setTimeout(function () {
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === "INPUT" || ae.tagName === "SELECT")) return;   // never rebuild while someone is typing
+      lastW = window.innerWidth;
       if (!layout || !layout.rows || $("sheetView").hidden || !$("sheet").firstChild) return;
-      var was = fitMode; var snap = inputs; build(); if (was !== fitMode) { fillInputs(); run(); } else { fillInputs(); run(); }
+      build(); fillInputs(); buildRowsPanel(); run();
     }, 250);
   });
   $("selMonth").addEventListener("change", openTool);
