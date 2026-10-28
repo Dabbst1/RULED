@@ -202,9 +202,12 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
 .kind{background:#E3ECFF}
 .due{border-left:4px solid #E0A100;border-color:#F0D58A}
 .status.err{border-radius:10px}
+td.colhl{background-image:linear-gradient(rgba(29,78,216,.09),rgba(29,78,216,.09));box-shadow:inset 1px 0 0 rgba(29,78,216,.22),inset -1px 0 0 rgba(29,78,216,.22)}
+th.colhl{background:linear-gradient(180deg,#2A56C8,#1D4ED8);box-shadow:inset 0 -3px 0 #8FB0FF}
+tr.total td.colhl{background-image:linear-gradient(rgba(29,78,216,.14),rgba(29,78,216,.14))}
 .fit{min-width:0!important}.fit table{table-layout:fixed}
 .fit th,.fit td{padding:0 1px}.fit th{font-size:11.5px;padding:0 4px}
-.fit td,.fit input.in{font-size:12px;letter-spacing:-.02em}.fit td{overflow:hidden}.fit input.in{padding:0 2px}
+.fit td,.fit input.in{font-size:var(--fs,12px);letter-spacing:-.02em}.fit td{overflow:hidden}.fit input.in{padding:0 2px}
 .fit td.lab,.fit th.lab{padding:0 6px}
 .mstep{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;padding:6px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);position:sticky;top:6px;z-index:6}
 .mstep b{font-size:19px}.mstep button{width:48px;height:44px;font-size:28px;line-height:1;border:0;border-radius:10px;background:#EEF4FF;color:var(--blue);cursor:pointer}
@@ -368,7 +371,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
   }
 
   /* ---------- build the table (labels only, no formulas) ---------- */
-  var fitMode = false, phoneOn = false, phoneMonth = new Date().getMonth();
+  var needFit = false, fitMode = false, phoneOn = false, phoneMonth = new Date().getMonth();
   function build() {
     var cols = layout.cols, keys = cols.map(function (c) { return c.key; });
     var phone = window.innerWidth < 600 && cols.length <= 4, fc = phone ? 112 : layout.firstColWidth;
@@ -389,7 +392,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
     if (autoMode) colgroup = "";
     var tstart = '<table style="' + (autoMode ? 'width:100%;table-layout:auto' : fitMode ? 'width:100%' : narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
     $("app").style.maxWidth = autoMode ? "" : fitMode ? "1680px" : narrow ? (width + 64) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow || fitMode || autoMode ? "100%" : "";
-    $("sheet").className = fitMode ? "fit" : "";
+    $("sheet").className = fitMode ? "fit" : ""; needFit = fitMode;
     $("sheet").parentNode.className = "scroller" + (autoMode ? " snap" : "");
     document.documentElement.style.setProperty("--a", fc + "px");
     $("title").textContent = layout.name; $("hint").textContent = layout.hint;
@@ -708,6 +711,18 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
       .then(function (d) { if (mine === seq) { paint(d.values); setStatus("Up to date"); } })
       .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate (" + (String(err.message).indexOf("fail") === 0 ? "error " + err.message.slice(4) : "can’t reach the server") + "). Try again in a moment.", true); });
   }
+  // On a computer, use the largest number size that still shows every digit without sideways scrolling.
+  function fitFont() {
+    if (!fitMode) return;
+    var sh = $("sheet"), sc = sh.parentNode, size;
+    for (size = 16; size > 12; size -= 0.5) {
+      sh.style.setProperty("--fs", size + "px");
+      var bad = sc.scrollWidth > sc.clientWidth + 1;
+      if (!bad) Array.prototype.some.call(sh.querySelectorAll("td.num,td.calc,input.in"), function (el) { return (el.scrollWidth > el.clientWidth + 1) && (bad = true); });
+      if (!bad) return;
+    }
+    sh.style.setProperty("--fs", "12px");
+  }
   function paint(values) {
     var r = layout.rows.length && layout.rules;
     Array.prototype.forEach.call(document.querySelectorAll("td[data-c]"), function (td) {
@@ -722,6 +737,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
         if (v > inc) td.classList.add("bad");
       }
     });
+    if (needFit) { needFit = false; fitFont(); }
   }
 
   /* ---------- saving ---------- */
@@ -815,7 +831,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
   }
   /* build() resets inputs, so keep saved ones across it */
   var _build = build;
-  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); };
+  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); hlIdx = -1; };
   var FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   // Phone view of the Annual budget: one month at a time (plus the yearly total) instead of 14 columns.
   function applyPhone() {
@@ -1430,6 +1446,24 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
     tool = TOOLS.filter(function (t) { return t.id === id; })[0]; history.replaceState(null, "", "#" + id);
     makeTabs(); openTool();
   });
+  $("sheet").addEventListener("focusout", function () { needFit = true; setTimeout(function () { var ae = document.activeElement; if (!ae || ae.tagName !== "INPUT") { fitFont(); needFit = false; } }, 400); });
+  /* ---------- highlight the column under the cursor ---------- */
+  var hlIdx = -1, hoverIdx = -1;
+  function hlCol(idx) {
+    if (idx === hlIdx) return; hlIdx = idx;
+    Array.prototype.forEach.call(document.querySelectorAll("#sheet .colhl"), function (c) { c.classList.remove("colhl"); });
+    if (idx < 1) return;
+    Array.prototype.forEach.call(document.querySelectorAll("#sheet table tr"), function (tr) {
+      var cells = tr.children, i;
+      for (i = 0; i < cells.length; i++) if (cells[i].colSpan > 1) return;
+      if (cells[idx] && cells[idx].style.display !== "none") cells[idx].classList.add("colhl");
+    });
+  }
+  function focusIdx() { var a = document.activeElement; var td = a && a.tagName === "INPUT" && a.closest ? a.closest("td") : null; return td && $("sheet").contains(td) ? td.cellIndex : -1; }
+  $("sheet").addEventListener("mouseover", function (e) { var c = e.target.closest ? e.target.closest("td,th") : null; hoverIdx = c ? c.cellIndex : -1; hlCol(hoverIdx > 0 ? hoverIdx : focusIdx()); });
+  $("sheet").addEventListener("mouseleave", function () { hoverIdx = -1; hlCol(focusIdx()); });
+  $("sheet").addEventListener("focusin", function () { var f = focusIdx(); hlCol(f > 0 ? f : hoverIdx); });
+  $("sheet").addEventListener("focusout", function () { setTimeout(function () { hlCol(focusIdx() > 0 ? focusIdx() : hoverIdx); }, 0); });
   var rzT = null, lastW = window.innerWidth;
   window.addEventListener("resize", function () {
     // The phone keyboard changes only the height. Rebuilding then would close the keyboard, so only react to width changes.
