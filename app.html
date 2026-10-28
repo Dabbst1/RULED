@@ -186,7 +186,7 @@ tr.addrow td{padding:6px}
     <div id="homeBody"></div>
   </section>
   <div id="sheetView">
-  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button></div>
+  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="fillAnnual" title="Fill this month from your Annual budget">Fill from Annual</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
@@ -615,7 +615,7 @@ tr.addrow td{padding:6px}
   }
 
   /* ---------- saving ---------- */
-  function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; return o; }
+  function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; if (layout.months) o.__filled = true; return o; }
   var pendingSave = null;
   function doSave(key, data) {
     if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return Promise.resolve(); }
@@ -626,8 +626,8 @@ tr.addrow td{padding:6px}
       });
   }
   function scheduleSave() {
-    clearTimeout(saveTimer); var key = storageKey(), data = payload();
-    pendingSave = function () { doSave(key, data); };
+    clearTimeout(saveTimer); var key = storageKey(), data = payload(), Lm = layout;
+    pendingSave = function () { var pr = doSave(key, data); if (pr && pr.then) pr.then(function () { afterSave(key, data, Lm); }); };
     saveTimer = setTimeout(function () { var f = pendingSave; pendingSave = null; if (f) f(); }, 1000);
   }
   function flushSave() { clearTimeout(saveTimer); var f = pendingSave; pendingSave = null; if (f) f(); }
@@ -673,12 +673,25 @@ tr.addrow td{padding:6px}
   }
   function loadData(mine) {
     meta = { labels: {}, custom: [], hidden: [], removed: [] };
-    loadSaved(storageKey()).then(function (saved) {
-      if (mine !== loadSeq) return;
-      inputs = {}; // fresh defaults come from the layout during build
+    (syncP || Promise.resolve()).then(function () { return loadSaved(storageKey()); }).then(function (saved) {
+      if (mine !== loadSeq) return null;
+      if (layout.months && isBlank(saved)) return monthlyDefaults(layout, Number($("selMonth").value) - 1).then(function (d) { return { saved: saved, d: d }; });
+      return { saved: saved, d: null };
+    }).then(function (x) {
+      if (!x || mine !== loadSeq) return;
+      var saved = x.saved;
+      inputs = {};
       buildDefaults();
-      if (!saved && setup && setup.done) { var r = metaFromSetup(layout, setup); meta = r.meta; Object.keys(r.toggles).forEach(function (a) { inputs[a] = r.toggles[a]; }); }
-      applySaved(saved); build(); fillInputs(); buildRowsPanel(); run();
+      if (x.d) {
+        meta = x.d.meta; Object.keys(x.d.toggles).forEach(function (a) { inputs[a] = x.d.toggles[a]; });
+        Object.keys(x.d.inputs).forEach(function (a) { inputs[a] = x.d.inputs[a]; });
+        if (saved) { var keep = {}; Object.keys(inputs).forEach(function (k) { keep[k] = inputs[k]; }); applySaved(saved); if (!x.d.any) { /* nothing from annual */ } else { meta = x.d.meta; Object.keys(keep).forEach(function (k) { inputs[k] = keep[k]; }); } }
+      } else {
+        if (!saved && setup && setup.done) { var r = metaFromSetup(layout, setup); meta = r.meta; Object.keys(r.toggles).forEach(function (a) { inputs[a] = r.toggles[a]; }); }
+        applySaved(saved);
+      }
+      build(); fillInputs(); buildRowsPanel(); run();
+      if (x.d && x.d.any) scheduleSave();
     });
   }
   function buildDefaults() { // collect input addresses so saved values can be matched before building
@@ -1043,6 +1056,142 @@ tr.addrow td{padding:6px}
     });
     return { meta: m, toggles: toggles };
   }
+  /* ---------- keep Annual and Monthly in step (current year) ---------- */
+  var syncP = null;
+  function afterSave(key, data, Lm) {
+    var Y = String(new Date().getFullYear());
+    if (key === "yearly-projection") {
+      syncP = fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
+        return annualSnapshot().then(function (snap) {
+          return Promise.all(MONTHS.map(function (_, idx) {
+            var k = "monthly-budget:" + Y + "-" + pad(idx + 1);
+            return loadSaved(k).then(function (doc) {
+              if (!doc) return;
+              var dm = doc.__meta || {}, m0 = { labels: dm.labels || {}, custom: dm.custom || [], hidden: dm.hidden || [], removed: dm.removed || [] };
+              var r = monthlyFromAnnual(snap, L, m0, idx, numericOf(doc), true);
+              if (!r.changed) return;
+              var nd = Object.assign({}, doc, r.inputs); nd.__meta = r.meta; return doSave(k, nd);
+            });
+          }));
+        });
+      }).catch(function () {});
+    } else if (key.indexOf("monthly-budget:" + Y + "-") === 0 && Lm) {
+      var idx = Number(key.slice(-2)) - 1, col = COLS12.charAt(idx);
+      syncP = fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (La) {
+        return loadSaved("yearly-projection").then(function (doc) {
+          if (!doc) return;
+          var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: dm.removed || [] };
+          var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [];
+          var ga = rowGroups(La), targets = {}, blocks = {};
+          La.rows.forEach(function (r) {
+            if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && rowInputs(r.row, La).length) targets[(am.labels[r.row] || r.label).toLowerCase()] = r.row;
+            if (r.type === "custom") { blocks[r.group === "income" ? "income" : "expense"] = r; r.slots.forEach(function (sl) { if (am.custom.indexOf(sl.row) >= 0 && am.labels[sl.row]) targets[am.labels[sl.row].toLowerCase()] = sl.row; }); }
+          });
+          var gm = rowGroups(Lm), nd = Object.assign({}, doc), changed = false;
+          function put(name, grp, v) {
+            var row = targets[name.toLowerCase()];
+            if (!row) {
+              var blk = blocks[grp], slot = blk && blk.slots.filter(function (sl) { return am.custom.indexOf(sl.row) < 0; })[0];
+              if (!v || !slot) return;
+              am.custom.push(slot.row); am.labels[slot.row] = name; targets[name.toLowerCase()] = row = slot.row; changed = true;
+            }
+            v = Math.round(v * 100) / 100;
+            if (Math.abs((nd[col + row] || 0) - v) > 0.004) { nd[col + row] = v; changed = true; }
+          }
+          Lm.rows.forEach(function (r) {
+            if (r.type === "data" && !r.cls && mr.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length)
+              put(ml[r.row] || r.label, gm[r.row], rowInputs(r.row, Lm).reduce(function (a, k) { return a + (data[k] || 0); }, 0));
+            if (r.type === "custom") r.slots.forEach(function (sl) {
+              if (mc.indexOf(sl.row) < 0 || !ml[sl.row]) return;
+              put(ml[sl.row], r.group === "income" ? "income" : "expense", Object.keys(sl.cells).reduce(function (a, c) { return a + (sl.cells[c].k === "input" ? data[sl.cells[c].a] || 0 : 0); }, 0));
+            });
+          });
+          if (!changed) return;
+          nd.__meta = Object.assign({}, dm, { labels: am.labels, custom: am.custom });
+          return doSave("yearly-projection", nd);
+        });
+      }).catch(function () {});
+    }
+  }
+
+  /* ---------- annual -> monthly ---------- */
+  var COLS12 = "BCDEFGHIJKLM";
+  function numericOf(saved) { var o = {}; if (saved) Object.keys(saved).forEach(function (k) { if (typeof saved[k] === "number") o[k] = saved[k]; }); return o; }
+  function isBlank(saved) { return !saved || (!saved.__filled && !Object.keys(numericOf(saved)).some(function (k) { return saved[k] !== 0; })); }
+  function annualSnapshot() {
+    return fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
+      return loadSaved("yearly-projection").then(function (saved) {
+        if (!saved) return { rows: [] };
+        var inp = numericOf(saved), m = saved.__meta || {};
+        var am = { labels: m.labels || {}, custom: m.custom || [], removed: m.removed || [] }, groups = rowGroups(L), list = [], tithe = null;
+        L.rows.forEach(function (r) {
+          if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0) {
+            var name = am.labels[r.row] || r.label;
+            if (rowInputs(r.row, L).length) {
+              var vals = {}; COLS12.split("").forEach(function (c) { vals[c] = inp[c + r.row] || 0; });
+              list.push({ name: name, group: groups[r.row], vals: vals });
+            } else if (r.toggle && inp[r.toggle] !== 0) tithe = { name: name, group: groups[r.row], row: r.row };
+          }
+          if (r.type === "custom") r.slots.forEach(function (sl) {
+            if (am.custom.indexOf(sl.row) < 0 || !am.labels[sl.row]) return;
+            var vals = {}; COLS12.split("").forEach(function (c) { vals[c] = inp[c + sl.row] || 0; });
+            list.push({ name: am.labels[sl.row], group: r.group === "income" ? "income" : "expense", vals: vals });
+          });
+        });
+        if (!tithe) return { rows: list };
+        return fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), body: JSON.stringify({ sheet: "yearly-projection", inputs: inp }) })
+          .then(function (res) { return res.ok ? res.json() : { values: {} }; })
+          .then(function (j) {
+            var vals = {}; COLS12.split("").forEach(function (c) { vals[c] = (j.values && j.values[c + tithe.row]) || 0; });
+            list.push({ name: tithe.name, group: tithe.group, vals: vals }); return { rows: list };
+          }).catch(function () { return { rows: list }; });
+      });
+    }).catch(function () { return { rows: [] }; });
+  }
+  // One month of the annual snapshot, placed into a Monthly layout. Each amount is split between the two paychecks.
+  function monthlyFromAnnual(snap, Lm, m0, idx, cur, zeros) {
+    var col = COLS12.charAt(idx), m = { labels: Object.assign({}, m0.labels), custom: m0.custom.slice(), hidden: (m0.hidden || []).slice(), removed: m0.removed.slice() };
+    var targets = {}, out = {}, any = false, changed = false;
+    function addrs(cells) { return Object.keys(cells).filter(function (k) { return cells[k].k === "input"; }).map(function (k) { return cells[k].a; }); }
+    Lm.rows.forEach(function (r) {
+      if (r.type === "data" && !r.cls && m.removed.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length) targets[(m.labels[r.row] || r.label).toLowerCase()] = addrs(r.cells);
+      if (r.type === "custom") r.slots.forEach(function (sl) { if (m.custom.indexOf(sl.row) >= 0 && m.labels[sl.row]) targets[m.labels[sl.row].toLowerCase()] = addrs(sl.cells); });
+    });
+    snap.rows.forEach(function (ar) {
+      var v = Math.round((ar.vals[col] || 0) * 100) / 100, t = targets[ar.name.toLowerCase()];
+      if (!v && !(zeros && t)) return;
+      if (!t) {
+        var blk = Lm.rows.filter(function (x) { return x.type === "custom" && (x.group === "income" ? "income" : "expense") === ar.group; })[0];
+        var slot = blk && blk.slots.filter(function (sl) { return m.custom.indexOf(sl.row) < 0; })[0];
+        if (!slot) return;
+        m.custom.push(slot.row); m.labels[slot.row] = ar.name; t = addrs(slot.cells); targets[ar.name.toLowerCase()] = t;
+      }
+      if (cur && Math.abs((cur[t[0]] || 0) + (t[1] ? cur[t[1]] || 0 : 0) - v) < 0.005) return;
+      var half = Math.floor(v * 100 / 2) / 100; changed = true;
+      out[t[0]] = half; if (t[1]) out[t[1]] = Math.round((v - half) * 100) / 100; any = true;
+    });
+    return { meta: m, inputs: out, any: any, changed: changed || m.custom.length !== m0.custom.length };
+  }
+  function monthlyDefaults(Lm, idx) {
+    var r0 = setup && setup.done ? metaFromSetup(Lm, setup) : { meta: { labels: {}, custom: [], hidden: [], removed: [] }, toggles: {} };
+    return annualSnapshot().then(function (snap) {
+      var r = monthlyFromAnnual(snap, Lm, r0.meta, idx);
+      return { meta: r.meta, toggles: r0.toggles, inputs: r.inputs, any: r.any };
+    });
+  }
+  $("fillAnnual").addEventListener("click", function () {
+    var idx = Number($("selMonth").value) - 1, hasData = Object.keys(inputs).some(function (k) { return inputs[k] !== 0; });
+    if (hasData && !window.confirm("Replace this month’s amounts with your Annual budget for " + MONTHS[idx] + "?")) return;
+    setStatus("Filling from your Annual budget…");
+    annualSnapshot().then(function (snap) {
+      if (!snap.rows.length) { setStatus("Your Annual budget doesn’t have any amounts yet.", true); return; }
+      Object.keys(inputs).forEach(function (a) { inputs[a] = 0; });
+      var r = monthlyFromAnnual(snap, layout, meta, idx);
+      meta = r.meta; Object.keys(r.inputs).forEach(function (a) { inputs[a] = r.inputs[a]; });
+      build(); fillInputs(); buildRowsPanel(); run(); scheduleSave(); setStatus("Filled from your Annual budget");
+    });
+  });
+
   function buildFromWizard() {
     setup = { done: true, income: wiz.income.slice(), expense: wiz.expense.slice() };
     var now = new Date(), mm = pad(now.getMonth() + 1), jobs = [doSave("setup", { __setup: setup })];
@@ -1070,8 +1219,10 @@ tr.addrow td{padding:6px}
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
     loadBills().then(loadGoals).then(loadSetup).then(function () { return loadSaved(key); }).then(function (saved) {
-      var ins = {};
-      if (saved) Object.keys(saved).forEach(function (k) { if (typeof saved[k] === "number") ins[k] = saved[k]; });
+      if (!isBlank(saved)) return numericOf(saved);
+      return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); })
+        .then(function (Lm) { return monthlyDefaults(Lm, d.getMonth()); }).then(function (dd) { return dd.inputs; }).catch(function () { return {}; });
+    }).then(function (ins) {
       if (!Object.keys(ins).some(function (k) { return ins[k] !== 0; })) return {};
       return fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), body: JSON.stringify({ sheet: "monthly-budget", inputs: ins }) })
         .then(function (res) {
