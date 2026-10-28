@@ -142,6 +142,67 @@ dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink)
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
 .add[disabled]{opacity:.5;cursor:default}
+
+/* ---- modern look: soft depth, rounder corners, breathing room ---- */
+:root{--shadow:0 1px 2px rgba(11,31,77,.06),0 8px 24px rgba(11,31,77,.08);--shadow-lg:0 2px 4px rgba(11,31,77,.06),0 16px 40px rgba(11,31,77,.14);--line:#D6E3F8;--r:14px}
+body{background:radial-gradient(1100px 520px at 12% -8%,#DCE9FF 0%,rgba(220,233,255,0) 60%),radial-gradient(900px 480px at 100% 0%,#E4ECFF 0%,rgba(228,236,255,0) 55%),#F2F7FF;background-attachment:fixed}
+header.top{max-width:1280px;margin:0 auto;padding:18px 24px}
+main{max-width:1280px;margin:0 auto;padding:0 24px 64px}
+.logo{font-size:28px}
+.top-right button,#who{padding:6px 12px;border-radius:99px;text-decoration:none;background:rgba(255,255,255,.7);border:1px solid var(--line);transition:background .15s,box-shadow .15s}
+.top-right button:hover,#who:hover{background:#fff;box-shadow:var(--shadow)}
+h1{font-size:clamp(28px,4vw,38px);margin:14px 0 6px}
+.tabs,#tabs{gap:6px;padding:5px;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:99px;width:max-content;max-width:100%;box-shadow:var(--shadow);margin:6px 0 18px;overflow-x:auto}
+.tab{border:0;border-radius:99px;padding:10px 18px;background:transparent;color:var(--muted);transition:background .15s,color .15s,box-shadow .15s}
+.tab:hover{background:rgba(29,78,216,.08);color:var(--ink)}
+.tab[aria-selected=true]{background:linear-gradient(135deg,#1D4ED8,#3B6FF0);color:#fff;box-shadow:0 4px 12px rgba(29,78,216,.35)}
+.picker .tab{border:1px solid var(--line);background:#fff;color:var(--ink)}
+.picker .tab:hover{background:#EEF4FF}
+.picker{flex-wrap:wrap;align-items:center}
+.picker select,.billform input,.billform select,dialog input,.acform input,#wizard input.wiztxt,.goalcard .row input[type=text],.card input{border:1px solid var(--line);border-radius:10px;box-shadow:inset 0 1px 2px rgba(11,31,77,.05)}
+.picker select:focus,.billform input:focus,.acform input:focus,.card input:focus,dialog input:focus,#wizard input.wiztxt:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(29,78,216,.15);outline:0}
+.scroller,.card,.stat,.panel,.goalcard,.bill,.billform,.due{border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.scroller{overflow-y:hidden}
+.card{box-shadow:var(--shadow-lg);padding:32px}
+.stat,.panel,.goalcard{transition:transform .15s,box-shadow .15s}
+.stat:hover,.goalcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.stat{padding:16px 18px;background:linear-gradient(180deg,#fff,#F7FAFF)}
+.stat b{font-size:30px;margin-top:2px}
+.stat.good{background:linear-gradient(180deg,#fff,#EFFAF1)}.stat.bad{background:linear-gradient(180deg,#fff,#FFF2F3)}
+.panel{padding:20px 22px}.panel h2{font-size:19px;margin-bottom:10px}
+.step{border-top:1px solid var(--line);padding:12px 0}
+.bill{border-left:4px solid var(--blue)}.bill.soon{border-left-color:#E0A100}.bill.late{border-left-color:var(--bad)}
+.btn{border-radius:10px;border:0;background:linear-gradient(135deg,#1D4ED8,#3B6FF0);box-shadow:0 4px 12px rgba(29,78,216,.28);transition:transform .12s,box-shadow .12s,filter .12s}
+.btn:hover{background:linear-gradient(135deg,#1A45C2,#3463E0);transform:translateY(-1px);box-shadow:0 8px 18px rgba(29,78,216,.34)}
+.btn:active{transform:none}
+.btn.ghost{background:#fff;color:var(--blue);border:1px solid var(--line);box-shadow:none}.btn.ghost:hover{background:#EEF4FF;box-shadow:var(--shadow)}
+.btn.danger{background:#fff;border:1px solid var(--bad);box-shadow:none}
+.step button,.panel .linkbtn,.bill .ba button,.goalcard button.sm{border:1px solid var(--line);border-radius:10px;background:#fff;transition:background .15s,box-shadow .15s}
+.step button:hover,.panel .linkbtn:hover,.bill .ba button:hover,.goalcard button.sm:hover{background:#EEF4FF;box-shadow:var(--shadow)}
+.bill .ba button.go{background:var(--blue);border-color:var(--blue);color:#fff}
+.add{border:1.5px dashed #8AAAF0;border-radius:10px;background:#F7FAFF}.add:hover{background:#EAF1FF}
+/* tables */
+th{background:linear-gradient(180deg,#14307F,#0B1F4D);letter-spacing:.02em}
+th:first-child,th.lab{border-top-left-radius:0}
+td,th{border-bottom:1px solid #E3ECFA}
+tbody tr:hover td{background:#F5F9FF}tbody tr:hover td.lab{background:#F5F9FF}
+tr.total td,tr.total td.lab{background:linear-gradient(180deg,#DCE8FF,#CFE0FF)}
+td.calc{background:#F6F9FF}
+td.lab,th.lab{border-right:1px solid var(--line);box-shadow:2px 0 6px rgba(11,31,77,.05)}
+input.in{border-radius:8px;transition:border-color .12s,box-shadow .12s,background .12s}
+input.in:hover{background:#F3F7FF;border-color:#C9D9F5}
+input.in:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.18);background:#fff}
+.section{font-size:20px}
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 70px rgba(11,31,77,.35);padding:24px}
+dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
+.chip{border:1px solid #BCD0F4;background:#fff;transition:background .12s,transform .12s}.chip:hover{background:#EAF1FF;transform:translateY(-1px)}.chip.on{background:linear-gradient(135deg,#1D4ED8,#3B6FF0);border-color:transparent;color:#fff}
+#wizard .wizlist,#pickList{border:1px solid var(--line);border-radius:12px;background:#FAFCFF}
+.bar{height:12px;background:#E3ECFA}.bar i{background:linear-gradient(90deg,#1D4ED8,#5B8CFF);border-radius:99px;transition:width .4s}
+.kind{background:#E3ECFF}
+.due{border-left:4px solid #E0A100;border-color:#F0D58A}
+.status.err{border-radius:10px}
+@media (max-width:600px){header.top{padding:12px 12px}main{padding:0 12px 48px}.tabs,#tabs{border-radius:16px}.card{padding:22px}}
 </style>
 </head>
 <body>
@@ -285,7 +346,7 @@ tr.addrow td{padding:6px}
     var colgroup = '<colgroup><col style="width:var(--a)">' + cw.map(function (w) { return '<col style="width:' + w + 'px">'; }).join("") + "</colgroup>";
     var narrow = width < 900;
     var tstart = '<table style="' + (narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
-    $("app").style.maxWidth = narrow ? (width + 40) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow ? "100%" : "";
+    $("app").style.maxWidth = narrow ? (width + 64) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow ? "100%" : "";
     document.documentElement.style.setProperty("--a", fc + "px");
     $("title").textContent = layout.name; $("hint").textContent = layout.hint;
     inputs = {};
@@ -1343,11 +1404,11 @@ tr.addrow td{padding:6px}
   function fnUrl(name) { return CFG.calcUrl.replace(/\/calc$/, "/" + name); }
   function callFn(name, body) {
     return fetch(fnUrl(name), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: CFG.supabaseAnonKey }, body: JSON.stringify(body || {}) })
-      .then(function (r) { return r.json().then(function (j) { if (!r.ok || !j.url) throw new Error(j.error || "fail"); return j.url; }); });
+      .then(function (r) { return r.text().then(function (t) { var j = {}; try { j = JSON.parse(t); } catch (x) {} if (!r.ok || !j.url) throw new Error(r.status + " " + (j.error || j.msg || j.message || t.slice(0, 80) || "no response")); return j.url; }); });
   }
   function goBilling(name, body, msgEl) {
     msgEl.style.color = ""; msgEl.textContent = "One moment…";
-    callFn(name, body).then(function (u) { location.href = u; }).catch(function (e) { msgEl.textContent = e.message === "already_member" ? "You already have an active membership. Refresh the page." : "Couldn’t open the payment page. Try again in a moment."; });
+    callFn(name, body).then(function (u) { location.href = u; }).catch(function (e) { msgEl.textContent = e.message === "already_member" ? "You already have an active membership. Refresh the page." : "Couldn’t open the payment page (" + e.message + "). Try again in a moment."; });
   }
   $("inactive").addEventListener("click", function (e) {
     var pl = e.target.getAttribute && e.target.getAttribute("data-plan");
