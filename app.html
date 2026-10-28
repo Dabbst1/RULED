@@ -205,6 +205,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
 td.colhl{background-image:linear-gradient(rgba(29,78,216,.045),rgba(29,78,216,.045));box-shadow:inset 1px 0 0 rgba(29,78,216,.10),inset -1px 0 0 rgba(29,78,216,.10)}
 th.colhl{background:linear-gradient(180deg,#1B3A94,#18327F);box-shadow:inset 0 -2px 0 #6F95E8}
 tr.total td.colhl{background-image:linear-gradient(rgba(29,78,216,.07),rgba(29,78,216,.07))}
+td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow:clip;padding-top:3px;padding-bottom:3px}
 .fit{min-width:0!important}.fit table{table-layout:fixed}
 .fit th,.fit td{padding:0 1px}.fit th{font-size:11.5px;padding:0 4px}
 .fit td,.fit input.in{font-size:var(--fs,12px);letter-spacing:-.02em}.fit td{overflow:hidden}.fit input.in{padding:0 2px}
@@ -383,7 +384,7 @@ tr.total td.colhl{background-image:linear-gradient(rgba(29,78,216,.07),rgba(29,7
     var colgroup = '<colgroup><col style="width:var(--a)">' + cw.map(function (w) { return '<col style="width:' + w + 'px">'; }).join("") + "</colgroup>";
     var narrow = width < 900;
     // Wide tables (the Annual budget): squeeze every column to fit the screen so nothing scrolls sideways.
-    var availW = Math.min(window.innerWidth, 1680) - 56, fcFit = 150;
+    var availW = Math.min(window.innerWidth, 1680) - 56, fcFit = 198;
     fitMode = !narrow && !phone && !snapMode && (availW - fcFit) / cols.length >= 60;
     if (fitMode) {
       colgroup = '<colgroup><col style="width:' + fcFit + 'px">' + cols.map(function () { return "<col>"; }).join("") + "</colgroup>"; fc = fcFit;
