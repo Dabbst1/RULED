@@ -206,9 +206,31 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
 .fit th,.fit td{padding:0 1px}.fit th{font-size:11.5px;padding:0 4px}
 .fit td,.fit input.in{font-size:12px;letter-spacing:-.02em}.fit td{overflow:hidden}.fit input.in{padding:0 2px}
 .fit td.lab,.fit th.lab{padding:0 6px}
-.scroller.snap{scroll-snap-type:x mandatory;scroll-padding-left:var(--a);overscroll-behavior-x:contain}
-.scroller.snap tr>:nth-child(even){scroll-snap-align:start}
-.scroller.snap td,.scroller.snap th{padding:0 4px}
+.mstep{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;padding:6px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);position:sticky;top:6px;z-index:6}
+.mstep b{font-size:19px}.mstep button{width:48px;height:44px;font-size:28px;line-height:1;border:0;border-radius:10px;background:#EEF4FF;color:var(--blue);cursor:pointer}
+.mstep button:active{background:#DCE8FF}
+.scroller.snap td.lab,.scroller.snap th.lab{width:46%}
+@media (max-width:600px){.scroller.snap td,.scroller.snap th{padding:0 3px}.scroller.snap input.in{font-size:14px;padding:0 3px}.scroller.snap input.in:focus{font-size:16px}.scroller.snap th{font-size:12px}.scroller.snap td.lab,.scroller.snap th.lab{width:30%}}
+@media (max-width:700px){
+  body{font-size:16px}
+  .tabs,#tabs{flex-wrap:nowrap;overflow-x:auto;width:100%;border-radius:99px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}.tab{white-space:nowrap;flex:0 0 auto}
+  .picker select{flex:1 1 40%;height:46px;font-size:16px}.picker .tab{flex:1 1 44%;text-align:center;height:44px;border-radius:12px}
+  input.in{font-size:16px;height:44px}td.lab input.nm{font-size:15px;height:44px}
+  th,td{height:52px}td.lab,th.lab{font-size:14px}
+  .scroller{border-radius:12px}
+  .stat b{font-size:26px}.cards{grid-template-columns:1fr 1fr}.cards .stat:last-child{grid-column:1/-1}
+  .bill .bd{flex:1 1 100%}.bill .ba{width:100%;display:flex;gap:6px}.bill .ba button{flex:1;height:44px;margin:0}
+  .billform{grid-template-columns:1fr 1fr}.billform input,.billform select{height:46px;font-size:16px}
+  .btn,.step button,.panel .linkbtn{min-height:44px}
+  .goalcard .row input[type=text]{font-size:16px;height:44px;width:100%}.chk{padding:10px 0}.chk input{width:24px;height:24px}
+  dialog input,#wizard input.wiztxt,.acform input,.card input{font-size:16px}
+  .chip{padding:10px 14px}
+  #hint{font-size:13px}
+  .rowspanel label{min-height:40px}
+  .section{font-size:18px}
+  header.top{flex-wrap:wrap}
+}
 @media (max-width:600px){header.top{padding:12px 12px}main{padding:0 12px 48px}.tabs,#tabs{border-radius:16px}.card{padding:22px}}
 </style>
 </head>
@@ -263,6 +285,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
   <p class="sub" id="hint"></p>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="mstep" id="mstep" hidden><button type="button" id="mPrev" aria-label="Previous month">&#8249;</button><b id="mName"></b><button type="button" id="mNext" aria-label="Next month">&#8250;</button></div>
   <div class="scroller"><div id="sheet"></div></div>
   </div>
   <section id="accountView" hidden>
@@ -345,14 +368,14 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
   }
 
   /* ---------- build the table (labels only, no formulas) ---------- */
-  var fitMode = false;
+  var fitMode = false, phoneOn = false, phoneMonth = new Date().getMonth();
   function build() {
     var cols = layout.cols, keys = cols.map(function (c) { return c.key; });
     var phone = window.innerWidth < 600 && cols.length <= 4, fc = phone ? 112 : layout.firstColWidth;
     var cw = cols.map(function (c) { return phone ? Math.round(c.w * 0.58) : c.w; });
     // Phone + wide table: size the month columns so exactly two fit, and let swiping snap two months at a time.
     var snapMode = window.innerWidth < 700 && cols.length > 4;
-    if (snapMode) { fc = 104; var pw = Math.floor((window.innerWidth - 24 - 2 - fc) / 2); cw = cols.map(function () { return pw; }); }
+    if (snapMode) { fc = 120; cw = cols.map(function () { return 100; }); }
     var width = fc + cw.reduce(function (a, w) { return a + w; }, 0);
     var colgroup = '<colgroup><col style="width:var(--a)">' + cw.map(function (w) { return '<col style="width:' + w + 'px">'; }).join("") + "</colgroup>";
     var narrow = width < 900;
@@ -362,12 +385,15 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
     if (fitMode) {
       colgroup = '<colgroup><col style="width:' + fcFit + 'px">' + cols.map(function () { return "<col>"; }).join("") + "</colgroup>"; fc = fcFit;
     }
-    var tstart = '<table style="' + (fitMode ? 'width:100%' : narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
-    $("app").style.maxWidth = fitMode ? "1680px" : narrow ? (width + 64) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow || fitMode ? "100%" : "";
+    var autoMode = snapMode || phone;
+    if (autoMode) colgroup = "";
+    var tstart = '<table style="' + (autoMode ? 'width:100%;table-layout:auto' : fitMode ? 'width:100%' : narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
+    $("app").style.maxWidth = autoMode ? "" : fitMode ? "1680px" : narrow ? (width + 64) + "px" : ""; $("app").style.margin = narrow ? "0 auto" : ""; $("sheet").style.width = narrow || fitMode || autoMode ? "100%" : "";
     $("sheet").className = fitMode ? "fit" : "";
-    $("sheet").parentNode.className = "scroller" + (snapMode ? " snap" : "");
+    $("sheet").parentNode.className = "scroller" + (autoMode ? " snap" : "");
     document.documentElement.style.setProperty("--a", fc + "px");
-    $("title").textContent = layout.name; $("hint").textContent = layout.hint + (snapMode ? " Swipe sideways. It snaps two months at a time." : "");
+    $("title").textContent = layout.name; $("hint").textContent = layout.hint;
+    $("mstep").hidden = !snapMode; phoneOn = snapMode;
     inputs = {};
     var html = "", open = false, blkIdx = 0;
 
@@ -739,6 +765,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
   function openTool() {
     var mine = ++loadSeq; flushSave();
     show("app");
+    scrollTab();
     var tp = tool.type;
     $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup";
     renderBanner();
@@ -788,7 +815,24 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
   }
   /* build() resets inputs, so keep saved ones across it */
   var _build = build;
-  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); };
+  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); };
+  var FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  // Phone view of the Annual budget: one month at a time (plus the yearly total) instead of 14 columns.
+  function applyPhone() {
+    if (!phoneOn) return;
+    $("mName").textContent = FULL[phoneMonth];
+    Array.prototype.forEach.call(document.querySelectorAll("#sheet table tr"), function (tr) {
+      var cells = tr.children; if (cells.length < 14) return;
+      for (var i = 0; i < cells.length; i++) if (cells[i].colSpan > 1) return;
+      for (var j = 0; j < cells.length; j++) {
+        var keep = j === 0 || (j >= 1 && j <= 12 ? j - 1 === phoneMonth : j === 13);
+        cells[j].style.display = keep ? "" : "none";
+      }
+    });
+  }
+  function stepMonth(d) { phoneMonth = (phoneMonth + d + 12) % 12; applyPhone(); }
+  $("mPrev").addEventListener("click", function () { stepMonth(-1); });
+  $("mNext").addEventListener("click", function () { stepMonth(1); });
 
   /* ---------- bills and reminders ---------- */
   var bills = [], billsLoaded = false, billTimer = null, editingId = null;
@@ -1375,6 +1419,11 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
     $("tabs").innerHTML = TOOLS.filter(function (t) { return !t.hidden; }).map(function (t) {
       return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '">' + t.name + "</button>";
     }).join("");
+    scrollTab();
+  }
+  function scrollTab() {   // keep the current tab in view on a phone
+    var sel = $("tabs").querySelector('[aria-selected="true"]');
+    if (sel) $("tabs").scrollLeft = Math.max(0, sel.offsetLeft - ($("tabs").clientWidth - sel.offsetWidth) / 2);
   }
   $("tabs").addEventListener("click", function (e) {
     var id = e.target.getAttribute && e.target.getAttribute("data-t"); if (!id || id === tool.id) return;
