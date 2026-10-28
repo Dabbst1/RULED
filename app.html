@@ -101,6 +101,7 @@ td.lab input.nm:hover{border-color:var(--rule)} td.lab input.nm:focus{border-col
 .tick{flex:0 0 26px;height:26px;border-radius:50%;border:2px solid var(--blue);display:grid;place-items:center;font-weight:800;color:#fff;font-size:15px}
 .step.done .tick{background:var(--blue)}.step.done .st{text-decoration:line-through;color:var(--muted)}
 .step .st{flex:1}.step .st span{display:block;font-size:13px;color:var(--muted);text-decoration:none}
+#login .linkbtn,#inactive .linkbtn{background:none;border:0;color:var(--blue);font:600 14px/1.2 inherit;cursor:pointer;text-decoration:underline;padding:0}
 .step button,.panel .linkbtn{font:600 14px/1 inherit;padding:9px 12px;border:2px solid var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer}
 #saved{font-size:13px;color:var(--muted)}
 .goalcard{background:#fff;border:2px solid var(--ink);border-radius:4px;padding:14px 16px;margin:0 0 12px}
@@ -151,21 +152,24 @@ tr.addrow td{padding:6px}
 </header>
 
 <section id="login" class="card" hidden>
-  <h2>Log in</h2>
+  <h2 id="loginTitle">Log in</h2>
   <form id="loginForm">
     <label for="email">Email</label>
     <input id="email" type="email" autocomplete="email" required>
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" required>
-    <button class="btn" type="submit">Log in</button>
+    <button class="btn" type="submit" id="loginBtn">Log in</button>
     <p class="msg" id="loginMsg" role="alert"></p>
+    <p style="margin-top:14px;font-size:14px"><button type="button" class="linkbtn" id="toggleMode">New here? Create an account</button> &nbsp;·&nbsp; <button type="button" class="linkbtn" id="forgotPw">Forgot password?</button></p>
   </form>
 </section>
 
 <section id="inactive" class="card" hidden>
   <h2>Your membership isn&rsquo;t active</h2>
-  <p>Renew to get back into your tools. Your saved numbers are still here when you do.</p>
-  <a class="btn" id="renew" href="index.html#pricing">See plans</a>
+  <p id="inactiveMsg">Choose a plan to get into your tools. Any numbers you’ve saved are still here.</p>
+  <div class="wizbtns" style="margin-top:14px"><button class="btn" type="button" data-plan="monthly">Monthly — $9</button><button class="btn" type="button" data-plan="annual">Annual — $79</button></div>
+  <p class="msg" id="planMsg" role="alert"></p>
+  <p style="margin-top:12px;font-size:14px"><button type="button" class="linkbtn" id="inactivePortal" hidden>Manage billing</button> <button type="button" class="linkbtn" id="inactiveOut">Log out</button></p>
 </section>
 
 <dialog id="pickDlg" aria-labelledby="pickTitle">
@@ -922,7 +926,7 @@ tr.addrow td{padding:6px}
     $("acName").value = displayName(u); $("acEmail").value = u.email || ""; $("acMsg").textContent = ""; $("pwMsg").textContent = "";
     $("pwForm").reset();
     if (CFG.devMode) { $("acMember").textContent = "Active (test mode)."; return; }
-    supa.from("members").select("status,current_period_end").eq("user_id", u.id).maybeSingle().then(function (r) {
+    supa.from("members").select("status,current_period_end,stripe_customer_id").eq("user_id", u.id).maybeSingle().then(function (r) {
       var m = r.data, h = "";
       if (!m) h = "No active membership found.";
       else {
@@ -931,7 +935,9 @@ tr.addrow td{padding:6px}
           (m.current_period_end ? "<p><b>" + (on ? "Current period ends" : "Ended") + ":</b> " + shortDate(m.current_period_end) + "</p>" : "");
       }
       h += (u.created_at ? "<p><b>Member since:</b> " + shortDate(u.created_at) + "</p>" : "");
+      if (m && m.stripe_customer_id) h += '<p style="margin-top:10px"><button type="button" class="btn ghost" id="acBilling">Manage billing or cancel</button></p><p class="msg" id="acBillMsg" role="alert"></p>';
       $("acMember").innerHTML = h;
+      if ($("acBilling")) $("acBilling").addEventListener("click", function () { goBilling("stripe-portal", {}, $("acBillMsg")); });
     });
   }
   $("who").addEventListener("click", function () {
@@ -1299,7 +1305,8 @@ tr.addrow td{padding:6px}
   $("selYear").addEventListener("change", openTool);
 
   function boot() {
-    $("logo").href = CFG.homeUrl; $("renew").href = CFG.homeUrl + "#pricing";
+    $("logo").href = CFG.homeUrl;
+    if (location.hash === "#signup") setMode("signup");
     var now = new Date();
     $("selMonth").innerHTML = MONTHS.map(function (m, i) { return '<option value="' + (i < 9 ? "0" : "") + (i + 1) + '"' + (i === now.getMonth() ? " selected" : "") + ">" + m + "</option>"; }).join("");
     var y = now.getFullYear();
@@ -1308,9 +1315,56 @@ tr.addrow td{padding:6px}
     makeTabs();
     if (CFG.devMode) { $("who").textContent = "you@example.com"; start(h); return; }
     supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+    supa.auth.onAuthStateChange(function (ev, ss) { if (ev === "PASSWORD_RECOVERY" && ss) { session = ss; $("who").textContent = ss.user.email; $("signout").hidden = false; tool = TOOLS.filter(function (t) { return t.id === "account"; })[0]; makeTabs(); openTool(); } });
     supa.auth.getSession().then(function (r) { session = r.data.session; if (!session) { show("login"); return; } afterLogin(); });
   }
-  function afterLogin() { $("who").textContent = displayName(session.user) || session.user.email; $("signout").hidden = false; start(location.hash.slice(1)); }
+  function afterLogin() {
+    $("who").textContent = displayName(session.user) || session.user.email; $("signout").hidden = false;
+    var paid = /[?&]paid=1/.test(location.search), tries = 0;
+    function check() {
+      supa.from("members").select("status,current_period_end,stripe_customer_id").eq("user_id", session.user.id).maybeSingle().then(function (r) {
+        var m = r.data, on = m && (m.status === "active" || m.status === "trialing") && (!m.current_period_end || new Date(m.current_period_end) > new Date());
+        if (on) { if (paid) history.replaceState(null, "", location.pathname + "#home"); start(paid ? "home" : location.hash.slice(1)); return; }
+        if (paid && tries++ < 10) { show("inactive"); $("inactiveMsg").textContent = "Payment received. Activating your membership…"; setTimeout(check, 2000); return; }
+        $("inactiveMsg").textContent = m && m.stripe_customer_id ? "Your membership isn’t active. Pick a plan to come back. Your saved numbers are still here." : "Choose a plan to get into your tools.";
+        $("inactivePortal").hidden = !(m && m.stripe_customer_id);
+        show("inactive");
+      });
+    }
+    check();
+  }
+  function fnUrl(name) { return CFG.calcUrl.replace(/\/calc$/, "/" + name); }
+  function callFn(name, body) {
+    return fetch(fnUrl(name), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: CFG.supabaseAnonKey }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok || !j.url) throw new Error(j.error || "fail"); return j.url; }); });
+  }
+  function goBilling(name, body, msgEl) {
+    msgEl.style.color = ""; msgEl.textContent = "One moment…";
+    callFn(name, body).then(function (u) { location.href = u; }).catch(function (e) { msgEl.textContent = e.message === "already_member" ? "You already have an active membership. Refresh the page." : "Couldn’t open the payment page. Try again in a moment."; });
+  }
+  $("inactive").addEventListener("click", function (e) {
+    var pl = e.target.getAttribute && e.target.getAttribute("data-plan");
+    if (pl) goBilling("stripe-checkout", { plan: pl }, $("planMsg"));
+  });
+  $("inactivePortal").addEventListener("click", function () { goBilling("stripe-portal", {}, $("planMsg")); });
+  $("inactiveOut").addEventListener("click", function () { supa.auth.signOut().then(function () { location.href = location.pathname; }); });
+
+  /* ---------- sign up / reset password ---------- */
+  var mode = "login";
+  function setMode(m) {
+    mode = m; var su = m === "signup";
+    $("loginTitle").textContent = su ? "Create your account" : "Log in"; $("loginBtn").textContent = su ? "Create account" : "Log in";
+    $("toggleMode").textContent = su ? "Have an account? Log in" : "New here? Create an account";
+    $("password").autocomplete = su ? "new-password" : "current-password"; $("loginMsg").textContent = ""; $("loginMsg").style.color = "";
+  }
+  $("toggleMode").addEventListener("click", function () { setMode(mode === "login" ? "signup" : "login"); });
+  $("forgotPw").addEventListener("click", function () {
+    var em = $("email").value.trim(); $("loginMsg").style.color = "";
+    if (!em) { $("loginMsg").textContent = "Type your email above first."; return; }
+    supa.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname + "#account" }).then(function (r) {
+      if (r.error) $("loginMsg").textContent = "Couldn’t send the email. Try again."; else { $("loginMsg").style.color = "var(--ink, #111)"; $("loginMsg").textContent = "Check your email for a link to set a new password."; }
+    });
+  });
   function start(h) {
     loadBills(); loadSetup().then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
@@ -1320,7 +1374,17 @@ tr.addrow td{padding:6px}
 
   $("loginForm").addEventListener("submit", function (e) {
     e.preventDefault(); $("loginMsg").textContent = "";
-    supa.auth.signInWithPassword({ email: $("email").value, password: $("password").value }).then(function (r) {
+    var em = $("email").value.trim(), pw = $("password").value;
+    if (mode === "signup") {
+      if (pw.length < 8) { $("loginMsg").textContent = "Use at least 8 characters for your password."; return; }
+      supa.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: location.origin + location.pathname } }).then(function (r) {
+        if (r.error) { $("loginMsg").textContent = r.error.message; return; }
+        if (r.data.session) { session = r.data.session; afterLogin(); return; }
+        $("loginMsg").style.color = "var(--ink, #111)"; $("loginMsg").textContent = "Almost there. Check your email and click the confirmation link, then log in.";
+      });
+      return;
+    }
+    supa.auth.signInWithPassword({ email: em, password: pw }).then(function (r) {
       if (r.error) { $("loginMsg").textContent = "That email and password don’t match."; return; }
       session = r.data.session; afterLogin();
     });
