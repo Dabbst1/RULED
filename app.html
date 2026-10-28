@@ -1311,12 +1311,19 @@ tr.addrow td{padding:6px}
     $("selMonth").innerHTML = MONTHS.map(function (m, i) { return '<option value="' + (i < 9 ? "0" : "") + (i + 1) + '"' + (i === now.getMonth() ? " selected" : "") + ">" + m + "</option>"; }).join("");
     var y = now.getFullYear();
     $("selYear").innerHTML = [y - 1, y, y + 1].map(function (v) { return '<option' + (v === y ? " selected" : "") + ">" + v + "</option>"; }).join("");
-    var h = location.hash.slice(1); tool = TOOLS.filter(function (t) { return t.id === h; })[0] || TOOLS[0];
+    var h = location.hash.slice(1); if (/access_token|error|type=/.test(h)) h = ""; tool = TOOLS.filter(function (t) { return t.id === h; })[0] || TOOLS[0];
     makeTabs();
     if (CFG.devMode) { $("who").textContent = "you@example.com"; start(h); return; }
     supa = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
     supa.auth.onAuthStateChange(function (ev, ss) { if (ev === "PASSWORD_RECOVERY" && ss) { session = ss; $("who").textContent = ss.user.email; $("signout").hidden = false; tool = TOOLS.filter(function (t) { return t.id === "account"; })[0]; makeTabs(); openTool(); } });
-    supa.auth.getSession().then(function (r) { session = r.data.session; if (!session) { show("login"); return; } afterLogin(); });
+    supa.auth.getSession().then(function (r) {
+      session = r.data.session;
+      if (!session) {
+        if (/error_description=/.test(location.hash)) { show("login"); $("loginMsg").textContent = "That confirmation link expired or was already used. Log in, or create the account again for a new link."; return; }
+        show("login"); return;
+      }
+      afterLogin();
+    });
   }
   function afterLogin() {
     $("who").textContent = displayName(session.user) || session.user.email; $("signout").hidden = false;
@@ -1324,7 +1331,7 @@ tr.addrow td{padding:6px}
     function check() {
       supa.from("members").select("status,current_period_end,stripe_customer_id").eq("user_id", session.user.id).maybeSingle().then(function (r) {
         var m = r.data, on = m && (m.status === "active" || m.status === "trialing") && (!m.current_period_end || new Date(m.current_period_end) > new Date());
-        if (on) { if (paid) history.replaceState(null, "", location.pathname + "#home"); start(paid ? "home" : location.hash.slice(1)); return; }
+        if (on) { if (paid) history.replaceState(null, "", location.pathname + "#home"); start(paid ? "home" : (/access_token|error|type=/.test(location.hash) ? "" : location.hash.slice(1))); return; }
         if (paid && tries++ < 10) { show("inactive"); $("inactiveMsg").textContent = "Payment received. Activating your membership…"; setTimeout(check, 2000); return; }
         $("inactiveMsg").textContent = m && m.stripe_customer_id ? "Your membership isn’t active. Pick a plan to come back. Your saved numbers are still here." : "Choose a plan to get into your tools.";
         $("inactivePortal").hidden = !(m && m.stripe_customer_id);
