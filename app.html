@@ -216,6 +216,7 @@ td.lab .mv{flex-direction:row}
 @media (max-width:700px){td.lab .mv{margin:0}td.lab .mv button{width:14px}}
 .seg{display:inline-flex;background:#fff;border:1px solid #BCD0F4;border-radius:999px;padding:3px;gap:2px}.seg button{border:0;background:none;padding:7px 18px;border-radius:999px;font:600 14px inherit;font-family:inherit;color:#47598A;cursor:pointer}.seg button.on{background:linear-gradient(135deg,#1D4ED8,#3B6FF0);color:#fff;box-shadow:0 3px 8px rgba(29,78,216,.3)}
 .seg[hidden],.actnote[hidden]{display:none}
+.actl{display:block;margin-top:6px;font-size:13px;color:#0F766E;font-weight:600}.actl i{font-style:normal;font-weight:700}.cmpna{color:#6B7BA6;font-size:13px;white-space:nowrap;margin-left:auto}
 .cmph{margin:12px 0 4px;font-size:14px;color:var(--muted,#47598A)}.cmpbad{color:#B91C1C}.cmpgood{color:#15803D}.step b.cmpbad,.step b.cmpgood{margin-left:auto;white-space:nowrap}
 .actnote .linkbtn{background:none;border:0;color:#1D4ED8;font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
 #planTip{position:fixed;z-index:70;background:#fff;border:1px solid #99E6D4;border-radius:14px;box-shadow:0 14px 34px rgba(15,60,50,.22);padding:12px 14px;font-size:13px;min-width:220px;max-width:300px}
@@ -1004,7 +1005,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     $("picker").hidden = true;
     fetch(tool.id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (l) {
       if (mine !== loadSeq) return;
-      layout = l; $("picker").hidden = !l.months; $("viewSeg").hidden = !l.months; if (!l.months && view !== "plan") setView("plan", true); loadData(mine);
+      layout = l; $("picker").hidden = !l.months; $("viewSeg").hidden = !l.months; if (!l.months && view !== "plan") setView("plan", true); if (l.months && wantActual) { setView("actual", true); } else if (l.months) { setView(view, true); } wantActual = false; loadData(mine);
     });
   }
   function loadData(mine) {
@@ -1715,59 +1716,73 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     bills.forEach(function (b) { var d = nextDue(b); if (!d) return; var n = daysUntil(d); if (n <= (b.remind || 3)) soon.push({ b: b, n: n }); });
     return soon.sort(function (x, y) { return x.n - y.n; });
   }
-  var homeCmp = null;
+  var homeCmp = null, homeActV = null, wantActual = false;
   function stripA(o) { var r = {}; Object.keys(o).forEach(function (k) { if (k.slice(0, 2) !== "a:") r[k] = o[k]; }); return r; }
+  function calcMonthly(ins) {
+    return fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), body: JSON.stringify({ sheet: "monthly-budget", inputs: ins }) })
+      .then(function (res) {
+        if (res.status === 401) { show("login"); throw new Error("stop"); }
+        if (res.status === 403) { show("inactive"); throw new Error("stop"); }
+        if (!res.ok) throw new Error("fail");
+        return res.json();
+      }).then(function (j) { return j.values; });
+  }
   function renderHome(mine) {
-    homeCmp = null;
-    var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1);
+    homeCmp = null; homeActV = null;
+    var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1), Lref = null, srcDoc = null;
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
     loadBills().then(loadGoals).then(loadSetup).then(function () { return loadSaved(key); }).then(function (saved) {
-      if (!isBlank(saved)) { var nsv = numericOf(saved); if (Object.keys(nsv).some(function (k) { return k.slice(0, 2) === "a:" && nsv[k]; })) homeCmp = saved; return stripA(nsv); }
-      return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); })
-        .then(function (Lm) { return monthlyDefaults(Lm, d.getMonth()); }).then(function (dd) { return dd.inputs; }).catch(function () { return {}; });
+      return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (Lm) {
+        Lref = Lm;
+        if (!isBlank(saved)) { srcDoc = saved; return stripA(numericOf(saved)); }
+        return monthlyDefaults(Lm, d.getMonth()).then(function (dd) { srcDoc = Object.assign({ __meta: dd.meta }, dd.inputs); return dd.inputs; });
+      }).catch(function () { return {}; });
     }).then(function (ins) {
       if (!Object.keys(ins).some(function (k) { return ins[k] !== 0; })) return {};
-      return fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), body: JSON.stringify({ sheet: "monthly-budget", inputs: ins }) })
-        .then(function (res) {
-          if (res.status === 401) { show("login"); throw new Error("stop"); }
-          if (res.status === 403) { show("inactive"); throw new Error("stop"); }
-          if (!res.ok) throw new Error("fail");
-          return res.json();
-        }).then(function (j) { return j.values; });
+      return calcMonthly(ins).then(function (v) {
+        var hasAct = srcDoc && Object.keys(srcDoc).some(function (k) { return k.slice(0, 2) === "a:" && srcDoc[k]; });
+        if (!hasAct) return v;
+        var ai = {}; Object.keys(ins).forEach(function (k) { ai[k] = srcDoc["a:" + k] || 0; });
+        return calcMonthly(ai).then(function (va) { homeActV = va; return v; }).catch(function (e) { if (e.message === "stop") throw e; return v; });
+      });
     }).then(function (v) {
-      if (!homeCmp) return v;
-      return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (Lm) { homeCmp = buildCompare(Lm, homeCmp); return v; }).catch(function () { homeCmp = null; return v; });
-    }).then(function (v) { if (mine === loadSeq) drawHome(v || {}); })
-      .catch(function (err) { if (err.message !== "stop" && mine === loadSeq) drawHome(null); });
+      try { if (Lref && srcDoc) homeCmp = buildCompare(Lref, srcDoc); } catch (e) { homeCmp = null; }
+      if (mine === loadSeq) drawHome(v || {});
+    }).catch(function (err) { if (err.message !== "stop" && mine === loadSeq) drawHome(null); });
   }
-  // Plan vs actual for the categories you have entered real amounts for
+  // Plan vs actual, category by category
   function buildCompare(Lm, saved) {
-    var dm = saved.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] }, ent = activeEntries(Lm, st), rows = [], tp = 0, ta = 0;
+    var dm = saved.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] }, ent = activeEntries(Lm, st), rows = [], tp = 0, ta = 0, tr = 0, hasAct = false;
     function sum(addrs, pre) { return addrs.reduce(function (t, a) { var x = saved[pre + a]; return t + (typeof x === "number" ? x : 0); }, 0); }
     ent.expense.forEach(function (e) {
-      var plan = sum(e.addrs, ""), act = sum(e.addrs, "a:"); if (!act) return;
-      rows.push({ name: e.name, plan: plan, act: act, diff: act - plan }); tp += plan; ta += act;
+      var plan = sum(e.addrs, ""), act = sum(e.addrs, "a:"); if (!plan && !act) return;
+      var has = !!act; if (has) { hasAct = true; ta += act; tr += plan; }
+      tp += plan; rows.push({ name: e.name, plan: plan, act: has ? act : null, diff: has ? act - plan : 0 });
     });
-    return rows.length ? { rows: rows, tp: tp, ta: ta } : null;
+    return rows.length ? { rows: rows, tp: tp, ta: ta, tr: tr, hasAct: hasAct } : null;
   }
   function cmpPanel(c) {
-    var over = c.rows.filter(function (r) { return r.diff > 0.005; }).sort(function (a, b) { return b.diff - a.diff; }),
-        under = c.rows.filter(function (r) { return r.diff < -0.005; }).sort(function (a, b) { return a.diff - b.diff; }), d = c.ta - c.tp;
-    function line(r, bad) { return '<div class="step"><div class="st">' + esc(r.name) + "<span>Plan " + money.format(r.plan) + " · Actual " + money.format(r.act) + '</span></div><b class="' + (bad ? "cmpbad" : "cmpgood") + '">' + (bad ? "+" : "-") + money.format(Math.abs(r.diff)) + "</b></div>"; }
-    var h = '<div class="panel"><h2>Plan vs. actual</h2><p class="sub">For the categories where you have entered what you really spent: planned ' + money.format(c.tp) + ", actual " + money.format(c.ta) +
-      (Math.abs(d) < 0.005 ? ". Right on plan." : d > 0 ? ". You are " + money.format(d) + " over plan." : ". You are " + money.format(-d) + " under plan.") + "</p>";
-    if (over.length) h += "<h3 class=\"cmph\">Over plan</h3>" + over.slice(0, 6).map(function (r) { return line(r, true); }).join("");
-    if (under.length) h += "<h3 class=\"cmph\">Under plan</h3>" + under.slice(0, 6).map(function (r) { return line(r, false); }).join("");
+    var rows = c.rows.slice().sort(function (a, b) { return b.plan - a.plan; }), hidden = Math.max(0, rows.length - 10); rows = rows.slice(0, 10);
+    var over = c.rows.filter(function (r) { return r.act !== null && r.diff > 0.005; }).sort(function (a, b) { return b.diff - a.diff; });
+    var d = c.ta - c.tr, h = '<div class="panel"><h2>Plan vs. actual</h2>';
+    h += '<p class="sub">' + (c.hasAct ? "Planned expenses for the month: " + money.format(c.tp) + ". Of the categories you have entered real spending for, you planned " + money.format(c.tr) + " and spent " + money.format(c.ta) +
+      (Math.abs(d) < 0.005 ? " (right on plan)." : d > 0 ? ", " + money.format(d) + " over plan." : ", " + money.format(-d) + " under plan.") : "Planned expenses for the month: " + money.format(c.tp) + ". You have not entered actual spending yet. Add it as you go and the gaps will show up here.") + "</p>";
+    h += rows.map(function (r) {
+      var right = r.act === null ? '<span class="cmpna">Actual: not entered</span>' : '<b class="' + (r.diff > 0.005 ? "cmpbad" : "cmpgood") + '">' + (r.diff > 0.005 ? "+" : r.diff < -0.005 ? "-" : "") + (Math.abs(r.diff) < 0.005 ? "On plan" : money.format(Math.abs(r.diff))) + "</b>";
+      return '<div class="step"><div class="st">' + esc(r.name) + "<span>Plan " + money.format(r.plan) + (r.act === null ? "" : " · Actual " + money.format(r.act)) + "</span></div>" + right + "</div>";
+    }).join("");
+    if (hidden) h += '<p class="sub" style="margin-top:6px">And ' + hidden + " more categories in your Monthly budget.</p>";
     if (over.length) h += '<p class="sub" style="margin-top:8px">Biggest gap: <b>' + esc(over[0].name) + "</b>, " + money.format(over[0].diff) + " over. Either cut back there next month, or raise its plan so your budget matches real life.</p>";
-    return h + '<p style="margin-top:10px"><button class="linkbtn" data-go="monthly-budget">Open Monthly budget</button></p></div>';
+    return h + '<p style="margin-top:10px"><button class="linkbtn" data-go="monthly-budget" data-act="1">' + (c.hasAct ? "Update actual spending" : "Enter actual spending") + '</button> <button class="linkbtn" data-go="monthly-budget">Open plan</button></p></div>';
   }
   function drawHome(v) {
     function m(x) { return v && typeof x === "number" ? money.format(x) : "—"; }
     var net = v ? v.D35 : null, h = "";
-    h += '<div class="cards"><div class="stat"><small>Take-home pay</small><b>' + m(v && v.D7) + '</b></div>' +
-      '<div class="stat"><small>Total expenses</small><b>' + m(v && v.D34) + '</b></div>' +
-      '<div class="stat' + (net > 0 ? " good" : net < 0 ? " bad" : "") + '"><small>Net income</small><b>' + m(net) + "</b></div></div>";
+    function al(x) { return '<span class="actl">' + (homeActV && typeof x === "number" ? "Actual so far: <i>" + money.format(x) + "</i>" : "Actual: not entered yet") + "</span>"; }
+    h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
+      '<div class="stat"><small>Planned expenses</small><b>' + m(v && v.D34) + "</b>" + al(homeActV && homeActV.D34) + '</div>' +
+      '<div class="stat' + (net > 0 ? " good" : net < 0 ? " bad" : "") + '"><small>Planned net income</small><b>' + m(net) + "</b>" + al(homeActV && homeActV.D35) + "</div></div>";
     var steps = [
       { done: !!(setup && setup.done), t: "Choose your categories", s: "Pick the income and expenses you want to track. Takes about two minutes.", go: "setup", b: "Choose categories" },
       { done: !!(v && v.D3 > 0), t: "Enter your pay", s: "Add your paychecks for this month.", go: "monthly-budget", b: "Open Monthly budget" },
@@ -1796,6 +1811,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   $("homeBody").addEventListener("click", function (e) {
     var id = e.target.getAttribute && e.target.getAttribute("data-go"); if (!id) return;
+    wantActual = !!e.target.getAttribute("data-act");
     tool = TOOLS.filter(function (x) { return x.id === id; })[0]; history.replaceState(null, "", "#" + id); makeTabs(); openTool();
   });
 
