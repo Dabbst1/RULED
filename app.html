@@ -259,6 +259,10 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   header.top{flex-wrap:wrap}
 }
 @media (max-width:600px){header.top{padding:12px 12px}main{padding:0 12px 48px}.tabs,#tabs{border-radius:16px}.card{padding:22px}}
+.dropz{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;text-align:center;border:2px dashed var(--blue);border-radius:16px;background:#F5F9FF;padding:26px 16px;margin:0 0 16px;cursor:pointer;color:var(--ink)}.dropz b{font-size:18px;color:var(--blue)}.dropz span{font-size:14px;color:#51638f}.dropz.over{background:#E4EEFF}
+.rcgrid{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start}.rcimg{width:100%;max-height:320px;object-fit:contain;background:#F3F6FD;border:1px solid var(--line);border-radius:10px}.rcgrid .billform{margin:0;border:0;padding:0;box-shadow:none;background:transparent}
+.rcrow{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.rcrow small{display:block;color:#51638f}.rcrow button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;color:#B42318;font:inherit}
+@media (max-width:640px){.rcgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -355,6 +359,14 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     </form>
     <div id="goalList"></div>
   </section>
+  <section id="receiptsView" hidden>
+    <h1>Receipts</h1>
+    <p class="sub">Take a photo or choose a receipt. Monerem reads it on your device, you check the details, and the amount is added to that month&rsquo;s Actual spending. Photos are not saved, only the details.</p>
+    <label class="dropz" id="rcDrop" for="rcFile"><b>Add a receipt</b><span>Tap to take a photo or choose images, or drag them here</span></label>
+    <input type="file" id="rcFile" accept="image/*" multiple hidden>
+    <div id="rcWork"></div>
+    <div id="rcList"></div>
+  </section>
   <section id="billsView" hidden>
     <h1>Bills</h1>
     <p class="sub">Add your bills and Monerem will flag the ones coming up whenever you open it. Tap Paid after you pay one.</p>
@@ -378,6 +390,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     { id: "yearly-projection", name: "Annual budget" },
     { id: "monthly-budget", name: "Monthly budget" },
     { id: "bills", name: "Bills", type: "bills" },
+    { id: "receipts", name: "Receipts", type: "receipts" },
     { id: "goals", name: "Goals", type: "goals" },
     { id: "setup", name: "My categories", type: "setup", hidden: true },
     { id: "account", name: "Account", type: "account", hidden: true }
@@ -993,10 +1006,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     show("app");
     scrollTab();
     var tp = tool.type;
-    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup";
+    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts";
     renderBanner();
     if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
+    if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
     if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     var isBills = tp === "bills";
@@ -1124,6 +1138,214 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       (soon.length > 4 ? " and " + (soon.length - 4) + " more" : "") + '. <button type="button" data-t="bills">Open Bills</button>';
     el.hidden = false;
   }
+
+  /* ---------- receipts: read a photo, confirm it, add it to that month's Actual spending ---------- */
+  var receipts = [], rcRules = {}, rcLoaded = false, rcQueue = [], rcBusy = false, rcUrl = null, tessP = null, rcMsgText = "";
+  function rcLoad() {
+    if (rcLoaded) return Promise.resolve();
+    return loadSaved("receipts").then(function (sv) {
+      receipts = sv && Array.isArray(sv.__receipts) ? sv.__receipts : [];
+      rcRules = sv && sv.__rules && typeof sv.__rules === "object" ? sv.__rules : {};
+      rcLoaded = true;
+    }).catch(function () { rcLoaded = true; });
+  }
+  function rcSave() {
+    var keys = Object.keys(rcRules); if (keys.length > 200) keys.slice(0, keys.length - 200).forEach(function (k) { delete rcRules[k]; });
+    return doSave("receipts", { __receipts: receipts.slice(0, 400), __rules: rcRules });
+  }
+  var RC_MONEY = /(?:\$\s*)?(\d{1,3}(?:,\d{3})+|\d+)\s?[.,]\s?(\d{2})(?!\d)/g;
+  function rcMoney(line) { var out = [], m; RC_MONEY.lastIndex = 0; while ((m = RC_MONEY.exec(line))) { var v = parseFloat(m[1].replace(/,/g, "") + "." + m[2]); if (v > 0 && v < 100000) out.push(v); } return out; }
+  var RC_MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  function rcDate(text, now) {
+    var f = [], m, re, y, a, b;
+    re = /\b(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})\b/g; while ((m = re.exec(text))) f.push([+m[1], +m[2] - 1, +m[3]]);
+    re = /\b(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})\b/g; while ((m = re.exec(text))) { y = +m[3]; if (y < 100) y += 2000; a = +m[1]; b = +m[2]; f.push(a > 12 ? [y, b - 1, a] : [y, a - 1, b]); }
+    re = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/ig; while ((m = re.exec(text))) f.push([+m[3], RC_MON[m[1].toLowerCase()], +m[2]]);
+    re = /\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})\b/ig; while ((m = re.exec(text))) f.push([+m[3], RC_MON[m[2].toLowerCase()], +m[1]]);
+    for (var i = 0; i < f.length; i++) {
+      var d = new Date(f[i][0], f[i][1], f[i][2], 12);
+      if (d.getMonth() === f[i][1] && d.getTime() <= now.getTime() + 864e5 && d.getTime() >= now.getTime() - 400 * 864e5) return d;
+    }
+    return null;
+  }
+  function rcTitle(sv) { return sv.replace(/\w\S*/g, function (w) { return w.length > 3 && w === w.toUpperCase() ? w.charAt(0) + w.slice(1).toLowerCase() : w; }); }
+  function rcMerchant(lines) {
+    for (var i = 0; i < Math.min(lines.length, 8); i++) {
+      var l = lines[i].replace(/[^A-Za-z0-9&'’.\- ]/g, " ").replace(/\s+/g, " ").trim();
+      if (l.replace(/[^A-Za-z]/g, "").length < 3) continue;
+      if (/^(receipt|invoice|welcome|thank|tel|phone|www|http|store|order|date|cashier|server|table)/i.test(l)) continue;
+      if (/\d{3}[ -]?\d{3}[ -]?\d{4}/.test(l)) continue;
+      return rcTitle(l.slice(0, 40));
+    }
+    return "";
+  }
+  function rcParse(text, now) {
+    now = now || new Date();
+    var lines = String(text || "").split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean), strong = [], all = [];
+    lines.forEach(function (l, i) {
+      var vals = rcMoney(l), skip = /change|cash|tender|points|saved|you saved|balance|visa|mastercard|amex|debit|credit/i.test(l) && !/total|amount due/i.test(l);
+      if (!skip) vals.forEach(function (v) { all.push(v); });
+      if (/\btotal\b|amount\s*due|balance\s*due/i.test(l) && !/sub\s*-?\s*total|total\s*(savings|discount|tax|items|qty|points|saved)|tax\s*total/i.test(l)) {
+        if (vals.length) strong.push(vals[vals.length - 1]);
+        else if (lines[i + 1]) { var nv = rcMoney(lines[i + 1]); if (nv.length) strong.push(nv[0]); }
+      }
+    });
+    var total = strong.length ? Math.max.apply(null, strong) : (all.length ? Math.max.apply(null, all) : null);
+    return { merchant: rcMerchant(lines), date: rcDate(text || "", now), total: total, sure: strong.length > 0 };
+  }
+  var RC_GUESS = [
+    [/walmart|kroger|publix|aldi|safeway|whole foods|trader joe|costco|sam'?s club|winn|food lion|lidl|market|grocery|supermarket|sprouts|heb\b/i, ["groceries", "grocery", "supermarket", "food"]],
+    [/shell|bp\b|exxon|chevron|wawa|sunoco|circle k|speedway|marathon|mobil|racetrac|\bgas\b|fuel|texaco|7-eleven/i, ["gasoline", "gas", "fuel", "transportation", "car"]],
+    [/mcdonald|starbucks|chipotle|subway|restaurant|cafe|grill|pizza|burger|taco|diner|kitchen|bistro|dunkin|wendy|chick-fil|coffee|sushi|bbq/i, ["dining", "restaurant", "eatingout", "eatout", "takeout", "food"]],
+    [/cvs|walgreens|pharmacy|rite aid|clinic|dental|medical|health/i, ["medical", "health", "pharmacy", "doctor"]],
+    [/amazon|target|best buy|home depot|lowe|ikea|shop/i, ["shopping", "household", "home", "supplies", "clothing"]],
+    [/netflix|spotify|hulu|cinema|theater|amc|movie|game|steam/i, ["entertainment", "streaming", "fun"]]
+  ];
+  function rcGuessCat(text, merchant, cats) {
+    var rule = rcRules[nk(merchant)];
+    if (rule) { var hit = cats.filter(function (c) { return nk(c.name) === nk(rule); })[0]; if (hit) return hit.name; }
+    var hay = merchant + " " + String(text || "").slice(0, 400);
+    for (var g = 0; g < RC_GUESS.length; g++) {
+      if (!RC_GUESS[g][0].test(hay)) continue;
+      for (var c = 0; c < RC_GUESS[g][1].length; c++) {
+        var f = cats.filter(function (x) { return nk(x.name).indexOf(RC_GUESS[g][1][c]) >= 0; })[0];
+        if (f) return f.name;
+      }
+    }
+    return "";
+  }
+  function rcMonthState(y, mi) {
+    var key = "monthly-budget:" + y + "-" + pad(mi + 1);
+    return Promise.all([fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }), loadSaved(key)]).then(function (a) {
+      var Lm = a[0], saved = a[1];
+      if (!isBlank(saved)) return { key: key, Lm: Lm, doc: saved };
+      return monthlyDefaults(Lm, mi).then(function (dd) { return { key: key, Lm: Lm, doc: Object.assign({}, dd.toggles, dd.inputs, { __meta: dd.meta, __filled: true }) }; });
+    }).then(function (s) {
+      var dm = s.doc.__meta || {}; s.st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] };
+      s.cats = activeEntries(s.Lm, s.st).expense; return s;
+    });
+  }
+  function rcApply(s, cat, col, amt, sign) {
+    var e = s.cats.filter(function (c) { return nk(c.name) === nk(cat); })[0]; if (!e) return null;
+    var a = e.addrs[Math.min(col, e.addrs.length - 1)], k = "a:" + a, cur = typeof s.doc[k] === "number" ? s.doc[k] : 0, v = Math.round((cur + sign * amt) * 100) / 100;
+    s.doc[k] = v < 0 ? 0 : v; return a;
+  }
+  function rcOcr() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (tessP) return tessP;
+    tessP = new Promise(function (res, rej) {
+      var sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+      sc.onload = function () { if (window.Tesseract) res(window.Tesseract); else { tessP = null; rej(new Error("ocr")); } };
+      sc.onerror = function () { tessP = null; rej(new Error("ocr")); };
+      document.head.appendChild(sc);
+    });
+    return tessP;
+  }
+  function rcPrep(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, 1800 / Math.max(im.width, im.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
+        var x = c.getContext("2d"); x.drawImage(im, 0, 0, c.width, c.height);
+        try {
+          var d = x.getImageData(0, 0, c.width, c.height), p = d.data, lo = 255, hi = 0, i, g;
+          for (i = 0; i < p.length; i += 4) { g = p[i] * .3 + p[i + 1] * .59 + p[i + 2] * .11; p[i] = g; if (g < lo) lo = g; if (g > hi) hi = g; }
+          var span = Math.max(40, hi - lo);
+          for (i = 0; i < p.length; i += 4) { g = (p[i] - lo) * 255 / span; g = g < 0 ? 0 : g > 255 ? 255 : g; p[i] = p[i + 1] = p[i + 2] = g; }
+          x.putImageData(d, 0, 0);
+        } catch (e) { /* keep the plain picture */ }
+        res({ canvas: c, url: url });
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); rej(new Error("img")); };
+      im.src = url;
+    });
+  }
+  function rcParseMoneyInput(v) { var n = parseFloat(String(v || "").replace(/[^0-9.\-]/g, "")); return isFinite(n) ? Math.round(n * 100) / 100 : NaN; }
+  function rcFill(sel, cats, pick) {
+    sel.innerHTML = '<option value="">Choose a category</option>' + cats.map(function (c) { return '<option value="' + esc(c.name) + '"' + (pick && nk(pick) === nk(c.name) ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("");
+  }
+  function rcNext() {
+    if (rcBusy || !rcQueue.length || tool.id !== "receipts") return;
+    rcBusy = true; var file = rcQueue.shift(), left = rcQueue.length, work = $("rcWork");
+    function status(t) { work.innerHTML = '<div class="panel"><h2>Reading your receipt…</h2><p class="sub" id="rcProg">' + esc(t) + (left ? " (" + left + " more waiting)" : "") + "</p></div>"; }
+    if (!/^image\//.test(file.type) || file.size > 25 * 1024 * 1024) { rcBusy = false; rcMsgText = "That file is not a picture, or it is too large."; work.innerHTML = '<p class="sub">' + esc(rcMsgText) + "</p>"; rcNext(); return; }
+    status("Getting the picture ready");
+    rcPrep(file).then(function (pp) {
+      rcUrl = pp.url; status("Reading the text. The first scan takes a few seconds to load.");
+      return rcOcr().then(function (T) {
+        return T.recognize(pp.canvas, "eng", { logger: function (m) { if (m && m.status === "recognizing text") { var el = $("rcProg"); if (el) el.textContent = "Reading the text… " + Math.round((m.progress || 0) * 100) + "%"; } } });
+      }).then(function (r) { return r.data.text || ""; }).catch(function () { return null; });
+    }).catch(function () { return null; }).then(function (text) { rcReview(text, left); });
+  }
+  function rcReview(text, left) {
+    var now = new Date(), p = text ? rcParse(text, now) : { merchant: "", date: null, total: null, sure: false }, d = p.date || now, work = $("rcWork");
+    var iso = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    var note = text === null ? "Monerem could not read this picture automatically. Fill in the details below." : (p.total === null ? "Monerem could not find a total. Please type it in." : p.sure ? "Please check the details, then add it." : "I could not tell which number is the total, so please check it.");
+    work.innerHTML = '<div class="panel"><h2>Check this receipt</h2><p class="sub" style="margin-bottom:12px">' + esc(note) + (left ? " " + left + " more waiting." : "") + '</p><div class="rcgrid"><img class="rcimg" alt="Your receipt" src="' + rcUrl + '">' +
+      '<form class="billform" id="rcForm"><label>Store<input id="rcM" maxlength="40" value="' + esc(p.merchant) + '" placeholder="Where you shopped"></label><label>Date<input id="rcD" type="date" value="' + iso + '" required></label>' +
+      '<label>Total<input id="rcA" inputmode="decimal" autocomplete="off" value="' + (p.total === null ? "" : esc(money.format(p.total))) + '" placeholder="$0.00" required></label>' +
+      '<label>Category<select id="rcC" required></select></label><label>Paid from<select id="rcP"><option value="0">Paycheck 1</option><option value="1">Paycheck 2</option></select></label>' +
+      '<div style="display:flex;gap:8px;align-items:flex-end"><button class="btn" type="submit">Add to Actual</button><button type="button" class="tab" id="rcSkip">Skip</button></div></form></div><p class="sub" id="rcFormMsg" role="status" style="margin-top:10px"></p></div>';
+    $("rcP").value = d.getDate() <= 15 ? "0" : "1";
+    var cache = {};
+    function cats() {
+      var dt = new Date($("rcD").value + "T12:00"); if (isNaN(dt)) return Promise.resolve([]);
+      return rcMonthState(dt.getFullYear(), dt.getMonth()).then(function (s) { cache.s = s; return s.cats; });
+    }
+    function refill(first) {
+      cats().then(function (cs) {
+        var cur = $("rcC") ? $("rcC").value : ""; if (!$("rcC")) return;
+        rcFill($("rcC"), cs, first ? rcGuessCat(text || "", $("rcM").value, cs) : cur);
+      });
+    }
+    refill(true);
+    $("rcD").addEventListener("change", function () { $("rcP").value = new Date($("rcD").value + "T12:00").getDate() <= 15 ? "0" : "1"; refill(false); });
+    $("rcM").addEventListener("change", function () { if (!$("rcC").value && cache.s) { var g = rcGuessCat("", $("rcM").value, cache.s.cats); if (g) $("rcC").value = g; } });
+    function done(msg) { if (rcUrl) { URL.revokeObjectURL(rcUrl); rcUrl = null; } rcBusy = false; $("rcWork").innerHTML = msg ? '<p class="sub" style="margin:0 0 12px"><b>' + esc(msg) + "</b></p>" : ""; renderReceipts(); rcNext(); }
+    $("rcSkip").addEventListener("click", function () { done(""); });
+    $("rcForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var amt = rcParseMoneyInput($("rcA").value), dt = new Date($("rcD").value + "T12:00"), cat = $("rcC").value, col = +$("rcP").value, fm = $("rcFormMsg"), btn = e.target.querySelector("button[type=submit]");
+      if (!(amt > 0)) { fm.textContent = "Type the total as a number, like 24.50."; return; }
+      if (isNaN(dt)) { fm.textContent = "Pick the date on the receipt."; return; }
+      if (!cat) { fm.textContent = "Choose which category this belongs to."; return; }
+      btn.disabled = true; fm.textContent = "Adding…";
+      rcMonthState(dt.getFullYear(), dt.getMonth()).then(function (s) {
+        var addr = rcApply(s, cat, col, amt, 1);
+        if (addr === null) { fm.textContent = "That category is not in " + MONTHS[dt.getMonth()] + "’s budget. Pick another."; btn.disabled = false; return; }
+        return doSave(s.key, s.doc).then(function () {
+          var store = $("rcM").value.trim() || "Receipt";
+          receipts.unshift({ id: Date.now().toString(36), date: $("rcD").value, merchant: store, amount: amt, category: cat, col: col, key: s.key });
+          rcRules[nk(store)] = cat; return rcSave();
+        }).then(function () { done(money.format(amt) + " added to " + cat + " for " + MONTHS[dt.getMonth()] + "."); });
+      }).catch(function () { fm.textContent = "Something went wrong. Try again."; btn.disabled = false; });
+    });
+    work.scrollIntoView({ block: "nearest" });
+  }
+  function renderReceipts() {
+    var box = $("rcList"), now = new Date(), ym = now.getFullYear() + "-" + pad(now.getMonth() + 1), mine = receipts.filter(function (r) { return String(r.date).slice(0, 7) === ym; }), tot = mine.reduce(function (t, r) { return t + r.amount; }, 0);
+    if (!receipts.length) { box.innerHTML = '<p class="sub">No receipts yet. Add your first one above.</p>'; return; }
+    box.innerHTML = '<div class="panel"><h2>Recent receipts</h2><p class="sub">' + (mine.length ? "This month: " + money.format(tot) + " from " + mine.length + (mine.length === 1 ? " receipt." : " receipts.") : "Nothing from this month yet.") + "</p>" +
+      receipts.slice(0, 30).map(function (r) {
+        return '<div class="rcrow"><div><b>' + esc(r.merchant) + "</b><small>" + esc(r.date) + " · " + esc(r.category) + '</small></div><div style="display:flex;gap:10px;align-items:center"><b>' + money.format(r.amount) + '</b><button type="button" data-rcdel="' + esc(r.id) + '">Delete</button></div></div>';
+      }).join("") + "</div>";
+  }
+  function renderReceiptsOpen() { renderReceipts(); }
+  function rcAdd(files) { rcQueue = rcQueue.concat(Array.prototype.slice.call(files)); rcNext(); }
+  $("rcFile").addEventListener("change", function (e) { var f = e.target.files; if (f && f.length) rcAdd(f); e.target.value = ""; });
+  ["dragover", "dragenter"].forEach(function (n) { $("rcDrop").addEventListener(n, function (e) { e.preventDefault(); $("rcDrop").classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (n) { $("rcDrop").addEventListener(n, function (e) { e.preventDefault(); $("rcDrop").classList.remove("over"); if (n === "drop" && e.dataTransfer && e.dataTransfer.files.length) rcAdd(e.dataTransfer.files); }); });
+  $("rcList").addEventListener("click", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-rcdel"); if (!id) return;
+    var r = receipts.filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    if (!confirm("Delete this receipt and take " + money.format(r.amount) + " back out of " + r.category + "?")) return;
+    e.target.disabled = true;
+    var m = /(\d{4})-(\d{2})$/.exec(r.key || "");
+    var back = m ? rcMonthState(+m[1], +m[2] - 1).then(function (s) { if (rcApply(s, r.category, r.col || 0, r.amount, -1) !== null) return doSave(s.key, s.doc); }) : Promise.resolve();
+    back.catch(function () {}).then(function () { receipts = receipts.filter(function (x) { return x.id !== id; }); return rcSave(); }).then(renderReceipts);
+  });
+  if (CFG.devMode) window.__rc = { parse: rcParse, date: rcDate };
+
   function renderBills() {
     var items = bills.map(function (b) { return { b: b, d: nextDue(b) }; });
     var active = items.filter(function (x) { return x.d; }).sort(function (x, y) { return x.d - y.d; });
