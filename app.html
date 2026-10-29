@@ -638,6 +638,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     name = String(name).trim().slice(0, 40); if (!name) return;
     if (pick.mode === "swap") {
       var def = (layout.rows.filter(function (x) { return x.type === "data" && x.row === pick.row; })[0] || {}).label;
+      addGone(meta, meta.labels[pick.row] || def); unGone(meta, name);
       if (name === def) delete meta.labels[pick.row]; else meta.labels[pick.row] = name;
       var inp = document.querySelector('input[data-nm="' + pick.row + '"]'); if (inp) inp.value = name;
       buildRowsPanel(); scheduleSave(); $("pickDlg").close(); return;
@@ -645,7 +646,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     var blk = customBlocks()[pick.idx];
     var slot = blk.slots.filter(function (sl) { return meta.custom.indexOf(sl.row) < 0; })[0];
     if (!slot) { $("pickMsg").textContent = "You’ve reached the limit of " + blk.max + "."; return; }
-    meta.custom.push(slot.row); meta.labels[slot.row] = name;
+    meta.custom.push(slot.row); meta.labels[slot.row] = name; unGone(meta, name);
     meta.hidden = meta.hidden.filter(function (x) { return x !== slot.row; });
     var tr = document.querySelector('tr[data-slot="' + slot.row + '"]'); tr.hidden = false; tr.querySelector("input.nm").value = name;
     updateAdd(); buildRowsPanel(); scheduleSave();
@@ -654,12 +655,13 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     if (blk.slots.every(function (sl) { return meta.custom.indexOf(sl.row) >= 0; })) closePicker(tr);
   }
   function restoreRow(row) {
-    meta.removed = meta.removed.filter(function (x) { return x !== row; });
+    meta.removed = meta.removed.filter(function (x) { return x !== row; }); unGone(meta, builtinName(row));
     var ro = rowObj(row); if (ro && ro.toggle) { inputs[ro.toggle] = 1; schedule(); }
     buildRowsPanel(); scheduleSave(); $("pickMsg").textContent = "Added back " + builtinName(row) + "."; drawPick();
   }
   function removeRow(row) {
     var ro = rowObj(row); if (ro && ro.toggle) inputs[ro.toggle] = 0;
+    addGone(meta, meta.labels[row] || (ro && ro.label));
     rowInputs(row).forEach(function (a) { inputs[a] = 0; var el = document.querySelector('input[data-a="' + a + '"]'); if (el) el.value = ""; });
     if (meta.removed.indexOf(row) < 0) meta.removed.push(row);
     buildRowsPanel(); schedule(); scheduleSave(); $("pickDlg").close();
@@ -742,7 +744,13 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       scheduleSave();
     }
   });
-  $("sheet").addEventListener("change", function (e) { if (e.target.getAttribute && e.target.getAttribute("data-nm")) buildRowsPanel(); });
+  $("sheet").addEventListener("focusin", function (e) { if (e.target.getAttribute && e.target.getAttribute("data-nm")) { var r = e.target.getAttribute("data-nm"), o = rowObj(Number(r)); e.target._prev = meta.labels[r] || (o ? o.label : ""); } });
+  $("sheet").addEventListener("change", function (e) {
+    var t = e.target, r = t.getAttribute && t.getAttribute("data-nm"); if (!r) return;
+    var o = rowObj(Number(r)), now = meta.labels[r] || (o ? o.label : "");
+    if (t._prev && nk(t._prev) !== nk(now)) { addGone(meta, t._prev); unGone(meta, now); scheduleSave(); }
+    buildRowsPanel();
+  });
   $("sheet").addEventListener("focusout", function (e) { // empty built-in name goes back to default
     var t = e.target, def = t.getAttribute && t.getAttribute("data-def");
     if (def && !t.value.trim()) t.value = def;
@@ -815,7 +823,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     if (addIdx !== null && addIdx !== undefined && addIdx !== "") { openPicker(Number(addIdx)); return; }
     var rm = t.getAttribute && t.getAttribute("data-rm");
     if (rm) {
-      rm = Number(rm);
+      rm = Number(rm); addGone(meta, meta.labels[rm]);
       meta.custom = meta.custom.filter(function (r) { return r !== rm; }); delete meta.labels[rm];
       meta.hidden = meta.hidden.filter(function (r) { return r !== rm; });
       var tr2 = document.querySelector('tr[data-slot="' + rm + '"]'); tr2.hidden = true;
@@ -903,6 +911,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     meta.custom = Array.isArray(m.custom) ? m.custom : [];
     meta.hidden = Array.isArray(m.hidden) ? m.hidden : [];
     meta.removed = Array.isArray(m.removed) ? m.removed : [];
+    meta.gone = Array.isArray(m.gone) ? m.gone : [];
     pruneMeta();
     Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
   }
@@ -1364,6 +1373,22 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   /* ---------- keep Annual and Monthly in step (current year) ---------- */
   var syncP = null;
+  function nk(x) { return String(x).replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }
+  function hasName(list, n) { return (list || []).some(function (x) { return nk(x) === nk(n); }); }
+  function addGone(st, n) { if (!n) return; st.gone = st.gone || []; if (!hasName(st.gone, n)) { st.gone.push(n); if (st.gone.length > 60) st.gone.shift(); } }
+  function unGone(st, n) { if (!n || !st.gone) return; st.gone = st.gone.filter(function (x) { return nk(x) !== nk(n); }); }
+  // Remove the category with this name from a layout's state; amounts that were in it are listed in `zeroed`.
+  function dropByName(L, st, n, zeroed) {
+    var ent = activeEntries(L, st), hit = false;
+    ["income", "expense"].forEach(function (g) {
+      ent[g].forEach(function (e) {
+        if (nk(e.name) !== nk(n)) return;
+        if (e.def !== null) { if (st.removed.indexOf(e.row) < 0) st.removed.push(e.row); } else { st.custom = st.custom.filter(function (x) { return x !== e.row; }); delete st.labels[e.row]; }
+        e.addrs.forEach(function (a) { zeroed.push(a); }); hit = true;
+      });
+    });
+    return hit;
+  }
   function inAddrs(cells) { return Object.keys(cells).filter(function (k) { return cells[k].k === "input"; }).map(function (k) { return cells[k].a; }); }
   function colKey(a) { var m = /^([A-Z]+)/.exec(a); return (m ? m[1].length : 0) * 1000 + (m ? m[1].charCodeAt(m[1].length - 1) : 0); }
   function activeEntries(L, st) {
@@ -1388,14 +1413,14 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function adoptNames(L, st, V, order) {
     var ent = activeEntries(L, st), changed = false;
     ["income", "expense"].forEach(function (g) {
-      var E = ent[g], ord = order[g] || [], lo = ord.map(function (x) { return x.toLowerCase(); }), have = E.map(function (e) { return e.name.toLowerCase(); });
-      var cand = E.map(function (e, i) { return { e: e, i: i }; }).filter(function (c) { return lo.indexOf(c.e.name.toLowerCase()) < 0 && c.e.addrs.every(function (a) { return !V[a]; }); });
+      var E = ent[g], ord = order[g] || [], lo = ord.map(function (x) { return x.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }), have = E.map(function (e) { return e.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); });
+      var cand = E.map(function (e, i) { return { e: e, i: i }; }).filter(function (c) { return lo.indexOf(c.e.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()) < 0 && c.e.addrs.every(function (a) { return !V[a]; }); });
       ord.forEach(function (nm, oi) {
-        if (have.indexOf(nm.toLowerCase()) >= 0 || !cand.length) return;
+        if (have.indexOf(nm.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()) >= 0 || !cand.length) return;
         var bi = 0; cand.forEach(function (c, k) { if (Math.abs(c.i - oi) < Math.abs(cand[bi].i - oi)) bi = k; });
         var c = cand.splice(bi, 1)[0];
         if (c.e.def !== null && nm === c.e.def) delete st.labels[c.e.row]; else st.labels[c.e.row] = nm;
-        have.push(nm.toLowerCase()); changed = true;
+        have.push(nm.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()); changed = true;
       });
     });
     return changed;
@@ -1404,8 +1429,8 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function applyOrder(L, st, V, order) {
     var ent = activeEntries(L, st), changed = false;
     ["income", "expense"].forEach(function (g) {
-      var E = ent[g], ord = (order[g] || []).map(function (x) { return x.toLowerCase(); }), pos = [], items = [];
-      E.forEach(function (e, i) { var k = ord.indexOf(e.name.toLowerCase()); if (k >= 0) { pos.push(i); items.push({ e: e, k: k }); } });
+      var E = ent[g], ord = (order[g] || []).map(function (x) { return x.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }), pos = [], items = [];
+      E.forEach(function (e, i) { var k = ord.indexOf(e.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()); if (k >= 0) { pos.push(i); items.push({ e: e, k: k }); } });
       items.sort(function (a, b) { return a.k - b.k; });
       var snap = items.map(function (it) { return { name: it.e.name, vals: it.e.addrs.map(function (a) { return V[a] || 0; }) }; });
       pos.forEach(function (p, k) {
@@ -1425,7 +1450,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
             var k = "monthly-budget:" + Y + "-" + pad(idx + 1);
             return loadSaved(k).then(function (doc) {
               if (!doc) return;
-              var dm = doc.__meta || {}, m0 = { labels: dm.labels || {}, custom: dm.custom || [], hidden: dm.hidden || [], removed: dm.removed || [] };
+              var dm = doc.__meta || {}, m0 = { labels: dm.labels || {}, custom: dm.custom || [], hidden: dm.hidden || [], removed: dm.removed || [], gone: dm.gone || [] };
               var r = monthlyFromAnnual(snap, L, m0, idx, numericOf(doc), true);
               if (!r.changed) return;
               var nd = Object.assign({}, doc, r.inputs); nd.__meta = r.meta; return doSave(k, nd);
@@ -1443,37 +1468,56 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       syncP = fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (La) {
         return loadSaved("yearly-projection").then(function (doc) {
           if (!doc) return;
-          var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: dm.removed || [] };
+          var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: (dm.removed || []).slice(), gone: (dm.gone || []).slice() };
           var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [];
           var ga = rowGroups(La), targets = {}, blocks = {};
           // Annual's Tithe is a calculated row; never mirror Monthly's Tithe into a second, typed-in row (and clean up any earlier copy)
           var skip = {}, dup = false;
-          La.rows.forEach(function (r) { if (r.type === "data" && r.toggle && am.removed.indexOf(r.row) < 0) skip[(am.labels[r.row] || r.label).toLowerCase()] = 1; });
+          La.rows.forEach(function (r) { if (r.type === "data" && r.toggle && am.removed.indexOf(r.row) < 0) skip[(am.labels[r.row] || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = 1; });
           La.rows.forEach(function (r) {
             if (r.type !== "custom") return;
             r.slots.forEach(function (sl) {
               var nmx = am.labels[sl.row];
-              if (am.custom.indexOf(sl.row) >= 0 && nmx && skip[nmx.toLowerCase()]) {
+              if (am.custom.indexOf(sl.row) >= 0 && nmx && skip[nmx.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()]) {
                 am.custom.splice(am.custom.indexOf(sl.row), 1); delete am.labels[sl.row];
                 inAddrs(sl.cells).forEach(function (a) { doc[a] = 0; }); dup = true;
               }
             });
           });
+          // a typed-in row that only differs from a built-in row by spacing or punctuation (Paycheck 1 / Paycheck1) is the same category: fold it in
+          var nkk = function (x) { return String(x).replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }, bmap = {};
+          La.rows.forEach(function (r) { if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && rowInputs(r.row, La).length) bmap[nkk(am.labels[r.row] || r.label)] = r.row; });
+          La.rows.forEach(function (r) {
+            if (r.type !== "custom") return;
+            r.slots.forEach(function (sl) {
+              var nmx = am.labels[sl.row], br = nmx && bmap[nkk(nmx)];
+              if (am.custom.indexOf(sl.row) >= 0 && br) {
+                var ca = inAddrs(sl.cells).sort(function (x, y) { return colKey(x) - colKey(y); }), ba = rowInputs(br, La).slice().sort(function (x, y) { return colKey(x) - colKey(y); });
+                ca.forEach(function (a, i) { if (ba[i] && !doc[ba[i]] && doc[a]) doc[ba[i]] = doc[a]; doc[a] = 0; });
+                am.custom.splice(am.custom.indexOf(sl.row), 1); delete am.labels[sl.row]; dup = true;
+              }
+            });
+          });
+          // categories deleted on the Monthly side go away here too
+          var mgone = mm.gone || [], mAct = {}, zz = [];
+          var mEnt = activeEntries(Lm, { labels: ml, custom: mc, removed: mr }); ["income", "expense"].forEach(function (g) { mEnt[g].forEach(function (e) { mAct[nk(e.name)] = 1; }); });
+          mgone.forEach(function (n) { if (mAct[nk(n)]) return; if (dropByName(La, am, n, zz)) dup = true; addGone(am, n); });
+          zz.forEach(function (a) { doc[a] = 0; });
           var mOrd = orderOf(Lm, { labels: ml, custom: mc, removed: mr });
-          mOrd.income = mOrd.income.filter(function (x) { return !skip[x.toLowerCase()]; }); mOrd.expense = mOrd.expense.filter(function (x) { return !skip[x.toLowerCase()]; });
+          mOrd.income = mOrd.income.filter(function (x) { return !skip[x.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()]; }); mOrd.expense = mOrd.expense.filter(function (x) { return !skip[x.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()]; });
           var adopted = adoptNames(La, am, doc, mOrd);
           La.rows.forEach(function (r) {
-            if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && rowInputs(r.row, La).length) targets[(am.labels[r.row] || r.label).toLowerCase()] = r.row;
-            if (r.type === "custom") { blocks[r.group === "income" ? "income" : "expense"] = r; r.slots.forEach(function (sl) { if (am.custom.indexOf(sl.row) >= 0 && am.labels[sl.row]) targets[am.labels[sl.row].toLowerCase()] = sl.row; }); }
+            if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && rowInputs(r.row, La).length) targets[(am.labels[r.row] || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = r.row;
+            if (r.type === "custom") { blocks[r.group === "income" ? "income" : "expense"] = r; r.slots.forEach(function (sl) { if (am.custom.indexOf(sl.row) >= 0 && am.labels[sl.row]) targets[am.labels[sl.row].replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = sl.row; }); }
           });
           var gm = rowGroups(Lm), nd = Object.assign({}, doc), changed = adopted || dup;
           function put(name, grp, v) {
-            if (skip[name.toLowerCase()]) return;
-            var row = targets[name.toLowerCase()];
+            if (skip[name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] || hasName(am.gone, name)) return;
+            var row = targets[name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()];
             if (!row) {
               var blk = blocks[grp], slot = blk && blk.slots.filter(function (sl) { return am.custom.indexOf(sl.row) < 0; })[0];
               if (!v || !slot) return;
-              am.custom.push(slot.row); am.labels[slot.row] = name; targets[name.toLowerCase()] = row = slot.row; changed = true;
+              am.custom.push(slot.row); am.labels[slot.row] = name; targets[name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = row = slot.row; changed = true;
             }
             v = Math.round(v * 100) / 100;
             if (Math.abs((nd[col + row] || 0) - v) > 0.004) { nd[col + row] = v; changed = true; }
@@ -1489,7 +1533,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
           var movedOrder = applyOrder(La, { labels: am.labels, custom: am.custom, removed: am.removed }, nd, mOrd);
           if (movedOrder) changed = true;
           if (!changed) return;
-          nd.__meta = Object.assign({}, dm, { labels: am.labels, custom: am.custom });
+          nd.__meta = Object.assign({}, dm, { labels: am.labels, custom: am.custom, removed: am.removed, gone: am.gone });
           return doSave("yearly-projection", nd).then(function () { return (movedOrder || adopted) ? pushAnnual() : null; });
         });
       }).catch(function () {});
@@ -1505,7 +1549,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       return loadSaved("yearly-projection").then(function (saved) {
         if (!saved) return { rows: [] };
         var inp = numericOf(saved), m = saved.__meta || {};
-        var am = { labels: m.labels || {}, custom: m.custom || [], removed: m.removed || [] }, groups = rowGroups(L), list = [], tithe = null;
+        var am = { labels: m.labels || {}, custom: m.custom || [], removed: m.removed || [], gone: m.gone || [] }, groups = rowGroups(L), list = [], tithe = null;
         L.rows.forEach(function (r) {
           if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0) {
             var name = am.labels[r.row] || r.label;
@@ -1520,36 +1564,41 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
             list.push({ name: am.labels[sl.row], group: r.group === "income" ? "income" : "expense", vals: vals });
           });
         });
-        if (!tithe) return { rows: list };
+        if (!tithe) return { rows: list, gone: am.gone };
         return fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), body: JSON.stringify({ sheet: "yearly-projection", inputs: inp }) })
           .then(function (res) { return res.ok ? res.json() : { values: {} }; })
           .then(function (j) {
             var vals = {}; COLS12.split("").forEach(function (c) { vals[c] = (j.values && j.values[c + tithe.row]) || 0; });
-            list.push({ name: tithe.name, group: tithe.group, vals: vals }); return { rows: list };
-          }).catch(function () { return { rows: list }; });
+            list.push({ name: tithe.name, group: tithe.group, vals: vals }); return { rows: list, gone: am.gone };
+          }).catch(function () { return { rows: list, gone: am.gone }; });
       });
     }).catch(function () { return { rows: [] }; });
   }
   // One month of the annual snapshot, placed into a Monthly layout. Each amount is split between the two paychecks.
   function monthlyFromAnnual(snap, Lm, m0, idx, cur, zeros) {
-    var col = COLS12.charAt(idx), m = { labels: Object.assign({}, m0.labels), custom: m0.custom.slice(), hidden: (m0.hidden || []).slice(), removed: m0.removed.slice() };
+    var col = COLS12.charAt(idx), m = { labels: Object.assign({}, m0.labels), custom: m0.custom.slice(), hidden: (m0.hidden || []).slice(), removed: m0.removed.slice(), gone: (m0.gone || []).slice() };
     var targets = {}, out = {}, any = false, changed = false;
     var order = { income: [], expense: [] };
     snap.rows.forEach(function (ar) { order[ar.group === "income" ? "income" : "expense"].push(ar.name); });
     if (snap.rows.length && adoptNames(Lm, m, cur || {}, order)) changed = true;
+    // categories deleted on the Annual side go away here too
+    var aHave = {}, zeroed = []; snap.rows.forEach(function (ar) { aHave[nk(ar.name)] = 1; });
+    (snap.gone || []).forEach(function (n) { if (aHave[nk(n)]) return; if (dropByName(Lm, m, n, zeroed)) changed = true; addGone(m, n); });
+    zeroed.forEach(function (a) { if (cur && cur[a]) { out[a] = 0; any = true; } });
     function addrs(cells) { return Object.keys(cells).filter(function (k) { return cells[k].k === "input"; }).map(function (k) { return cells[k].a; }); }
     Lm.rows.forEach(function (r) {
-      if (r.type === "data" && !r.cls && m.removed.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length) targets[(m.labels[r.row] || r.label).toLowerCase()] = addrs(r.cells);
-      if (r.type === "custom") r.slots.forEach(function (sl) { if (m.custom.indexOf(sl.row) >= 0 && m.labels[sl.row]) targets[m.labels[sl.row].toLowerCase()] = addrs(sl.cells); });
+      if (r.type === "data" && !r.cls && m.removed.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length) targets[(m.labels[r.row] || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = addrs(r.cells);
+      if (r.type === "custom") r.slots.forEach(function (sl) { if (m.custom.indexOf(sl.row) >= 0 && m.labels[sl.row]) targets[m.labels[sl.row].replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = addrs(sl.cells); });
     });
     snap.rows.forEach(function (ar) {
-      var v = Math.round((ar.vals[col] || 0) * 100) / 100, t = targets[ar.name.toLowerCase()];
+      var v = Math.round((ar.vals[col] || 0) * 100) / 100, t = targets[ar.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()];
       if (!v && !(zeros && t)) return;
       if (!t) {
+        if (hasName(m.gone, ar.name)) return;
         var blk = Lm.rows.filter(function (x) { return x.type === "custom" && (x.group === "income" ? "income" : "expense") === ar.group; })[0];
         var slot = blk && blk.slots.filter(function (sl) { return m.custom.indexOf(sl.row) < 0; })[0];
         if (!slot) return;
-        m.custom.push(slot.row); m.labels[slot.row] = ar.name; t = addrs(slot.cells); targets[ar.name.toLowerCase()] = t;
+        m.custom.push(slot.row); m.labels[slot.row] = ar.name; t = addrs(slot.cells); targets[ar.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = t;
       }
       if (cur && Math.abs((cur[t[0]] || 0) + (t[1] ? cur[t[1]] || 0 : 0) - v) < 0.005) return;
       var half = Math.floor(v * 100 / 2) / 100; changed = true;
