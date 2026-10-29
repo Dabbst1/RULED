@@ -1356,13 +1356,29 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
           var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: dm.removed || [] };
           var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [];
           var ga = rowGroups(La), targets = {}, blocks = {};
-          var mOrd = orderOf(Lm, { labels: ml, custom: mc, removed: mr }), adopted = adoptNames(La, am, doc, mOrd);
+          // Annual's Tithe is a calculated row; never mirror Monthly's Tithe into a second, typed-in row (and clean up any earlier copy)
+          var skip = {}, dup = false;
+          La.rows.forEach(function (r) { if (r.type === "data" && r.toggle && am.removed.indexOf(r.row) < 0) skip[(am.labels[r.row] || r.label).toLowerCase()] = 1; });
+          La.rows.forEach(function (r) {
+            if (r.type !== "custom") return;
+            r.slots.forEach(function (sl) {
+              var nmx = am.labels[sl.row];
+              if (am.custom.indexOf(sl.row) >= 0 && nmx && skip[nmx.toLowerCase()]) {
+                am.custom.splice(am.custom.indexOf(sl.row), 1); delete am.labels[sl.row];
+                inAddrs(sl.cells).forEach(function (a) { doc[a] = 0; }); dup = true;
+              }
+            });
+          });
+          var mOrd = orderOf(Lm, { labels: ml, custom: mc, removed: mr });
+          mOrd.income = mOrd.income.filter(function (x) { return !skip[x.toLowerCase()]; }); mOrd.expense = mOrd.expense.filter(function (x) { return !skip[x.toLowerCase()]; });
+          var adopted = adoptNames(La, am, doc, mOrd);
           La.rows.forEach(function (r) {
             if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && rowInputs(r.row, La).length) targets[(am.labels[r.row] || r.label).toLowerCase()] = r.row;
             if (r.type === "custom") { blocks[r.group === "income" ? "income" : "expense"] = r; r.slots.forEach(function (sl) { if (am.custom.indexOf(sl.row) >= 0 && am.labels[sl.row]) targets[am.labels[sl.row].toLowerCase()] = sl.row; }); }
           });
-          var gm = rowGroups(Lm), nd = Object.assign({}, doc), changed = adopted;
+          var gm = rowGroups(Lm), nd = Object.assign({}, doc), changed = adopted || dup;
           function put(name, grp, v) {
+            if (skip[name.toLowerCase()]) return;
             var row = targets[name.toLowerCase()];
             if (!row) {
               var blk = blocks[grp], slot = blk && blk.slots.filter(function (sl) { return am.custom.indexOf(sl.row) < 0; })[0];
