@@ -1714,10 +1714,20 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     if (hasData && !window.confirm("Replace this month’s amounts with " + name + "’s?")) return;
     loadSaved(key).then(function (saved) {
       if (!saved) { setStatus("Nothing saved for " + name + " yet.", true); return; }
+      var oldGone = (meta.gone || []).slice();
       Object.keys(inputs).forEach(function (a) { inputs[a] = 0; });
       meta = { labels: {}, custom: [], hidden: [], removed: [] };
-      applySaved(saved); build(); fillInputs(); buildRowsPanel(); run(); scheduleSave();
-      setStatus("Copied from " + name);
+      applySaved(saved);
+      // don't bring back categories you've deleted here or on the Annual budget
+      return annualSnapshot().then(function (snap) {
+        var have = {}; snap.rows.forEach(function (r) { have[nk(r.name)] = 1; });
+        var gone = oldGone.concat(meta.gone || []).concat((snap.gone || []).filter(function (n) { return !have[nk(n)]; })), z = [];
+        meta.gone = []; gone.forEach(function (n) { addGone(meta, n); });
+        meta.gone.forEach(function (n) { dropByName(layout, meta, n, z); });
+        build(); z.forEach(function (a) { if (a in inputs) inputs[a] = 0; });
+        fillInputs(); buildRowsPanel(); run(); scheduleSave();
+        setStatus("Copied from " + name);
+      });
     });
   });
 
