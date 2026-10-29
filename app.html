@@ -216,6 +216,11 @@ td.lab .mv{flex-direction:row}
 @media (max-width:700px){td.lab .mv{margin:0}td.lab .mv button{width:14px}}
 .seg{display:inline-flex;background:#fff;border:1px solid #BCD0F4;border-radius:999px;padding:3px;gap:2px}.seg button{border:0;background:none;padding:7px 18px;border-radius:999px;font:600 14px inherit;font-family:inherit;color:#47598A;cursor:pointer}.seg button.on{background:linear-gradient(135deg,#1D4ED8,#3B6FF0);color:#fff;box-shadow:0 3px 8px rgba(29,78,216,.3)}
 .seg[hidden],.actnote[hidden]{display:none}
+.cmph{margin:12px 0 4px;font-size:14px;color:var(--muted,#47598A)}.cmpbad{color:#B91C1C}.cmpgood{color:#15803D}.step b.cmpbad,.step b.cmpgood{margin-left:auto;white-space:nowrap}
+.actnote .linkbtn{background:none;border:0;color:#1D4ED8;font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
+#planTip{position:fixed;z-index:70;background:#fff;border:1px solid #99E6D4;border-radius:14px;box-shadow:0 14px 34px rgba(15,60,50,.22);padding:12px 14px;font-size:13px;min-width:220px;max-width:300px}
+#planTip[hidden]{display:none}#planTip h4{margin:0 0 6px;font-size:13px;color:#115E59}#planTip div{display:flex;justify-content:space-between;gap:14px;padding:2px 0}#planTip .tot{border-top:1px solid #E1EEF0;margin-top:4px;padding-top:5px;font-weight:700}
+#planTip button{margin-top:8px;width:100%;border:0;border-radius:10px;padding:8px 10px;background:linear-gradient(135deg,#0F766E,#14917F);color:#fff;font-weight:600;cursor:pointer;font-family:inherit}
 .actnote{background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;border-radius:12px;padding:10px 14px;margin:0 0 10px;font-size:14px}
 #sheet.actualview th{background:linear-gradient(180deg,#0F766E,#115E59)}#sheet.actualview th.colhl{background:linear-gradient(180deg,#14917F,#0F766E);box-shadow:inset 0 -2px 0 #5EEAD4}#sheet.actualview input.in{background:#F0FDF9}
 button:disabled{opacity:.5;cursor:default}
@@ -305,7 +310,8 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
   <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
-  <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time.</p>
+  <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time. Hover over a category to see its plan. <button type="button" class="linkbtn" id="fillAllPlan">No changes? Fill every empty row from my plan</button></p>
+  <div id="planTip" hidden></div>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="mstep" id="mstep" hidden><button type="button" id="mPrev" aria-label="Previous month">&#8249;</button><b id="mName"></b><button type="button" id="mNext" aria-label="Next month">&#8250;</button></div>
@@ -692,11 +698,45 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function setView(v, quiet) {
     view = v;
     Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+    $("planTip").hidden = true; tipRow = null;
     $("actNote").hidden = v !== "actual" || !layout || !layout.months;
     ["copyPrev", "fillAnnual"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
     $("sheet").classList.toggle("actualview", v === "actual");
     if (!quiet) { fillInputs(); run(); }
   }
+  /* ---------- Actual view: hover a category to see its plan and fill it in ---------- */
+  var tipTimer = null, tipRow = null;
+  function hideTip() { clearTimeout(tipTimer); tipTimer = setTimeout(function () { $("planTip").hidden = true; tipRow = null; }, 280); }
+  function keepTip() { clearTimeout(tipTimer); }
+  function showTip(tr) {
+    if (view !== "actual" || !tr || tr.hidden || !tr.querySelector("input.in") || tr.closest("thead")) return;
+    keepTip(); if (tipRow === tr && !$("planTip").hidden) return; tipRow = tr;
+    var table = tr.closest("table"), heads = table ? table.querySelectorAll("thead th") : [], tot = 0, lines = "";
+    Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) {
+      var a = el.getAttribute("data-a"), v = inputs[a] || 0, th = heads[el.closest("td").cellIndex]; tot += v;
+      lines += "<div><span>" + esc(th ? th.textContent.replace(/\u00d7/g, "").trim() : "Amount") + "</span><b>" + money.format(v) + "</b></div>";
+    });
+    var nm = tr.querySelector("input.nm"), name = nm ? nm.value : "";
+    $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + '<div class="tot"><span>Total plan</span><b>' + money.format(tot) + "</b></div>" +
+      (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>');
+    var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
+    tip.hidden = false; tip.style.left = Math.max(8, Math.min(r.left + 24, window.innerWidth - tip.offsetWidth - 8)) + "px";
+    var top = r.bottom - 4; if (top + tip.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - tip.offsetHeight + 4); tip.style.top = top + "px";
+  }
+  $("sheet").addEventListener("mouseover", function (e) { if (view === "actual") { var tr = e.target.closest && e.target.closest("tr"); if (tr) showTip(tr); } });
+  $("sheet").addEventListener("mouseleave", hideTip); $("planTip").addEventListener("mouseenter", keepTip); $("planTip").addEventListener("mouseleave", hideTip);
+  $("sheet").addEventListener("focusin", function (e) { if (view === "actual" && e.target.classList && e.target.classList.contains("in")) showTip(e.target.closest("tr")); });
+  $("planTip").addEventListener("mousedown", function (e) { e.preventDefault(); });
+  window.addEventListener("scroll", function () { $("planTip").hidden = true; tipRow = null; }, true);
+  $("planTip").addEventListener("click", function (e) {
+    if (e.target.id !== "tipFill" || !tipRow) return;
+    Array.prototype.forEach.call(tipRow.querySelectorAll("input.in"), function (el) { var a = el.getAttribute("data-a"); actual[a] = inputs[a] || 0; el.value = fmt(actual[a]); });
+    $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave(); setStatus("Filled from your plan.");
+  });
+  $("fillAllPlan").addEventListener("click", function () {
+    var n = 0; Array.prototype.forEach.call(document.querySelectorAll("#sheet input.in"), function (el) { var a = el.getAttribute("data-a"); if (!actual[a] && inputs[a]) { actual[a] = inputs[a]; n++; } });
+    fillInputs(); schedule(); scheduleSave(); setStatus(n ? "Filled every empty row from your plan." : "Nothing to fill.");
+  });
   $("viewSeg").addEventListener("click", function (e) { var v = e.target.getAttribute && e.target.getAttribute("data-view"); if (v && v !== view) setView(v); });
   /* ---------- undo / redo (last 5 changes) and clear column ---------- */
   var hist = [], redoS = [], histLast = null, histBusy = false, editFlag = false, dragFlag = false;
@@ -1675,12 +1715,15 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     bills.forEach(function (b) { var d = nextDue(b); if (!d) return; var n = daysUntil(d); if (n <= (b.remind || 3)) soon.push({ b: b, n: n }); });
     return soon.sort(function (x, y) { return x.n - y.n; });
   }
+  var homeCmp = null;
+  function stripA(o) { var r = {}; Object.keys(o).forEach(function (k) { if (k.slice(0, 2) !== "a:") r[k] = o[k]; }); return r; }
   function renderHome(mine) {
+    homeCmp = null;
     var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1);
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
     loadBills().then(loadGoals).then(loadSetup).then(function () { return loadSaved(key); }).then(function (saved) {
-      if (!isBlank(saved)) return numericOf(saved);
+      if (!isBlank(saved)) { var nsv = numericOf(saved); if (Object.keys(nsv).some(function (k) { return k.slice(0, 2) === "a:" && nsv[k]; })) homeCmp = saved; return stripA(nsv); }
       return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); })
         .then(function (Lm) { return monthlyDefaults(Lm, d.getMonth()); }).then(function (dd) { return dd.inputs; }).catch(function () { return {}; });
     }).then(function (ins) {
@@ -1692,8 +1735,32 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
           if (!res.ok) throw new Error("fail");
           return res.json();
         }).then(function (j) { return j.values; });
+    }).then(function (v) {
+      if (!homeCmp) return v;
+      return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (Lm) { homeCmp = buildCompare(Lm, homeCmp); return v; }).catch(function () { homeCmp = null; return v; });
     }).then(function (v) { if (mine === loadSeq) drawHome(v || {}); })
       .catch(function (err) { if (err.message !== "stop" && mine === loadSeq) drawHome(null); });
+  }
+  // Plan vs actual for the categories you have entered real amounts for
+  function buildCompare(Lm, saved) {
+    var dm = saved.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] }, ent = activeEntries(Lm, st), rows = [], tp = 0, ta = 0;
+    function sum(addrs, pre) { return addrs.reduce(function (t, a) { var x = saved[pre + a]; return t + (typeof x === "number" ? x : 0); }, 0); }
+    ent.expense.forEach(function (e) {
+      var plan = sum(e.addrs, ""), act = sum(e.addrs, "a:"); if (!act) return;
+      rows.push({ name: e.name, plan: plan, act: act, diff: act - plan }); tp += plan; ta += act;
+    });
+    return rows.length ? { rows: rows, tp: tp, ta: ta } : null;
+  }
+  function cmpPanel(c) {
+    var over = c.rows.filter(function (r) { return r.diff > 0.005; }).sort(function (a, b) { return b.diff - a.diff; }),
+        under = c.rows.filter(function (r) { return r.diff < -0.005; }).sort(function (a, b) { return a.diff - b.diff; }), d = c.ta - c.tp;
+    function line(r, bad) { return '<div class="step"><div class="st">' + esc(r.name) + "<span>Plan " + money.format(r.plan) + " · Actual " + money.format(r.act) + '</span></div><b class="' + (bad ? "cmpbad" : "cmpgood") + '">' + (bad ? "+" : "-") + money.format(Math.abs(r.diff)) + "</b></div>"; }
+    var h = '<div class="panel"><h2>Plan vs. actual</h2><p class="sub">For the categories where you have entered what you really spent: planned ' + money.format(c.tp) + ", actual " + money.format(c.ta) +
+      (Math.abs(d) < 0.005 ? ". Right on plan." : d > 0 ? ". You are " + money.format(d) + " over plan." : ". You are " + money.format(-d) + " under plan.") + "</p>";
+    if (over.length) h += "<h3 class=\"cmph\">Over plan</h3>" + over.slice(0, 6).map(function (r) { return line(r, true); }).join("");
+    if (under.length) h += "<h3 class=\"cmph\">Under plan</h3>" + under.slice(0, 6).map(function (r) { return line(r, false); }).join("");
+    if (over.length) h += '<p class="sub" style="margin-top:8px">Biggest gap: <b>' + esc(over[0].name) + "</b>, " + money.format(over[0].diff) + " over. Either cut back there next month, or raise its plan so your budget matches real life.</p>";
+    return h + '<p style="margin-top:10px"><button class="linkbtn" data-go="monthly-budget">Open Monthly budget</button></p></div>';
   }
   function drawHome(v) {
     function m(x) { return v && typeof x === "number" ? money.format(x) : "—"; }
@@ -1713,6 +1780,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
           (x.done ? "" : '<button data-go="' + x.go + '">' + x.b + "</button>") + "</div>";
       }).join("") + "</div>";
     }
+    if (homeCmp) h += cmpPanel(homeCmp);
     var soon = dueSoon();
     h += '<div class="panel"><h2>Bills coming up</h2>' + (soon.length ? soon.slice(0, 5).map(function (x) {
       return '<div class="step"><div class="st">' + esc(x.b.name) + "<span>" + (x.b.amount ? money.format(x.b.amount) + " · " : "") + dueText(x.n) + "</span></div></div>";
