@@ -681,18 +681,26 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
 
   /* ---------- undo / redo (last 5 changes) and clear column ---------- */
   var hist = [], redoS = [], histLast = null, histBusy = false, editFlag = false, dragFlag = false;
-  function snapState() { return JSON.stringify({ i: inputs, m: meta }); }
+  function canon(o) { return Array.isArray(o) ? o.map(canon) : o && typeof o === "object" ? Object.keys(o).sort().reduce(function (r, k) { r[k] = canon(o[k]); return r; }, {}) : o; }
+  function snapState() { return JSON.stringify(canon({ i: inputs, m: meta })); }
+  function histKey() { return "monerem-hist:" + (typeof session !== "undefined" && session && session.user ? session.user.id : "dev") + ":" + storageKey(); }
+  function histSave() { try { localStorage.setItem(histKey(), JSON.stringify({ h: hist, r: redoS, last: histLast })); } catch (e) {} }
   function updateUndoBtn() { $("undoBtn").disabled = !hist.length; $("redoBtn").disabled = !redoS.length; $("undoBtn").textContent = "\u21B6 Undo" + (hist.length ? " (" + hist.length + ")" : ""); $("redoBtn").textContent = "\u21B7 Redo" + (redoS.length ? " (" + redoS.length + ")" : ""); }
-  function histReset() { hist = []; redoS = []; histLast = snapState(); updateUndoBtn(); }
+  function histReset() {
+    hist = []; redoS = []; histLast = snapState();
+    // bring back the undo/redo list from before a refresh, as long as the budget is exactly as it was left
+    try { var st = JSON.parse(localStorage.getItem(histKey()) || "null"); if (st && st.last === histLast && Array.isArray(st.h) && Array.isArray(st.r)) { hist = st.h.slice(-5); redoS = st.r.slice(-5); } } catch (e) {}
+    updateUndoBtn(); histSave();
+  }
   function histNote() {
     if (histBusy) return;
     var cur = snapState(); if (histLast === null) { histLast = cur; return; }
     if (cur === histLast) return;
     var ae = document.activeElement, typing = ae && ae.tagName === "INPUT" && (ae.classList.contains("in") || ae.classList.contains("nm"));
     var dragging = document.body.classList.contains("dragmode");
-    if ((typing && editFlag) || (dragging && dragFlag)) { histLast = cur; return; }   // still the same edit
+    if ((typing && editFlag) || (dragging && dragFlag)) { histLast = cur; histSave(); return; }   // still the same edit
     hist.push(histLast); if (hist.length > 5) hist.shift(); redoS = [];
-    histLast = cur; if (typing) editFlag = true; if (dragging) dragFlag = true; updateUndoBtn();
+    histLast = cur; if (typing) editFlag = true; if (dragging) dragFlag = true; updateUndoBtn(); histSave();
   }
   document.addEventListener("focusin", function () { editFlag = false; });
   document.addEventListener("pointerup", function () { dragFlag = false; });
@@ -700,7 +708,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     var st = JSON.parse(str); histBusy = true;
     inputs = st.i; meta = st.m;
     build(); fillInputs(); buildRowsPanel(); run(); scheduleSave();
-    histBusy = false; histLast = snapState(); updateUndoBtn();
+    histBusy = false; histLast = snapState(); updateUndoBtn(); histSave();
   }
   function undo() { if (!hist.length) return; if (histLast === null) histLast = snapState(); var cur = snapState(); redoS.push(cur); applyHist(hist.pop()); setStatus("Undid your last change."); }
   function redo() { if (!redoS.length) return; var cur = snapState(); hist.push(cur); applyHist(redoS.pop()); setStatus("Redid the change."); }
