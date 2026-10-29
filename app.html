@@ -214,7 +214,12 @@ td.lab .mv button:hover{background:#E3ECFF;color:var(--blue)}
 td.lab .mv{flex-direction:row}
 @media (hover:none){td.lab .mv{opacity:1}}
 @media (max-width:700px){td.lab .mv{margin:0}td.lab .mv button{width:14px}}
-.toolrow{display:flex;gap:8px;margin:6px 0 10px}.toolrow .tab{background:#fff;border:1px solid #BCD0F4;color:#1D4ED8;font-weight:600}.toolrow .tab:disabled{opacity:.45;cursor:default}
+.seg{display:inline-flex;background:#fff;border:1px solid #BCD0F4;border-radius:999px;padding:3px;gap:2px}.seg button{border:0;background:none;padding:7px 18px;border-radius:999px;font:600 14px inherit;font-family:inherit;color:#47598A;cursor:pointer}.seg button.on{background:linear-gradient(135deg,#1D4ED8,#3B6FF0);color:#fff;box-shadow:0 3px 8px rgba(29,78,216,.3)}
+.seg[hidden],.actnote[hidden]{display:none}
+.actnote{background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;border-radius:12px;padding:10px 14px;margin:0 0 10px;font-size:14px}
+#sheet.actualview th{background:linear-gradient(180deg,#0F766E,#115E59)}#sheet.actualview th.colhl{background:linear-gradient(180deg,#14917F,#0F766E);box-shadow:inset 0 -2px 0 #5EEAD4}#sheet.actualview input.in{background:#F0FDF9}
+button:disabled{opacity:.5;cursor:default}
+.toolrow{display:flex;gap:8px;margin:6px 0 10px;flex-wrap:wrap;align-items:center}.toolrow .tab{background:#fff;border:1px solid #BCD0F4;color:#1D4ED8;font-weight:600}.toolrow .tab:disabled{opacity:.45;cursor:default}
 th .clr{position:absolute;top:3px;left:3px;border:0;background:rgba(255,255,255,.16);color:#DCE8FF;font-size:12px;line-height:14px;width:16px;height:16px;padding:0;border-radius:50%;cursor:pointer;opacity:0;transition:opacity .12s}
 th:hover .clr,th .clr:focus{opacity:1}th .clr:hover{background:rgba(255,255,255,.34)}@media (hover:none){th .clr{opacity:.75}}
 td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow:clip;padding-top:3px;padding-bottom:3px}
@@ -299,7 +304,8 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="fillAnnual" title="Fill this month from your Annual budget">Fill from Annual</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
-  <div class="toolrow"><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
+  <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
+  <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time.</p>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="mstep" id="mstep" hidden><button type="button" id="mPrev" aria-label="Previous month">&#8249;</button><b id="mName"></b><button type="button" id="mNext" aria-label="Next month">&#8250;</button></div>
@@ -374,6 +380,8 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   var money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
   var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [], hidden: [], removed: [] };
+  var actual = {}, view = "plan";   // 'actual' = what you really spent (Monthly only); the plan numbers stay untouched
+  function vals() { return view === "actual" ? actual : inputs; }
   var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
 
   function show(which) { ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; }); }
@@ -484,11 +492,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function fmt(v) { return v ? money.format(v) : ""; }
   $("sheet").addEventListener("focusin", function (e) {
     var t = e.target, a = t.getAttribute && t.getAttribute("data-a");
-    if (a) { t.value = inputs[a] ? String(inputs[a]) : ""; }
+    if (a) { t.value = vals()[a] ? String(vals()[a]) : ""; }
   });
   $("sheet").addEventListener("focusout", function (e) {
     var t = e.target, a = t.getAttribute && t.getAttribute("data-a");
-    if (a) t.value = fmt(inputs[a]);
+    if (a) t.value = fmt(vals()[a]);
   });
   function applyHidden() {
     Array.prototype.forEach.call(document.querySelectorAll("tr[data-row]"), function (tr) {
@@ -662,7 +670,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function removeRow(row) {
     var ro = rowObj(row); if (ro && ro.toggle) inputs[ro.toggle] = 0;
     addGone(meta, meta.labels[row] || (ro && ro.label));
-    rowInputs(row).forEach(function (a) { inputs[a] = 0; var el = document.querySelector('input[data-a="' + a + '"]'); if (el) el.value = ""; });
+    rowInputs(row).forEach(function (a) { inputs[a] = 0; delete actual[a]; var el = document.querySelector('input[data-a="' + a + '"]'); if (el) el.value = ""; });
     if (meta.removed.indexOf(row) < 0) meta.removed.push(row);
     buildRowsPanel(); schedule(); scheduleSave(); $("pickDlg").close();
   }
@@ -681,10 +689,19 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   $("pickCustom").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addNamed($("pickCustom").value); } });
   $("pickDone").addEventListener("click", function () { closePicker(); });
 
+  function setView(v, quiet) {
+    view = v;
+    Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+    $("actNote").hidden = v !== "actual" || !layout || !layout.months;
+    ["copyPrev", "fillAnnual"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
+    $("sheet").classList.toggle("actualview", v === "actual");
+    if (!quiet) { fillInputs(); run(); }
+  }
+  $("viewSeg").addEventListener("click", function (e) { var v = e.target.getAttribute && e.target.getAttribute("data-view"); if (v && v !== view) setView(v); });
   /* ---------- undo / redo (last 5 changes) and clear column ---------- */
   var hist = [], redoS = [], histLast = null, histBusy = false, editFlag = false, dragFlag = false;
   function canon(o) { return Array.isArray(o) ? o.map(canon) : o && typeof o === "object" ? Object.keys(o).sort().reduce(function (r, k) { r[k] = canon(o[k]); return r; }, {}) : o; }
-  function snapState() { return JSON.stringify(canon({ i: inputs, m: meta })); }
+  function snapState() { return JSON.stringify(canon({ i: inputs, a: actual, m: meta })); }
   function histKey() { return "monerem-hist:" + (typeof session !== "undefined" && session && session.user ? session.user.id : "dev") + ":" + storageKey(); }
   function histSave() { try { localStorage.setItem(histKey(), JSON.stringify({ h: hist, r: redoS, last: histLast })); } catch (e) {} }
   function updateUndoBtn() { $("undoBtn").disabled = !hist.length; $("redoBtn").disabled = !redoS.length; $("undoBtn").textContent = "\u21B6 Undo" + (hist.length ? " (" + hist.length + ")" : ""); $("redoBtn").textContent = "\u21B7 Redo" + (redoS.length ? " (" + redoS.length + ")" : ""); }
@@ -708,7 +725,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   document.addEventListener("pointerup", function () { dragFlag = false; });
   function applyHist(str) {
     var st = JSON.parse(str); histBusy = true;
-    inputs = st.i; meta = st.m;
+    inputs = st.i; actual = st.a || {}; meta = st.m;
     build(); fillInputs(); buildRowsPanel(); run(); scheduleSave();
     histBusy = false; histLast = snapState(); updateUndoBtn(); histSave();
   }
@@ -726,7 +743,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     layout.rows.forEach(function (rw) {
       if (rw.toggle) return;
       var cs = rw.type === "custom" ? rw.slots.map(function (sl) { return sl.cells; }) : rw.cells ? [rw.cells] : [];
-      cs.forEach(function (c) { var cell = c[k]; if (cell && cell.k === "input" && inputs[cell.a]) { inputs[cell.a] = 0; n++; } });
+      cs.forEach(function (c) { var cell = c[k]; if (cell && cell.k === "input" && vals()[cell.a]) { vals()[cell.a] = 0; n++; } });
     });
     if (!n) { setStatus("That column is already empty."); return; }
     fillInputs(); run(); scheduleSave();
@@ -737,7 +754,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   /* ---------- events ---------- */
   $("sheet").addEventListener("input", function (e) {
     var t = e.target, a = t.getAttribute("data-a"), nm = t.getAttribute("data-nm");
-    if (a) { inputs[a] = parseMoney(t.value); schedule(); scheduleSave(); }
+    if (a) { vals()[a] = parseMoney(t.value); schedule(); scheduleSave(); }
     else if (nm) {
       var v = t.value.slice(0, 40);
       if (v.trim() && v !== t.getAttribute("data-def")) meta.labels[nm] = v; else delete meta.labels[nm];
@@ -777,7 +794,8 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       var o = eb[i]; if (!o) return;
       var xa = el.getAttribute("data-a"), xb = o.getAttribute("data-a"), t = inputs[xa];
       inputs[xa] = inputs[xb]; inputs[xb] = t;
-      el.value = fmt(inputs[xa]); o.value = fmt(inputs[xb]);
+      var ta = actual[xa]; actual[xa] = actual[xb]; actual[xb] = ta;
+      el.value = fmt(vals()[xa]); o.value = fmt(vals()[xb]);
     });
     schedule(); scheduleSave(); buildRowsPanel();
     return b;
@@ -828,7 +846,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       meta.hidden = meta.hidden.filter(function (r) { return r !== rm; });
       var tr2 = document.querySelector('tr[data-slot="' + rm + '"]'); tr2.hidden = true;
       Array.prototype.forEach.call(tr2.querySelectorAll("input"), function (el) {
-        el.value = ""; var a = el.getAttribute("data-a"); if (a) inputs[a] = 0;
+        el.value = ""; var a = el.getAttribute("data-a"); if (a) { inputs[a] = 0; delete actual[a]; }
       });
       updateAdd(); buildRowsPanel(); schedule(); scheduleSave();
     }
@@ -841,9 +859,15 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     if (!CFG.devMode && session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
     return h;
   }
+  function calcInputs() {
+    if (view !== "actual") return inputs;
+    var o = Object.assign({}, inputs);
+    Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) { var a = el.getAttribute("data-a"); if (a) o[a] = actual[a] || 0; });
+    return o;
+  }
   function run() {
     var mine = ++seq; if (ctrl) ctrl.abort(); ctrl = new AbortController();
-    fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), signal: ctrl.signal, body: JSON.stringify({ sheet: layout.id, inputs: inputs }) })
+    fetch(CFG.calcUrl, { method: "POST", headers: authHeaders(), signal: ctrl.signal, body: JSON.stringify({ sheet: layout.id, inputs: calcInputs() }) })
       .then(function (res) {
         if (res.status === 401) { show("login"); throw new Error("stop"); }
         if (res.status === 403) { show("inactive"); throw new Error("stop"); }
@@ -883,7 +907,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
 
   /* ---------- saving ---------- */
-  function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; if (layout.months) o.__filled = true; return o; }
+  function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; if (layout.months) { o.__filled = true; Object.keys(actual).forEach(function (k) { if (actual[k]) o["a:" + k] = actual[k]; }); } return o; }
   var pendingSave = null;
   function doSave(key, data) {
     if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return Promise.resolve(); }
@@ -907,6 +931,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function applySaved(saved) {
     if (!saved) return;
     var m = saved.__meta || {};
+    actual = {}; Object.keys(saved).forEach(function (k) { if (k.slice(0, 2) === "a:" && typeof saved[k] === "number") actual[k.slice(2)] = saved[k]; });
     meta.labels = m.labels && typeof m.labels === "object" ? m.labels : {};
     meta.custom = Array.isArray(m.custom) ? m.custom : [];
     meta.hidden = Array.isArray(m.hidden) ? m.hidden : [];
@@ -917,7 +942,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   function fillInputs() {
     Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) {
-      el.value = fmt(inputs[el.getAttribute("data-a")]);
+      el.value = fmt(vals()[el.getAttribute("data-a")]);
     });
   }
 
@@ -939,7 +964,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     $("picker").hidden = true;
     fetch(tool.id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (l) {
       if (mine !== loadSeq) return;
-      layout = l; $("picker").hidden = !l.months; loadData(mine);
+      layout = l; $("picker").hidden = !l.months; $("viewSeg").hidden = !l.months; if (!l.months && view !== "plan") setView("plan", true); loadData(mine);
     });
   }
   function loadData(mine) {
@@ -975,7 +1000,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   /* build() resets inputs, so keep saved ones across it */
   var _build = build;
-  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); hlIdx = -1; };
+  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); hlIdx = -1; $("sheet").classList.toggle("actualview", view === "actual"); };
   var FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   // Phone view of the Annual budget: one month at a time (plus the yearly total) instead of 14 columns.
   function applyPhone() {
@@ -1432,11 +1457,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       var E = ent[g], ord = (order[g] || []).map(function (x) { return x.replace(/[^a-zA-Z0-9]/g, "").toLowerCase(); }), pos = [], items = [];
       E.forEach(function (e, i) { var k = ord.indexOf(e.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()); if (k >= 0) { pos.push(i); items.push({ e: e, k: k }); } });
       items.sort(function (a, b) { return a.k - b.k; });
-      var snap = items.map(function (it) { return { name: it.e.name, vals: it.e.addrs.map(function (a) { return V[a] || 0; }) }; });
+      var snap = items.map(function (it) { return { name: it.e.name, vals: it.e.addrs.map(function (a) { return V[a] || 0; }), av: it.e.addrs.map(function (a) { return V["a:" + a]; }) }; });
       pos.forEach(function (p, k) {
         var t = E[p]; if (t === items[k].e) return;
         if (t.def !== null && snap[k].name === t.def) delete st.labels[t.row]; else st.labels[t.row] = snap[k].name;
-        t.addrs.forEach(function (a, i) { V[a] = snap[k].vals[i] || 0; });
+        t.addrs.forEach(function (a, i) { V[a] = snap[k].vals[i] || 0; if (snap[k].av[i] !== undefined || ("a:" + a) in V) V["a:" + a] = snap[k].av[i] || 0; });
         changed = true;
       });
     });
@@ -1584,7 +1609,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     // categories deleted on the Annual side go away here too
     var aHave = {}, zeroed = []; snap.rows.forEach(function (ar) { aHave[nk(ar.name)] = 1; });
     (snap.gone || []).forEach(function (n) { if (aHave[nk(n)]) return; if (dropByName(Lm, m, n, zeroed)) changed = true; addGone(m, n); });
-    zeroed.forEach(function (a) { if (cur && cur[a]) { out[a] = 0; any = true; } });
+    zeroed.forEach(function (a) { if (cur && cur[a]) { out[a] = 0; any = true; } if (cur && cur["a:" + a]) { out["a:" + a] = 0; any = true; } });
     function addrs(cells) { return Object.keys(cells).filter(function (k) { return cells[k].k === "input"; }).map(function (k) { return cells[k].a; }); }
     Lm.rows.forEach(function (r) {
       if (r.type === "data" && !r.cls && m.removed.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length) targets[(m.labels[r.row] || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = addrs(r.cells);
@@ -1714,10 +1739,10 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     if (hasData && !window.confirm("Replace this month’s amounts with " + name + "’s?")) return;
     loadSaved(key).then(function (saved) {
       if (!saved) { setStatus("Nothing saved for " + name + " yet.", true); return; }
-      var oldGone = (meta.gone || []).slice();
+      var oldGone = (meta.gone || []).slice(), oldActual = actual;
       Object.keys(inputs).forEach(function (a) { inputs[a] = 0; });
       meta = { labels: {}, custom: [], hidden: [], removed: [] };
-      applySaved(saved);
+      applySaved(saved); actual = oldActual;
       // don't bring back categories you've deleted here or on the Annual budget
       return annualSnapshot().then(function (snap) {
         var have = {}; snap.rows.forEach(function (r) { have[nk(r.name)] = 1; });
