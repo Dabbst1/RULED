@@ -1102,7 +1102,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   });
 
   /* ---------- goals ---------- */
-  var goals = [], goalsLoaded = false, goalTimer = null;
+  var goals = [], goalsLoaded = false, goalTimer = null, editingGoal = null;
   var STARTERS = {
     debt: ["List every debt with its balance, interest rate and minimum payment", "Pay every minimum on time, every month", "Choose a target: highest interest rate first, or smallest balance first", "Put every extra dollar on the target debt", "Stop adding new charges to the cards you’re paying off"],
     save: ["Decide the exact amount and the date you need it by", "Open a separate savings account just for this goal", "Set an automatic transfer for every payday", "Check your progress once a month"],
@@ -1159,8 +1159,9 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       var pc = Math.round(goalPct(g) * 100), done = g.steps.filter(function (x) { return x.done; }).length, due = "";
       if (g.due) { var n = daysUntil(parseD(g.due)); due = n < 0 ? "Target date passed" : n === 0 ? "Target date is today" : n + " days to go"; }
       var upd = g.kind === "custom" ? "" : '<div class="row"><label for="cur' + g.id + '" class="meta">' + (g.kind === "debt" ? "Balance now" : g.kind === "save" ? "Saved so far" : "Current score") + '</label><input type="text" id="cur' + g.id + '" inputmode="decimal" data-cur="' + g.id + '" value="' + esc(g.kind === "credit" ? g.current : money.format(g.current)) + '"></div>';
+      if (g.id === editingGoal) return editGoalHtml(g);
       return '<article class="goalcard"><header><div><h3>' + esc(g.name) + '</h3><div class="meta"><span class="kind">' + KIND[g.kind] + "</span>" + [goalLine(g), due].filter(Boolean).join(" · ") + "</div></div>" +
-        '<button class="sm" data-delgoal="' + g.id + '">Delete goal</button></header>' +
+        '<span class="gbtns"><button class="sm" data-editgoal="' + g.id + '">Edit goal</button> <button class="sm" data-delgoal="' + g.id + '">Delete goal</button></span></header>' +
         '<div class="bar' + (pc >= 100 ? " full" : "") + '" role="progressbar" aria-valuenow="' + pc + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pc + '%"></i></div>' +
         '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + upd +
         g.steps.map(function (x) {
@@ -1169,6 +1170,28 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
         '<div class="row"><input type="text" class="stepin" maxlength="120" placeholder="Add a step" data-stepin="' + g.id + '" aria-label="New step"><button class="sm" data-addstep="' + g.id + '">Add step</button></div></article>';
     }).join("") : '<p class="sub">No goals yet. Choose a type above to get a starter checklist.</p>';
   }
+  function editGoalHtml(g) {
+    var cr = g.kind === "credit", mv = function (v) { return esc(cr ? v : money.format(v)); }, f = "";
+    var L = { debt: ["Starting balance", "Balance now"], save: ["Goal amount", "Saved so far"], credit: ["Starting score", "Current score"] }[g.kind];
+    f += '<label>Goal name<input name="name" maxlength="50" required value="' + esc(g.name) + '"></label>';
+    if (L) {
+      f += '<label>' + L[0] + '<input name="a" inputmode="decimal" autocomplete="off" value="' + mv(g.kind === "save" ? g.target : g.start) + '"></label>';
+      f += '<label>' + L[1] + '<input name="b" inputmode="decimal" autocomplete="off" value="' + mv(g.current) + '"></label>';
+    }
+    if (cr) f += '<label>Target score<input name="c" inputmode="numeric" autocomplete="off" value="' + esc(g.target) + '"></label>';
+    f += '<label>Target date (optional)<input name="due" type="date" value="' + esc(g.due || "") + '"></label>';
+    return '<article class="goalcard"><form class="billform" data-editform="' + g.id + '"><h3 style="grid-column:1/-1;margin:0">Edit goal</h3>' + f + '<div style="display:flex;gap:8px;align-items:flex-end"><button class="btn" type="submit">Save changes</button><button class="btn ghost" type="button" data-canceledit="1">Cancel</button></div></form></article>';
+  }
+  $("goalList").addEventListener("submit", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-editform"); if (!id) return;
+    e.preventDefault(); var g = goalById(id); if (!g) return;
+    var fd = e.target.elements, nm = fd.name.value.trim().slice(0, 50); if (!nm) return;
+    g.name = nm; g.due = fd.due.value || "";
+    if (g.kind === "save") { g.target = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); }
+    if (g.kind === "debt") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); }
+    if (g.kind === "credit") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value) || g.start; g.target = num(g.kind, fd.c.value); }
+    editingGoal = null; saveGoals(); renderGoals();
+  });
   function goalById(id) { return goals.filter(function (g) { return g.id === id; })[0]; }
   function addStep(id) {
     var inp = document.querySelector('input[data-stepin="' + id + '"]'), g = goalById(id), t = inp && inp.value.trim().slice(0, 120);
@@ -1178,7 +1201,9 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   $("goalList").addEventListener("click", function (e) {
     var t = e.target, v, p;
-    if ((v = t.getAttribute("data-delgoal"))) { if (window.confirm("Delete this goal and its checklist?")) { goals = goals.filter(function (g) { return g.id !== v; }); saveGoals(); renderGoals(); } }
+    if ((v = t.getAttribute("data-editgoal"))) { editingGoal = v; renderGoals(); var nmi = document.querySelector('form[data-editform="' + v + '"] input[name=name]'); if (nmi) nmi.focus(); }
+    else if (t.getAttribute("data-canceledit")) { editingGoal = null; renderGoals(); }
+    else if ((v = t.getAttribute("data-delgoal"))) { if (window.confirm("Delete this goal and its checklist?")) { goals = goals.filter(function (g) { return g.id !== v; }); saveGoals(); renderGoals(); } }
     else if ((v = t.getAttribute("data-addstep"))) addStep(v);
     else if ((v = t.getAttribute("data-delstep"))) { p = v.split(":"); var g = goalById(p[0]); if (g) { g.steps = g.steps.filter(function (x) { return x.id !== p[1]; }); saveGoals(); renderGoals(); } }
   });
