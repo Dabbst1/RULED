@@ -1291,14 +1291,30 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   function orderOf(L, st) {
     var e = activeEntries(L, st), o = {};
-    ["income", "expense"].forEach(function (g) { o[g] = e[g].map(function (x) { return x.name.toLowerCase(); }); });
+    ["income", "expense"].forEach(function (g) { o[g] = e[g].map(function (x) { return x.name; }); });
     return o;
+  }
+  // A name that exists on the other side but not here takes over an empty row that the other side doesn't have (a swapped-out category).
+  function adoptNames(L, st, V, order) {
+    var ent = activeEntries(L, st), changed = false;
+    ["income", "expense"].forEach(function (g) {
+      var E = ent[g], ord = order[g] || [], lo = ord.map(function (x) { return x.toLowerCase(); }), have = E.map(function (e) { return e.name.toLowerCase(); });
+      var cand = E.map(function (e, i) { return { e: e, i: i }; }).filter(function (c) { return lo.indexOf(c.e.name.toLowerCase()) < 0 && c.e.addrs.every(function (a) { return !V[a]; }); });
+      ord.forEach(function (nm, oi) {
+        if (have.indexOf(nm.toLowerCase()) >= 0 || !cand.length) return;
+        var bi = 0; cand.forEach(function (c, k) { if (Math.abs(c.i - oi) < Math.abs(cand[bi].i - oi)) bi = k; });
+        var c = cand.splice(bi, 1)[0];
+        if (c.e.def !== null && nm === c.e.def) delete st.labels[c.e.row]; else st.labels[c.e.row] = nm;
+        have.push(nm.toLowerCase()); changed = true;
+      });
+    });
+    return changed;
   }
   // Put this layout's rows in the given order (by name), moving each name together with its amounts. Returns true if anything moved.
   function applyOrder(L, st, V, order) {
     var ent = activeEntries(L, st), changed = false;
     ["income", "expense"].forEach(function (g) {
-      var E = ent[g], ord = order[g] || [], pos = [], items = [];
+      var E = ent[g], ord = (order[g] || []).map(function (x) { return x.toLowerCase(); }), pos = [], items = [];
       E.forEach(function (e, i) { var k = ord.indexOf(e.name.toLowerCase()); if (k >= 0) { pos.push(i); items.push({ e: e, k: k }); } });
       items.sort(function (a, b) { return a.k - b.k; });
       var snap = items.map(function (it) { return { name: it.e.name, vals: it.e.addrs.map(function (a) { return V[a] || 0; }) }; });
@@ -1340,11 +1356,12 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
           var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: dm.removed || [] };
           var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [];
           var ga = rowGroups(La), targets = {}, blocks = {};
+          var mOrd = orderOf(Lm, { labels: ml, custom: mc, removed: mr }), adopted = adoptNames(La, am, doc, mOrd);
           La.rows.forEach(function (r) {
             if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && rowInputs(r.row, La).length) targets[(am.labels[r.row] || r.label).toLowerCase()] = r.row;
             if (r.type === "custom") { blocks[r.group === "income" ? "income" : "expense"] = r; r.slots.forEach(function (sl) { if (am.custom.indexOf(sl.row) >= 0 && am.labels[sl.row]) targets[am.labels[sl.row].toLowerCase()] = sl.row; }); }
           });
-          var gm = rowGroups(Lm), nd = Object.assign({}, doc), changed = false;
+          var gm = rowGroups(Lm), nd = Object.assign({}, doc), changed = adopted;
           function put(name, grp, v) {
             var row = targets[name.toLowerCase()];
             if (!row) {
@@ -1363,11 +1380,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
               put(ml[sl.row], r.group === "income" ? "income" : "expense", Object.keys(sl.cells).reduce(function (a, c) { return a + (sl.cells[c].k === "input" ? data[sl.cells[c].a] || 0 : 0); }, 0));
             });
           });
-          var movedOrder = applyOrder(La, { labels: am.labels, custom: am.custom, removed: am.removed }, nd, orderOf(Lm, { labels: ml, custom: mc, removed: mr }));
+          var movedOrder = applyOrder(La, { labels: am.labels, custom: am.custom, removed: am.removed }, nd, mOrd);
           if (movedOrder) changed = true;
           if (!changed) return;
           nd.__meta = Object.assign({}, dm, { labels: am.labels, custom: am.custom });
-          return doSave("yearly-projection", nd).then(function () { return movedOrder ? pushAnnual() : null; });
+          return doSave("yearly-projection", nd).then(function () { return (movedOrder || adopted) ? pushAnnual() : null; });
         });
       }).catch(function () {});
     }
@@ -1411,6 +1428,9 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   function monthlyFromAnnual(snap, Lm, m0, idx, cur, zeros) {
     var col = COLS12.charAt(idx), m = { labels: Object.assign({}, m0.labels), custom: m0.custom.slice(), hidden: (m0.hidden || []).slice(), removed: m0.removed.slice() };
     var targets = {}, out = {}, any = false, changed = false;
+    var order = { income: [], expense: [] };
+    snap.rows.forEach(function (ar) { order[ar.group === "income" ? "income" : "expense"].push(ar.name); });
+    if (snap.rows.length && adoptNames(Lm, m, cur || {}, order)) changed = true;
     function addrs(cells) { return Object.keys(cells).filter(function (k) { return cells[k].k === "input"; }).map(function (k) { return cells[k].a; }); }
     Lm.rows.forEach(function (r) {
       if (r.type === "data" && !r.cls && m.removed.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length) targets[(m.labels[r.row] || r.label).toLowerCase()] = addrs(r.cells);
@@ -1429,8 +1449,6 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       var half = Math.floor(v * 100 / 2) / 100; changed = true;
       out[t[0]] = half; if (t[1]) out[t[1]] = Math.round((v - half) * 100) / 100; any = true;
     });
-    var order = { income: [], expense: [] };
-    snap.rows.forEach(function (ar) { order[ar.group === "income" ? "income" : "expense"].push(ar.name.toLowerCase()); });
     var V = Object.assign({}, cur || {}, out), reordered = applyOrder(Lm, m, V, order);
     if (reordered) { Object.keys(V).forEach(function (a) { if ((V[a] || 0) !== ((cur && cur[a]) || 0)) out[a] = V[a]; }); any = true; }
     return { meta: m, inputs: out, any: any, changed: changed || reordered || m.custom.length !== m0.custom.length };
