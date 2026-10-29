@@ -1274,10 +1274,46 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   /* ---------- keep Annual and Monthly in step (current year) ---------- */
   var syncP = null;
-  function afterSave(key, data, Lm) {
+  function inAddrs(cells) { return Object.keys(cells).filter(function (k) { return cells[k].k === "input"; }).map(function (k) { return cells[k].a; }); }
+  function colKey(a) { var m = /^([A-Z]+)/.exec(a); return (m ? m[1].length : 0) * 1000 + (m ? m[1].charCodeAt(m[1].length - 1) : 0); }
+  function activeEntries(L, st) {
+    var g = rowGroups(L), out = { income: [], expense: [] };
+    L.rows.forEach(function (r) {
+      if (r.type === "data" && !r.cls && st.removed.indexOf(r.row) < 0) {
+        var ad = rowInputs(r.row, L).slice().sort(function (x, y) { return colKey(x) - colKey(y); });
+        if (ad.length) out[g[r.row] === "income" ? "income" : "expense"].push({ row: r.row, def: r.label, name: st.labels[r.row] || r.label, addrs: ad });
+      }
+      if (r.type === "custom") r.slots.forEach(function (sl) {
+        if (st.custom.indexOf(sl.row) >= 0 && st.labels[sl.row]) out[r.group === "income" ? "income" : "expense"].push({ row: sl.row, def: null, name: st.labels[sl.row], addrs: inAddrs(sl.cells).sort(function (x, y) { return colKey(x) - colKey(y); }) });
+      });
+    });
+    return out;
+  }
+  function orderOf(L, st) {
+    var e = activeEntries(L, st), o = {};
+    ["income", "expense"].forEach(function (g) { o[g] = e[g].map(function (x) { return x.name.toLowerCase(); }); });
+    return o;
+  }
+  // Put this layout's rows in the given order (by name), moving each name together with its amounts. Returns true if anything moved.
+  function applyOrder(L, st, V, order) {
+    var ent = activeEntries(L, st), changed = false;
+    ["income", "expense"].forEach(function (g) {
+      var E = ent[g], ord = order[g] || [], pos = [], items = [];
+      E.forEach(function (e, i) { var k = ord.indexOf(e.name.toLowerCase()); if (k >= 0) { pos.push(i); items.push({ e: e, k: k }); } });
+      items.sort(function (a, b) { return a.k - b.k; });
+      var snap = items.map(function (it) { return { name: it.e.name, vals: it.e.addrs.map(function (a) { return V[a] || 0; }) }; });
+      pos.forEach(function (p, k) {
+        var t = E[p]; if (t === items[k].e) return;
+        if (t.def !== null && snap[k].name === t.def) delete st.labels[t.row]; else st.labels[t.row] = snap[k].name;
+        t.addrs.forEach(function (a, i) { V[a] = snap[k].vals[i] || 0; });
+        changed = true;
+      });
+    });
+    return changed;
+  }
+  function pushAnnual() {
     var Y = String(new Date().getFullYear());
-    if (key === "yearly-projection") {
-      syncP = fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
+    return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
         return annualSnapshot().then(function (snap) {
           return Promise.all(MONTHS.map(function (_, idx) {
             var k = "monthly-budget:" + Y + "-" + pad(idx + 1);
@@ -1291,6 +1327,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
           }));
         });
       }).catch(function () {});
+  }
+  function afterSave(key, data, Lm) {
+    var Y = String(new Date().getFullYear());
+    if (key === "yearly-projection") {
+      syncP = pushAnnual();
     } else if (key.indexOf("monthly-budget:" + Y + "-") === 0 && Lm) {
       var idx = Number(key.slice(-2)) - 1, col = COLS12.charAt(idx);
       syncP = fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (La) {
@@ -1322,9 +1363,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
               put(ml[sl.row], r.group === "income" ? "income" : "expense", Object.keys(sl.cells).reduce(function (a, c) { return a + (sl.cells[c].k === "input" ? data[sl.cells[c].a] || 0 : 0); }, 0));
             });
           });
+          var movedOrder = applyOrder(La, { labels: am.labels, custom: am.custom, removed: am.removed }, nd, orderOf(Lm, { labels: ml, custom: mc, removed: mr }));
+          if (movedOrder) changed = true;
           if (!changed) return;
           nd.__meta = Object.assign({}, dm, { labels: am.labels, custom: am.custom });
-          return doSave("yearly-projection", nd);
+          return doSave("yearly-projection", nd).then(function () { return movedOrder ? pushAnnual() : null; });
         });
       }).catch(function () {});
     }
@@ -1386,7 +1429,11 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       var half = Math.floor(v * 100 / 2) / 100; changed = true;
       out[t[0]] = half; if (t[1]) out[t[1]] = Math.round((v - half) * 100) / 100; any = true;
     });
-    return { meta: m, inputs: out, any: any, changed: changed || m.custom.length !== m0.custom.length };
+    var order = { income: [], expense: [] };
+    snap.rows.forEach(function (ar) { order[ar.group === "income" ? "income" : "expense"].push(ar.name.toLowerCase()); });
+    var V = Object.assign({}, cur || {}, out), reordered = applyOrder(Lm, m, V, order);
+    if (reordered) { Object.keys(V).forEach(function (a) { if ((V[a] || 0) !== ((cur && cur[a]) || 0)) out[a] = V[a]; }); any = true; }
+    return { meta: m, inputs: out, any: any, changed: changed || reordered || m.custom.length !== m0.custom.length };
   }
   function monthlyDefaults(Lm, idx) {
     var r0 = setup && setup.done ? metaFromSetup(Lm, setup) : { meta: { labels: {}, custom: [], hidden: [], removed: [] }, toggles: {} };
