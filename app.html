@@ -214,6 +214,9 @@ td.lab .mv button:hover{background:#E3ECFF;color:var(--blue)}
 td.lab .mv{flex-direction:row}
 @media (hover:none){td.lab .mv{opacity:1}}
 @media (max-width:700px){td.lab .mv{margin:0}td.lab .mv button{width:14px}}
+.toolrow{display:flex;gap:8px;margin:6px 0 10px}.toolrow .tab{background:#fff;border:1px solid #BCD0F4;color:#1D4ED8;font-weight:600}.toolrow .tab:disabled{opacity:.45;cursor:default}
+th .clr{position:absolute;top:3px;left:3px;border:0;background:rgba(255,255,255,.16);color:#DCE8FF;font-size:12px;line-height:14px;width:16px;height:16px;padding:0;border-radius:50%;cursor:pointer;opacity:0;transition:opacity .12s}
+th:hover .clr,th .clr:focus{opacity:1}th .clr:hover{background:rgba(255,255,255,.34)}@media (hover:none){th .clr{opacity:.75}}
 td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow:clip;padding-top:3px;padding-bottom:3px}
 .fit{min-width:0!important}.fit table{table-layout:fixed}
 .fit th,.fit td{padding:0 1px}.fit th{font-size:11.5px;padding:0 4px}
@@ -296,6 +299,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="fillAnnual" title="Fill this month from your Annual budget">Fill from Annual</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
+  <div class="toolrow"><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="mstep" id="mstep" hidden><button type="button" id="mPrev" aria-label="Previous month">&#8249;</button><b id="mName"></b><button type="button" id="mNext" aria-label="Next month">&#8250;</button></div>
@@ -408,7 +412,12 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     $("title").textContent = layout.name; $("hint").textContent = layout.hint;
     $("mstep").hidden = !snapMode; phoneOn = snapMode;
     inputs = {};
-    var html = "", open = false, blkIdx = 0;
+    var html = "", open = false, blkIdx = 0, clearable = {};
+    layout.rows.forEach(function (rw) {
+      if (rw.toggle) return;
+      var cs = rw.type === "custom" ? rw.slots.map(function (sl) { return sl.cells; }) : rw.cells ? [rw.cells] : [];
+      cs.forEach(function (c) { Object.keys(c).forEach(function (k) { if (c[k] && c[k].k === "input") clearable[k] = 1; }); });
+    });
 
     function mvBtns(rn) { return '<span class="mv"><button type="button" class="grip" data-grip="' + rn + '" title="Drag to reorder" aria-label="Drag to reorder (or use the up and down arrow keys)">&#8942;&#8942;</button></span>'; }
     function labelCell(row) {
@@ -444,7 +453,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       if (row.type === "header") {
         if (open) html += "</tbody></table>";
         html += tstart + '<thead><tr><th class="lab">Category</th>';
-        keys.forEach(function (k, j) { html += "<th>" + esc(row.labels[j] || "") + "</th>"; });
+        keys.forEach(function (k, j) { html += "<th>" + (clearable[k] ? '<button type="button" class="clr" data-clr="' + k + '" title="Clear every amount in this column" aria-label="Clear column ' + esc(row.labels[j] || k) + '">&times;</button>' : "") + esc(row.labels[j] || "") + "</th>"; });
         html += "</tr></thead><tbody>"; open = true; return;
       }
       if (!open) { html += tstart + "<tbody>"; open = true; }
@@ -670,6 +679,51 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   $("pickCustom").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addNamed($("pickCustom").value); } });
   $("pickDone").addEventListener("click", function () { closePicker(); });
 
+  /* ---------- undo / redo (last 5 changes) and clear column ---------- */
+  var hist = [], redoS = [], histLast = null, histBusy = false, editFlag = false, dragFlag = false;
+  function snapState() { return JSON.stringify({ i: inputs, m: meta }); }
+  function updateUndoBtn() { $("undoBtn").disabled = !hist.length; $("redoBtn").disabled = !redoS.length; $("undoBtn").textContent = "\u21B6 Undo" + (hist.length ? " (" + hist.length + ")" : ""); $("redoBtn").textContent = "\u21B7 Redo" + (redoS.length ? " (" + redoS.length + ")" : ""); }
+  function histReset() { hist = []; redoS = []; histLast = snapState(); updateUndoBtn(); }
+  function histNote() {
+    if (histBusy) return;
+    var cur = snapState(); if (histLast === null) { histLast = cur; return; }
+    if (cur === histLast) return;
+    var ae = document.activeElement, typing = ae && ae.tagName === "INPUT" && (ae.classList.contains("in") || ae.classList.contains("nm"));
+    var dragging = document.body.classList.contains("dragmode");
+    if ((typing && editFlag) || (dragging && dragFlag)) { histLast = cur; return; }   // still the same edit
+    hist.push(histLast); if (hist.length > 5) hist.shift(); redoS = [];
+    histLast = cur; if (typing) editFlag = true; if (dragging) dragFlag = true; updateUndoBtn();
+  }
+  document.addEventListener("focusin", function () { editFlag = false; });
+  document.addEventListener("pointerup", function () { dragFlag = false; });
+  function applyHist(str) {
+    var st = JSON.parse(str); histBusy = true;
+    inputs = st.i; meta = st.m;
+    build(); fillInputs(); buildRowsPanel(); run(); scheduleSave();
+    histBusy = false; histLast = snapState(); updateUndoBtn();
+  }
+  function undo() { if (!hist.length) return; if (histLast === null) histLast = snapState(); var cur = snapState(); redoS.push(cur); applyHist(hist.pop()); setStatus("Undid your last change."); }
+  function redo() { if (!redoS.length) return; var cur = snapState(); hist.push(cur); applyHist(redoS.pop()); setStatus("Redid the change."); }
+  $("undoBtn").addEventListener("click", undo); $("redoBtn").addEventListener("click", redo);
+  document.addEventListener("keydown", function (e) {
+    if (!(e.ctrlKey || e.metaKey) || $("sheetView").hidden) return;
+    var ae = document.activeElement; if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT")) return;
+    var k = e.key.toLowerCase();
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); } else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); redo(); }
+  });
+  function clearColumn(k) {
+    var n = 0;
+    layout.rows.forEach(function (rw) {
+      if (rw.toggle) return;
+      var cs = rw.type === "custom" ? rw.slots.map(function (sl) { return sl.cells; }) : rw.cells ? [rw.cells] : [];
+      cs.forEach(function (c) { var cell = c[k]; if (cell && cell.k === "input" && inputs[cell.a]) { inputs[cell.a] = 0; n++; } });
+    });
+    if (!n) { setStatus("That column is already empty."); return; }
+    fillInputs(); run(); scheduleSave();
+    var th = document.querySelector('th [data-clr="' + k + '"]'), nm = th ? th.parentNode.textContent.replace(/\u00d7/g, "").trim() : "the column";
+    setStatus("Cleared " + nm + ". Press Undo to bring it back.");
+  }
+
   /* ---------- events ---------- */
   $("sheet").addEventListener("input", function (e) {
     var t = e.target, a = t.getAttribute("data-a"), nm = t.getAttribute("data-nm");
@@ -745,6 +799,8 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   })();
   $("sheet").addEventListener("click", function (e) {
     var t = e.target;
+    var clr = t.getAttribute && t.getAttribute("data-clr");
+    if (clr) { clearColumn(clr); return; }
     var sw = t.getAttribute && t.getAttribute("data-swap");
     if (sw) { openSwap(Number(sw)); return; }
     var addIdx = t.getAttribute && t.getAttribute("data-add");
@@ -822,6 +878,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       });
   }
   function scheduleSave() {
+    histNote();
     clearTimeout(saveTimer); var key = storageKey(), data = payload(), Lm = layout;
     pendingSave = function () { var pr = doSave(key, data); if (pr && pr.then) pr.then(function () { afterSave(key, data, Lm); }); };
     saveTimer = setTimeout(function () { var f = pendingSave; pendingSave = null; if (f) f(); }, 1000);
@@ -887,7 +944,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
         if (!saved && setup && setup.done) { var r = metaFromSetup(layout, setup); meta = r.meta; Object.keys(r.toggles).forEach(function (a) { inputs[a] = r.toggles[a]; }); }
         applySaved(saved);
       }
-      build(); fillInputs(); buildRowsPanel(); run();
+      build(); fillInputs(); buildRowsPanel(); run(); histReset();
       if (x.d && x.d.any) scheduleSave();
     });
   }
