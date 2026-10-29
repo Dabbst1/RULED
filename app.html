@@ -205,6 +205,12 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
 td.colhl{background-image:linear-gradient(rgba(29,78,216,.045),rgba(29,78,216,.045));box-shadow:inset 1px 0 0 rgba(29,78,216,.10),inset -1px 0 0 rgba(29,78,216,.10)}
 th.colhl{background:linear-gradient(180deg,#1B3A94,#18327F);box-shadow:inset 0 -2px 0 #6F95E8}
 tr.total td.colhl{background-image:linear-gradient(rgba(29,78,216,.07),rgba(29,78,216,.07))}
+td.lab .mv{display:inline-flex;flex-direction:column;flex:0 0 auto;margin:0 2px;opacity:0;transition:opacity .12s}
+tr:hover td.lab .mv,td.lab .mv:focus-within{opacity:1}
+td.lab .mv button{border:0;background:none;color:#7C93C4;font-size:9px;line-height:13px;height:15px;width:20px;padding:0;cursor:pointer;border-radius:4px}
+td.lab .mv button:hover{background:#E3ECFF;color:var(--blue)}
+@media (hover:none){td.lab .mv{opacity:1}}
+@media (max-width:700px){td.lab .mv{margin:0}td.lab .mv button{width:14px}}
 td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow:clip;padding-top:3px;padding-bottom:3px}
 .fit{min-width:0!important}.fit table{table-layout:fixed}
 .fit th,.fit td{padding:0 1px}.fit th{font-size:11.5px;padding:0 4px}
@@ -384,7 +390,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     var colgroup = '<colgroup><col style="width:var(--a)">' + cw.map(function (w) { return '<col style="width:' + w + 'px">'; }).join("") + "</colgroup>";
     var narrow = width < 900;
     // Wide tables (the Annual budget): squeeze every column to fit the screen so nothing scrolls sideways.
-    var availW = Math.min(window.innerWidth, 1680) - 56, fcFit = 198;
+    var availW = Math.min(window.innerWidth, 1680) - 56, fcFit = 216;
     fitMode = !narrow && !phone && !snapMode && (availW - fcFit) / cols.length >= 60;
     if (fitMode) {
       colgroup = '<colgroup><col style="width:' + fcFit + 'px">' + cols.map(function () { return "<col>"; }).join("") + "</colgroup>"; fc = fcFit;
@@ -401,11 +407,13 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     inputs = {};
     var html = "", open = false, blkIdx = 0;
 
+    function mvBtns(rn) { return '<span class="mv"><button type="button" data-mv="' + rn + ':up" title="Move up" aria-label="Move up">&#9650;</button><button type="button" data-mv="' + rn + ':down" title="Move down" aria-label="Move down">&#9660;</button></span>'; }
     function labelCell(row) {
       var name = meta.labels[row.row] || row.label;
       if (row.cls) return '<td class="lab" title="' + esc(name) + '">' + esc(name) + "</td>";
       var sw = (rowInputs(row.row).length || row.toggle) && rowGroups()[row.row] ? '<button type="button" class="rm" data-swap="' + row.row + '" title="Replace or remove this category" aria-label="Replace or remove ' + esc(name) + '">&#8645;</button>' : "";
-      return '<td class="lab"><div class="lw"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name">' + sw + "</div></td>";
+      var mv = rowInputs(row.row).length ? mvBtns(row.row) : "";
+      return '<td class="lab"><div class="lw"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name">' + mv + sw + "</div></td>";
     }
     function cellsHtml(rowNo, label, cells) {
       var h = "";
@@ -440,7 +448,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       if (row.type === "custom") {
         row.slots.forEach(function (sl) {
           var on = meta.custom.indexOf(sl.row) >= 0;
-          html += '<tr data-slot="' + sl.row + '"' + (on ? "" : " hidden") + '><td class="lab"><div class="lw"><input class="nm" data-nm="' + sl.row + '" data-custom="1" placeholder="' + esc(row.placeholder) + '" value="' + esc(meta.labels[sl.row] || "") + '" aria-label="Custom category name"><button class="rm" data-rm="' + sl.row + '" title="Remove this category" aria-label="Remove category">&times;</button></div></td>' +
+          html += '<tr data-slot="' + sl.row + '"' + (on ? "" : " hidden") + '><td class="lab"><div class="lw"><input class="nm" data-nm="' + sl.row + '" data-custom="1" placeholder="' + esc(row.placeholder) + '" value="' + esc(meta.labels[sl.row] || "") + '" aria-label="Custom category name">' + mvBtns(sl.row) + '<button class="rm" data-rm="' + sl.row + '" title="Remove this category" aria-label="Remove category">&times;</button></div></td>' +
             cellsHtml(sl.row, "Custom " + sl.row, sl.cells) + "</tr>";
         });
         html += '<tr class="addrow"><td colspan="' + (keys.length + 1) + '"><button class="add" data-add="' + (blkIdx++) + '" type="button">+ ' + esc(row.addLabel || "Add a category") + '</button></td></tr>';
@@ -674,8 +682,37 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     var t = e.target, def = t.getAttribute && t.getAttribute("data-def");
     if (def && !t.value.trim()) t.value = def;
   });
+  /* ---------- move a category up or down (swaps its name and amounts with the neighbour) ---------- */
+  function moveRow(rn, dir) {
+    var tr = document.querySelector('tr[data-row="' + rn + '"],tr[data-slot="' + rn + '"]'); if (!tr) return;
+    function idOf(t) { return Number(t.getAttribute("data-row") || t.getAttribute("data-slot")); }
+    var nb = tr;
+    for (;;) {
+      nb = dir < 0 ? nb.previousElementSibling : nb.nextElementSibling;
+      if (!nb || nb.classList.contains("addrow") || nb.classList.contains("total") || nb.classList.contains("net")) return;   // end of this section
+      if (nb.hidden) continue;
+      if (nb.querySelector("input.in") && nb.querySelector("input.nm")) break;
+    }
+    var a = rn, b = idOf(nb);
+    function nameOf(r) { var o = rowObj(r); return meta.labels[r] || (o ? o.label : ""); }
+    function setName(r, v) { var o = rowObj(r); if (o && v === o.label) delete meta.labels[r]; else meta.labels[r] = v; }
+    var na = nameOf(a), nbn = nameOf(b);
+    setName(a, nbn); setName(b, na);
+    tr.querySelector("input.nm").value = nameOf(a); nb.querySelector("input.nm").value = nameOf(b);
+    var ea = Array.prototype.slice.call(tr.querySelectorAll("input.in")), eb = Array.prototype.slice.call(nb.querySelectorAll("input.in"));
+    ea.forEach(function (el, i) {
+      var o = eb[i]; if (!o) return;
+      var xa = el.getAttribute("data-a"), xb = o.getAttribute("data-a"), t = inputs[xa];
+      inputs[xa] = inputs[xb]; inputs[xb] = t;
+      el.value = fmt(inputs[xa]); o.value = fmt(inputs[xb]);
+    });
+    schedule(); scheduleSave(); buildRowsPanel();
+    var again = nb.querySelector('[data-mv="' + b + ':' + (dir < 0 ? "up" : "down") + '"]'); if (again) again.focus();
+  }
   $("sheet").addEventListener("click", function (e) {
     var t = e.target;
+    var mvv = t.getAttribute && t.getAttribute("data-mv");
+    if (mvv) { var pp = mvv.split(":"); moveRow(Number(pp[0]), pp[1] === "up" ? -1 : 1); return; }
     var sw = t.getAttribute && t.getAttribute("data-swap");
     if (sw) { openSwap(Number(sw)); return; }
     var addIdx = t.getAttribute && t.getAttribute("data-add");
