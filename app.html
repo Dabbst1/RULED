@@ -207,8 +207,11 @@ th.colhl{background:linear-gradient(180deg,#1B3A94,#18327F);box-shadow:inset 0 -
 tr.total td.colhl{background-image:linear-gradient(rgba(29,78,216,.07),rgba(29,78,216,.07))}
 td.lab .mv{display:inline-flex;flex-direction:column;flex:0 0 auto;margin:0 2px;opacity:0;transition:opacity .12s}
 tr:hover td.lab .mv,td.lab .mv:focus-within{opacity:1}
-td.lab .mv button{border:0;background:none;color:#7C93C4;font-size:9px;line-height:13px;height:15px;width:20px;padding:0;cursor:pointer;border-radius:4px}
+td.lab .mv button{border:0;background:none;color:#7C93C4;font-size:15px;line-height:1;height:28px;width:18px;padding:0;cursor:grab;border-radius:5px;touch-action:none;letter-spacing:-3px;user-select:none;-webkit-user-select:none}
+tr.dragging td{background:#EAF1FF!important;box-shadow:0 2px 10px rgba(30,70,170,.18)}
+body.dragmode,body.dragmode *{cursor:grabbing!important;user-select:none}
 td.lab .mv button:hover{background:#E3ECFF;color:var(--blue)}
+td.lab .mv{flex-direction:row}
 @media (hover:none){td.lab .mv{opacity:1}}
 @media (max-width:700px){td.lab .mv{margin:0}td.lab .mv button{width:14px}}
 td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow:clip;padding-top:3px;padding-bottom:3px}
@@ -407,7 +410,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     inputs = {};
     var html = "", open = false, blkIdx = 0;
 
-    function mvBtns(rn) { return '<span class="mv"><button type="button" data-mv="' + rn + ':up" title="Move up" aria-label="Move up">&#9650;</button><button type="button" data-mv="' + rn + ':down" title="Move down" aria-label="Move down">&#9660;</button></span>'; }
+    function mvBtns(rn) { return '<span class="mv"><button type="button" class="grip" data-grip="' + rn + '" title="Drag to reorder" aria-label="Drag to reorder (or use the up and down arrow keys)">&#8942;&#8942;</button></span>'; }
     function labelCell(row) {
       var name = meta.labels[row.row] || row.label;
       if (row.cls) return '<td class="lab" title="' + esc(name) + '">' + esc(name) + "</td>";
@@ -707,12 +710,41 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       el.value = fmt(inputs[xa]); o.value = fmt(inputs[xb]);
     });
     schedule(); scheduleSave(); buildRowsPanel();
-    var again = nb.querySelector('[data-mv="' + b + ':' + (dir < 0 ? "up" : "down") + '"]'); if (again) again.focus();
+    return b;
   }
+  /* drag a row by its grip */
+  (function () {
+    var cur = null, grip = null;
+    function rowId(tr) { return Number(tr.getAttribute("data-row") || tr.getAttribute("data-slot")); }
+    function mark(id, on) { var tr = document.querySelector('tr[data-row="' + id + '"],tr[data-slot="' + id + '"]'); if (tr) tr.classList.toggle("dragging", on); return tr; }
+    $("sheet").addEventListener("pointerdown", function (e) {
+      var g = e.target.closest && e.target.closest("[data-grip]"); if (!g) return;
+      e.preventDefault(); cur = Number(g.getAttribute("data-grip")); grip = g;
+      try { g.setPointerCapture(e.pointerId); } catch (x) {}
+      mark(cur, true); document.body.classList.add("dragmode");
+    });
+    $("sheet").addEventListener("pointermove", function (e) {
+      if (cur == null) return;
+      var el = document.elementFromPoint(e.clientX, e.clientY), tr = el && el.closest && el.closest("tr"); if (!tr) return;
+      var id = rowId(tr); if (!id || id === cur) return;
+      var me = document.querySelector('tr[data-row="' + cur + '"],tr[data-slot="' + cur + '"]'); if (!me) return;
+      var mr = me.getBoundingClientRect(), dir = tr.getBoundingClientRect().top < mr.top ? -1 : 1;
+      // only swap once the pointer has crossed the neighbour's midpoint
+      var tb = tr.getBoundingClientRect(), mid = tb.top + tb.height / 2;
+      if ((dir < 0 && e.clientY > mid) || (dir > 0 && e.clientY < mid)) return;
+      var nid = moveRow(cur, dir);
+      if (nid) { mark(cur, false); cur = nid; mark(cur, true); var ng = document.querySelector('[data-grip="' + cur + '"]'); if (ng) { grip = ng; try { ng.setPointerCapture(e.pointerId); } catch (x) {} } }
+    });
+    function end() { if (cur == null) return; mark(cur, false); cur = null; document.body.classList.remove("dragmode"); }
+    $("sheet").addEventListener("pointerup", end); $("sheet").addEventListener("pointercancel", end);
+    $("sheet").addEventListener("keydown", function (e) {
+      var g = e.target.closest && e.target.closest("[data-grip]"); if (!g || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+      e.preventDefault(); var nid = moveRow(Number(g.getAttribute("data-grip")), e.key === "ArrowUp" ? -1 : 1);
+      if (nid) { var ng = document.querySelector('[data-grip="' + nid + '"]'); if (ng) ng.focus(); }
+    });
+  })();
   $("sheet").addEventListener("click", function (e) {
     var t = e.target;
-    var mvv = t.getAttribute && t.getAttribute("data-mv");
-    if (mvv) { var pp = mvv.split(":"); moveRow(Number(pp[0]), pp[1] === "up" ? -1 : 1); return; }
     var sw = t.getAttribute && t.getAttribute("data-swap");
     if (sw) { openSwap(Number(sw)); return; }
     var addIdx = t.getAttribute && t.getAttribute("data-add");
