@@ -1785,7 +1785,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       '<div class="stat' + (net > 0 ? " good" : net < 0 ? " bad" : "") + '"><small>Planned net income</small><b>' + m(net) + "</b>" + al(homeActV && homeActV.D35) + "</div></div>";
     var steps = [
       { done: !!(setup && setup.done), t: "Choose your categories", s: "Pick the income and expenses you want to track. Takes about two minutes.", go: "setup", b: "Choose categories" },
-      { done: !!(v && v.D3 > 0), t: "Enter your pay", s: "Add your paychecks for this month.", go: "monthly-budget", b: "Open Monthly budget" },
+      { done: !!(v && v.D7 > 0), t: "Enter your pay", s: "Add your paychecks for this month.", go: "monthly-budget", b: "Open Monthly budget" },
       { done: !!(v && v.D34 > 0), t: "Add your expenses", s: "Rent, groceries, gas. Rename or add categories to fit your life.", go: "monthly-budget", b: "Add expenses" },
       { done: bills.length > 0, t: "Add your bills", s: "Get a reminder before they’re due.", go: "bills", b: "Add bills" }
     ];
