@@ -138,7 +138,7 @@ dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink)
 .acform input{width:100%;max-width:380px;height:42px;margin-top:3px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink)}
 .acform .btn{margin-top:14px}
 #who{font:inherit;color:var(--muted);background:none;border:0;text-decoration:underline;cursor:pointer}
-.lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}
+.lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}td.lab .rm[data-swap]{font-size:17px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
 .add[disabled]{opacity:.5;cursor:default}
@@ -205,7 +205,7 @@ dialog::backdrop{background:rgba(11,31,77,.5);backdrop-filter:blur(4px)}
 td.colhl{background-image:linear-gradient(rgba(29,78,216,.045),rgba(29,78,216,.045));box-shadow:inset 1px 0 0 rgba(29,78,216,.10),inset -1px 0 0 rgba(29,78,216,.10)}
 th.colhl{background:linear-gradient(180deg,#1B3A94,#18327F);box-shadow:inset 0 -2px 0 #6F95E8}
 tr.total td.colhl{background-image:linear-gradient(rgba(29,78,216,.07),rgba(29,78,216,.07))}
-td.lab .mv{display:inline-flex;flex-direction:column;flex:0 0 auto;margin:0 2px;opacity:0;transition:opacity .12s}
+td.lab .mv{display:inline-flex;flex-direction:column;flex:0 0 auto;margin:0 2px;opacity:.5;transition:opacity .12s}
 tr:hover td.lab .mv,td.lab .mv:focus-within{opacity:1}
 td.lab .mv button{border:0;background:none;color:#7C93C4;font-size:15px;line-height:1;height:28px;width:18px;padding:0;cursor:grab;border-radius:5px;touch-action:none;letter-spacing:-3px;user-select:none;-webkit-user-select:none}
 tr.dragging td{background:#EAF1FF!important;box-shadow:0 2px 10px rgba(30,70,170,.18)}
@@ -471,7 +471,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     function labelCell(row) {
       var name = meta.labels[row.row] || row.label;
       if (row.cls) return '<td class="lab" title="' + esc(name) + '">' + esc(name) + "</td>";
-      var sw = (rowInputs(row.row).length || row.toggle) && rowGroups()[row.row] ? '<button type="button" class="rm" data-swap="' + row.row + '" title="Replace or remove this category" aria-label="Replace or remove ' + esc(name) + '">&#8645;</button>' : "";
+      var sw = (rowInputs(row.row).length || row.toggle) && rowGroups()[row.row] ? '<button type="button" class="rm" data-swap="' + row.row + '" title="Replace or remove this category" aria-label="Replace or remove ' + esc(name) + '">&#9998;</button>' : "";
       var mv = rowInputs(row.row).length ? mvBtns(row.row) : "";
       return '<td class="lab"><div class="lw"><input class="nm" data-nm="' + row.row + '" data-def="' + esc(row.label) + '" value="' + esc(name) + '" aria-label="Category name">' + mv + sw + "</div></td>";
     }
