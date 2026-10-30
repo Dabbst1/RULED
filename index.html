@@ -107,6 +107,14 @@ summary::after{content:"+";float:right;font-size:22px}
 details[open] summary::after{content:"\2212"}
 details p{padding-bottom:var(--u);max-width:38em}
 
+.freecalc{display:grid;gap:4px;max-width:720px;padding:var(--u) 28px;background:var(--sheet);border:2px solid var(--ink);border-radius:4px;box-shadow:8px 8px 0 var(--blue);text-decoration:none;transition:transform .15s}
+.freecalc:hover{transform:translate(-2px,-2px)}
+.fc-tag{justify-self:start;font-size:13px;font-weight:600;line-height:24px;padding:0 10px;border-radius:99px;background:var(--hl);color:var(--blue)}
+.fc-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(24px,3.2vw,32px);line-height:calc(var(--u)*1.25);letter-spacing:-.02em}
+.fc-text{color:var(--muted);max-width:34em}
+.fc-split{display:flex;height:12px;border:2px solid var(--ink);border-radius:4px;overflow:hidden;margin:8px 0}
+.fc-split i{display:block}
+.fc-go{font-weight:600;color:var(--blue)}
 footer{margin-top:calc(var(--u)*4);padding:var(--u) 0 calc(var(--u)*2);border-top:2px solid var(--ink);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font-size:14px;background:var(--paper)}
 footer a{margin-left:20px}
 
@@ -128,6 +136,7 @@ footer a{margin-left:20px}
     <div class="nav-links">
       <a class="hide-sm" href="#inside">What&rsquo;s inside</a>
       <a class="hide-sm" href="#pricing">Pricing</a>
+      <a href="50-30-20-calculator.html">Free calculator</a>
       <!-- Log in goes to the tool page, which shows the login box -->
       <a href="app.html" id="navLogin">Log in</a>
     </div>
@@ -140,9 +149,9 @@ footer a{margin-left:20px}
       <div class="cta">
         <!-- MEMBERSTACK: opens the signup modal -->
         <a class="btn" href="app.html#signup">Start budgeting</a>
-        <a class="btn ghost" href="#inside">See what&rsquo;s inside</a>
+        <a class="btn ghost" href="50-30-20-calculator.html">Try the free calculator</a>
       </div>
-      <p class="fine">Cancel any time from your account page.</p>
+      <p class="fine">14 days free on the monthly plan. Cancel any time from your account page.</p>
     </div>
 
     <!-- Preview of the Annual budget tool. Numbers match what the real tool calculates. -->
@@ -158,13 +167,23 @@ footer a{margin-left:20px}
     </div>
   </header>
 
+  <section>
+    <a class="freecalc" href="50-30-20-calculator.html">
+      <span class="fc-tag">Free &middot; no sign-up</span>
+      <span class="fc-title">50/30/20 budget calculator</span>
+      <span class="fc-text">Enter your take-home pay and see how much should go to needs, wants, and savings, then compare it to what you actually spend.</span>
+      <span class="fc-split" aria-hidden="true"><i style="width:50%;background:#1D4ED8"></i><i style="width:30%;background:#0EA5E9"></i><i style="width:20%;background:#16A34A"></i></span>
+      <span class="fc-go">Try it free &rarr;</span>
+    </a>
+  </section>
+
   <section id="inside">
     <h2>What&rsquo;s inside</h2>
     <p class="lead">One membership gives you every tool, right in your browser. Nothing to download, and new tools are added as they&rsquo;re built.</p>
     <div class="list" style="margin-top:32px">
       <!-- Add a line here each time a new tool goes live. Only list tools that exist. -->
       <div class="item"><h3>Annual budget</h3><p>Enter your income, deductions, and a full year of expenses by month. Your tithe, totals, and net income calculate themselves, and your numbers are saved to your account. Rename any category or add your own.</p></div>
-      <div class="item"><h3>Monthly budget</h3><p>Plan each month by paycheck. Pick the month, enter your pay and expenses, and see your net income right away. Rename any category or add your own.</p></div>
+      <div class="item"><h3>Monthly budget</h3><p>Plan each month by paycheck. Expenses are grouped into simple sections like Bills &amp; Housing, Food, and Transportation, each with its own subtotal, and a built-in 50/30/20 check shows how your spending splits into needs, wants, and savings.</p></div>
       <div class="item"><h3>More tools on the way</h3><p>Every new tool is included in your membership at no extra cost.</p></div>
     </div>
   </section>
