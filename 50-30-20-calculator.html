@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free 50/30/20 Budget Calculator | Monerem.</title>
+<meta name="description" content="Free 50/30/20 budget calculator. Enter your take-home pay to see how much goes to needs, wants, and savings, then compare it to what you actually spend.">
+<link rel="canonical" href="https://dabbst1.github.io/RULED/50-30-20-calculator.html">
+<meta property="og:title" content="Free 50/30/20 Budget Calculator">
+<meta property="og:description" content="See how much of your paycheck should go to needs, wants, and savings in seconds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --u:32px;
+  --paper:#EAF2FF;
+  --ink:#0B1F4D;
+  --muted:#3F5586;
+  --rule:#B8CEF2;
+  --margin:#4C7DF0;
+  --blue:#1D4ED8;
+  --blue-dark:#14307F;
+  --sheet:#FFFFFF;
+  --hl:#CFE0FF;
+  --needs:#1D4ED8;
+  --wants:#0EA5E9;
+  --save:#16A34A;
+  --over:#C2410C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Public Sans',system-ui,sans-serif;
+  font-size:17px;line-height:var(--u);
+  color:var(--ink);
+  background-color:var(--paper);
+  background-image:linear-gradient(to bottom,transparent calc(var(--u) - 1px),var(--rule) calc(var(--u) - 1px));
+  background-size:100% var(--u);
+}
+body::before{content:"";position:fixed;top:0;bottom:0;left:clamp(16px,6vw,96px);width:2px;background:var(--margin);opacity:.55;pointer-events:none}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 0 clamp(36px,9vw,128px)}
+
+nav{display:flex;align-items:center;justify-content:space-between;height:calc(var(--u)*2)}
+.logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:28px;text-decoration:none;letter-spacing:-.02em}
+.logo span{color:var(--blue)}
+.nav-links{display:flex;gap:24px;align-items:center}
+.nav-links a{text-decoration:none;font-weight:500}
+.nav-links a:hover{text-decoration:underline}
+
+.btn{display:inline-block;font:600 16px/1 'Public Sans',sans-serif;padding:14px 22px;border-radius:4px;border:2px solid var(--blue);background:var(--blue);color:#fff;text-decoration:none;cursor:pointer;transition:background .15s}
+.btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:#fff}
+
+h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(36px,5vw,56px);line-height:calc(var(--u)*2);letter-spacing:-.03em;padding-top:calc(var(--u)*1.5)}
+h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(28px,3.6vw,36px);line-height:calc(var(--u)*1.5);letter-spacing:-.02em;margin-bottom:var(--u)}
+.lead{max-width:34em;margin-top:calc(var(--u)/2)}
+.fine{font-size:14px;color:var(--muted)}
+section{padding-top:calc(var(--u)*2.5)}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:40px;align-items:start;margin-top:var(--u)}
+.card{background:var(--sheet);border:2px solid var(--ink);border-radius:4px;box-shadow:8px 8px 0 var(--ink);padding:var(--u) 24px}
+.card.blue{box-shadow:8px 8px 0 var(--blue)}
+.card h3{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:600;margin-bottom:calc(var(--u)/2)}
+label{display:block;font-weight:600;font-size:15px}
+.field{margin-bottom:calc(var(--u)/2)}
+.money{display:flex;align-items:center;border:2px solid var(--ink);border-radius:4px;background:#fff;margin-top:4px}
+.money span{padding:0 0 0 12px;font-weight:600;color:var(--muted)}
+.money input{flex:1;min-width:0;border:0;background:transparent;font:500 18px 'Public Sans',sans-serif;padding:10px 12px 10px 6px;color:var(--ink);font-variant-numeric:tabular-nums}
+.money input:focus{outline:none}
+.money:focus-within{outline:3px solid var(--blue);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.seg button{font:500 14px 'Public Sans',sans-serif;padding:6px 12px;border:2px solid var(--ink);background:#fff;color:var(--ink);border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.toggle-actual{margin-top:calc(var(--u)/2);font-weight:600;color:var(--blue);background:none;border:0;cursor:pointer;font-size:15px;text-decoration:underline;padding:0}
+#actualBox{margin-top:calc(var(--u)/2);border-top:1px dashed var(--rule);padding-top:calc(var(--u)/2)}
+.hint{font-size:13px;color:var(--muted);line-height:20px;margin-top:2px}
+
+/* results */
+.monthly{font-size:14px;color:var(--muted)}
+.stack{display:flex;height:20px;border-radius:4px;overflow:hidden;border:2px solid var(--ink);margin:calc(var(--u)/2) 0 var(--u)}
+.stack i{display:block}
+.bucket{display:grid;grid-template-columns:14px 1fr auto;gap:12px;align-items:start;padding:calc(var(--u)/2) 0;border-top:1px solid var(--rule)}
+.bucket:first-of-type{border-top:2px solid var(--ink)}
+.dot{width:14px;height:14px;border-radius:3px;margin-top:9px}
+.bucket b{display:block;font-size:17px}
+.bucket .desc{font-size:14px;color:var(--muted);line-height:22px}
+.amt{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:28px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.amt small{display:block;font:500 13px 'Public Sans',sans-serif;color:var(--muted);line-height:18px}
+.compare{grid-column:2/-1;font-size:14px;line-height:22px}
+.meter{height:8px;background:var(--rule);border-radius:4px;overflow:hidden;margin:6px 0 4px}
+.meter i{display:block;height:100%}
+.ok{color:var(--save);font-weight:600}
+.bad{color:var(--over);font-weight:600}
+.summary{margin-top:calc(var(--u)/2);padding:12px 16px;background:var(--hl);border-radius:4px;font-size:15px;line-height:24px}
+
+/* upsell */
+.upsell{display:grid;grid-template-columns:1.2fr .8fr;gap:32px;align-items:center}
+.upsell ul{list-style:none;margin-top:calc(var(--u)/2)}
+.upsell li::before{content:"\2713\00a0\00a0";color:var(--blue);font-weight:700}
+.cta{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+
+/* explainer */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.trio div{border-top:4px solid var(--ink);padding-top:calc(var(--u)/2)}
+.trio .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;line-height:calc(var(--u)*1.5)}
+.trio p{font-size:15px;line-height:26px}
+
+details{border-bottom:1px solid var(--ink)}
+details:first-of-type{border-top:2px solid var(--ink)}
+summary{cursor:pointer;font-weight:600;padding:calc(var(--u)/2) 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";float:right;font-size:22px}
+details[open] summary::after{content:"\2212"}
+details p{padding-bottom:var(--u);max-width:40em}
+
+footer{margin-top:calc(var(--u)*4);padding:var(--u) 0 calc(var(--u)*2);border-top:2px solid var(--ink);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font-size:14px;background:var(--paper)}
+footer a{margin-left:20px}
+
+@media (max-width:860px){
+  .calc,.upsell{grid-template-columns:1fr}
+  .trio{grid-template-columns:1fr}
+  .nav-links .hide-sm{display:none}
+  .amt{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Main">
+    <a class="logo" href="./">Monerem<span>.</span></a>
+    <div class="nav-links">
+      <a class="hide-sm" href="./#inside">What&rsquo;s inside</a>
+      <a class="hide-sm" href="./#pricing">Pricing</a>
+      <a href="app.html">Log in</a>
+    </div>
+  </nav>
+
+  <header>
+    <h1>Free 50/30/20 budget calculator</h1>
+    <p class="lead">Enter your take-home pay and see exactly how much should go to needs, wants, and savings. Want a reality check? Add what you actually spend and see where you stand.</p>
+  </header>
+
+  <div class="calc">
+    <!-- inputs -->
+    <form class="card" id="calcForm" onsubmit="return false" aria-label="Budget inputs">
+      <h3>Your income</h3>
+      <div class="field">
+        <label for="income">Take-home pay (after taxes)</label>
+        <div class="money"><span>$</span><input id="income" type="text" inputmode="decimal" placeholder="4,000" autocomplete="off"></div>
+      </div>
+      <div class="field">
+        <label id="freqLabel">How often?</label>
+        <div class="seg" role="group" aria-labelledby="freqLabel" id="freq">
+          <button type="button" data-f="52">Weekly</button>
+          <button type="button" data-f="26">Every 2 weeks</button>
+          <button type="button" data-f="24">Twice a month</button>
+          <button type="button" data-f="12" aria-pressed="true">Monthly</button>
+          <button type="button" data-f="1">Yearly</button>
+        </div>
+      </div>
+
+      <button type="button" class="toggle-actual" id="toggleActual" aria-expanded="false" aria-controls="actualBox">+ Compare with what I actually spend</button>
+
+      <div id="actualBox" hidden>
+        <p class="hint" style="margin-bottom:12px">Monthly amounts. Rough numbers are fine.</p>
+        <div class="field">
+          <label for="aNeeds">Needs</label>
+          <div class="money"><span>$</span><input id="aNeeds" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+          <p class="hint">Rent, utilities, groceries, insurance, car, minimum debt payments</p>
+        </div>
+        <div class="field">
+          <label for="aWants">Wants</label>
+          <div class="money"><span>$</span><input id="aWants" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+          <p class="hint">Eating out, subscriptions, shopping, entertainment, travel</p>
+        </div>
+        <div class="field">
+          <label for="aSave">Savings &amp; extra debt payoff</label>
+          <div class="money"><span>$</span><input id="aSave" type="text" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+          <p class="hint">Emergency fund, retirement, investing, payments above the minimum</p>
+        </div>
+      </div>
+    </form>
+
+    <!-- results -->
+    <div class="card blue" aria-live="polite">
+      <h3>Your monthly targets</h3>
+      <p class="monthly" id="monthlyLine">Based on $0 per month</p>
+      <div class="stack" aria-hidden="true">
+        <i style="width:50%;background:var(--needs)"></i>
+        <i style="width:30%;background:var(--wants)"></i>
+        <i style="width:20%;background:var(--save)"></i>
+      </div>
+
+      <div class="bucket">
+        <span class="dot" style="background:var(--needs)"></span>
+        <div><b>50% Needs</b><span class="desc">Bills you have to pay</span></div>
+        <div class="amt" id="tNeeds">$0<small id="yNeeds">$0 / year</small></div>
+        <div class="compare" id="cNeeds" hidden></div>
+      </div>
+      <div class="bucket">
+        <span class="dot" style="background:var(--wants)"></span>
+        <div><b>30% Wants</b><span class="desc">The fun stuff</span></div>
+        <div class="amt" id="tWants">$0<small id="yWants">$0 / year</small></div>
+        <div class="compare" id="cWants" hidden></div>
+      </div>
+      <div class="bucket">
+        <span class="dot" style="background:var(--save)"></span>
+        <div><b>20% Savings</b><span class="desc">Future you &amp; debt payoff</span></div>
+        <div class="amt" id="tSave">$0<small id="ySave">$0 / year</small></div>
+        <div class="compare" id="cSave" hidden></div>
+      </div>
+
+      <div class="summary" id="summary" hidden></div>
+    </div>
+  </div>
+
+  <!-- upsell -->
+  <section>
+    <div class="card upsell">
+      <div>
+        <h2 style="margin-bottom:0">Want this tracked every month?</h2>
+        <ul>
+          <li>Log real expenses and tag them need, want, or savings</li>
+          <li>See your split update automatically, month after month</li>
+          <li>Yearly projections and more budgeting tools, all in one place</li>
+        </ul>
+      </div>
+      <div class="cta">
+        <a class="btn" href="app.html#signup">Start 14 days free</a>
+        <span class="fine">Then $9/month or $79/year. Cancel anytime.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- explainer -->
+  <section id="how">
+    <h2>How the 50/30/20 rule works</h2>
+    <p class="lead" style="margin-bottom:var(--u)">It&rsquo;s a simple way to split your after-tax income into three buckets, so every dollar has a job without tracking dozens of categories.</p>
+    <div class="trio">
+      <div><span class="n" style="color:var(--needs)">50%</span><b>Needs</b><p>Expenses you can&rsquo;t skip: housing, utilities, groceries, insurance, transportation, and minimum payments on debt.</p></div>
+      <div><span class="n" style="color:var(--wants)">30%</span><b>Wants</b><p>Things that make life enjoyable but aren&rsquo;t essential: restaurants, streaming, hobbies, shopping, and trips.</p></div>
+      <div><span class="n" style="color:var(--save)">20%</span><b>Savings</b><p>Building your future: emergency fund, retirement, investing, and paying debt down faster than the minimum.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Common questions</h2>
+    <details>
+      <summary>Should I use my gross pay or take-home pay?</summary>
+      <p>Take-home pay, meaning what actually lands in your bank account after taxes. If retirement contributions come out of your paycheck automatically, you can add them back in and count them toward your 20%.</p>
+    </details>
+    <details>
+      <summary>What if my needs are more than 50%?</summary>
+      <p>That&rsquo;s common, especially with high rent. Treat 50/30/20 as a starting point, not a rule you&rsquo;ve failed. Many people trim wants first, then work on lowering big fixed costs over time.</p>
+    </details>
+    <details>
+      <summary>Is a debt payment a need or savings?</summary>
+      <p>The minimum payment is a need. Anything you pay above the minimum counts toward your 20% savings bucket, since it improves your financial future.</p>
+    </details>
+    <details>
+      <summary>Is my information saved?</summary>
+      <p>No. This free calculator runs entirely in your browser and nothing you type is stored or sent anywhere. Members can save and track their numbers inside Monerem.</p>
+    </details>
+  </section>
+
+  <footer>
+    <span>&copy; <span id="yr"></span> Monerem.</span>
+    <span><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="mailto:hello@example.com">Contact</a></span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var freq = 12;
+  var $ = function(id){ return document.getElementById(id); };
+  var fmt = function(n){ return '$' + Math.round(n).toLocaleString('en-US'); };
+  var num = function(el){ var v = parseFloat(String(el.value).replace(/[^0-9.]/g,'')); return isNaN(v) ? 0 : v; };
+
+  function compareLine(el, actual, target, isSave){
+    if (!actual && actual !== 0) return;
+    var pct = target > 0 ? Math.min(actual / target, 1.5) : 0;
+    var diff = actual - target;
+    var good = isSave ? diff >= 0 : diff <= 0;
+    var color = good ? 'var(--save)' : 'var(--over)';
+    var msg;
+    if (Math.abs(diff) < 1) msg = '<span class="ok">Right on target</span>';
+    else if (isSave) msg = diff > 0 ? '<span class="ok">' + fmt(diff) + ' above target</span>' : '<span class="bad">' + fmt(-diff) + ' short of target</span>';
+    else msg = diff < 0 ? '<span class="ok">' + fmt(-diff) + ' under target</span>' : '<span class="bad">' + fmt(diff) + ' over target</span>';
+    el.innerHTML = 'You spend ' + fmt(actual) + ' &middot; ' + msg +
+      '<div class="meter"><i style="width:' + (Math.min(pct,1) * 100) + '%;background:' + color + '"></i></div>';
+    el.hidden = false;
+  }
+
+  function update(){
+    var monthly = num($('income')) * freq / 12;
+    var t = { n: monthly * .5, w: monthly * .3, s: monthly * .2 };
+    $('monthlyLine').textContent = 'Based on ' + fmt(monthly) + ' per month';
+    $('tNeeds').firstChild.nodeValue = fmt(t.n); $('yNeeds').textContent = fmt(t.n * 12) + ' / year';
+    $('tWants').firstChild.nodeValue = fmt(t.w); $('yWants').textContent = fmt(t.w * 12) + ' / year';
+    $('tSave').firstChild.nodeValue  = fmt(t.s); $('ySave').textContent  = fmt(t.s * 12) + ' / year';
+
+    var open = !$('actualBox').hidden;
+    var a = { n: num($('aNeeds')), w: num($('aWants')), s: num($('aSave')) };
+    var any = open && monthly > 0 && (a.n || a.w || a.s);
+    ['cNeeds','cWants','cSave'].forEach(function(id){ $(id).hidden = true; });
+    $('summary').hidden = true;
+    if (!any) return;
+
+    compareLine($('cNeeds'), a.n, t.n, false);
+    compareLine($('cWants'), a.w, t.w, false);
+    compareLine($('cSave'),  a.s, t.s, true);
+
+    var total = a.n + a.w + a.s;
+    var p = function(x){ return Math.round(x / monthly * 100); };
+    var left = monthly - total;
+    var text = 'Your actual split: <b>' + p(a.n) + ' / ' + p(a.w) + ' / ' + p(a.s) + '</b>. ';
+    if (left > 1) text += fmt(left) + ' a month isn&rsquo;t assigned to anything yet. Moving it into savings would get you closer to 20%.';
+    else if (left < -1) text += 'You&rsquo;re spending ' + fmt(-left) + ' more than you bring home each month.';
+    else text += 'Every dollar has a job. Nice work.';
+    $('summary').innerHTML = text;
+    $('summary').hidden = false;
+  }
+
+  document.querySelectorAll('#freq button').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('#freq button').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true');
+      freq = +b.dataset.f;
+      update();
+    });
+  });
+  $('toggleActual').addEventListener('click', function(){
+    var box = $('actualBox'); box.hidden = !box.hidden;
+    this.setAttribute('aria-expanded', String(!box.hidden));
+    this.textContent = box.hidden ? '+ Compare with what I actually spend' : '− Hide my actual spending';
+    update();
+  });
+  ['income','aNeeds','aWants','aSave'].forEach(function(id){ $(id).addEventListener('input', update); });
+  $('yr').textContent = new Date().getFullYear();
+  update();
+})();
+</script>
+</body>
+</html>

@@ -263,6 +263,26 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
 .rcgrid{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start}.rcimg{width:100%;max-height:320px;object-fit:contain;background:#F3F6FD;border:1px solid var(--line);border-radius:10px}.rcgrid .billform{margin:0;border:0;padding:0;box-shadow:none;background:transparent}
 .rcrow{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.rcrow small{display:block;color:#51638f}.rcrow button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;color:#B42318;font:inherit}
 @media (max-width:640px){.rcgrid{grid-template-columns:1fr}}
+/* expense sections + 50/30/20 */
+:root{--need:#1D4ED8;--need-bg:#E3ECFF;--want:#0369A1;--want-bg:#E0F2FE;--save:#15803D;--save-bg:#DCFCE7}
+tr.grp td,tr.grp td.lab{background:#F1F5FD;border-top:2px solid var(--ink);font-weight:700;color:var(--ink);height:38px}
+tr.grp td.sub{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--fs,inherit)}
+tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-shadow:inset 4px 0 0 var(--want)}tr.grp-save td.lab{box-shadow:inset 4px 0 0 var(--save)}
+.gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
+.gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
+.tag{display:inline-block;font-size:11px;font-weight:700;line-height:18px;padding:0 8px;border-radius:99px;letter-spacing:.02em;white-space:nowrap}
+.tag-need{background:var(--need-bg);color:var(--need)}.tag-want{background:var(--want-bg);color:var(--want)}.tag-save{background:var(--save-bg);color:var(--save)}
+.split{margin:16px 0 8px;padding:16px 18px;background:#fff;border:1px solid var(--line,#D6E3F8);border-radius:14px;box-shadow:var(--shadow);max-width:640px;position:sticky;left:0}
+.splithead{display:flex;flex-direction:column;margin-bottom:8px}.splithead b{font-size:17px}.split .sub{font-size:13px;color:#51638f}
+.splitrow{display:grid;grid-template-columns:76px 1fr;gap:4px 12px;align-items:center;padding:8px 0;border-top:1px solid var(--line,#D6E3F8)}
+.splitrow .tag{justify-self:start}
+.splitbar{position:relative;height:10px;background:#EEF2FA;border-radius:99px;overflow:visible}
+.splitbar i{position:absolute;top:0;bottom:0;left:0;border-radius:99px}.fill-need{background:var(--need)}.fill-want{background:var(--want)}.fill-save{background:var(--save)}
+.splitbar .mark{width:2px;top:-4px;bottom:-4px;background:var(--ink);border-radius:1px;transform:translateX(-1px)}
+.splitnum{grid-column:2;font-size:14px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
+.okay{color:var(--save);font-weight:600}.warn{color:#C2410C;font-weight:600}
+.warnline{margin:8px 0 0;color:#C2410C;font-weight:600;font-size:14px}
+@media (max-width:700px){tr.grp td{height:40px}.gname{font-size:12px}.gw{gap:2px 6px}.split{padding:14px}}
 </style>
 </head>
 <body>
@@ -527,6 +547,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
       var r = Number(tr.getAttribute("data-slot"));
       tr.hidden = meta.custom.indexOf(r) < 0 || meta.hidden.indexOf(r) >= 0;
     });
+    sectionize();
     var h = meta.hidden.length;
     $("rowsPanel").querySelector("summary").textContent = "Show or hide rows" + (h ? " (" + h + " hidden)" : "");
   }
@@ -833,7 +854,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     var nb = tr;
     for (;;) {
       nb = dir < 0 ? nb.previousElementSibling : nb.nextElementSibling;
-      if (!nb || nb.classList.contains("addrow") || nb.classList.contains("total") || nb.classList.contains("net")) return;   // end of this section
+      if (!nb || nb.classList.contains("addrow") || nb.classList.contains("total") || nb.classList.contains("net") || nb.classList.contains("grp")) return;   // end of this section
       if (nb.hidden) continue;
       if (nb.querySelector("input.in") && nb.querySelector("input.nm")) break;
     }
@@ -906,6 +927,167 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
     }
   });
 
+  /* ---------- expense sections, grouped by the 50/30/20 rule ----------
+     Display only: rows are regrouped on screen by their current name, so saving,
+     renaming, reordering and the server math all work exactly as before. */
+  var lastValues = {};
+  var SECTIONS = [
+    { k: "housing",   n: "Housing",                 t: "need" },
+    { k: "utilities", n: "Utilities & services",    t: "need" },
+    { k: "groceries", n: "Groceries",               t: "need" },
+    { k: "transport", n: "Transportation",          t: "need" },
+    { k: "health",    n: "Health & insurance",      t: "need" },
+    { k: "family",    n: "Family & kids",           t: "need" },
+    { k: "pets",      n: "Pets",                    t: "need" },
+    { k: "education", n: "Education",               t: "need" },
+    { k: "debt",      n: "Debt payments",           t: "need" },
+    { k: "work",      n: "Work & business",         t: "need" },
+    { k: "dining",    n: "Dining out",              t: "want" },
+    { k: "personal",  n: "Shopping & personal",     t: "want" },
+    { k: "fun",       n: "Fun & entertainment",     t: "want" },
+    { k: "giving",    n: "Giving",                  t: "want" },
+    { k: "other",     n: "Other",                   t: "want" },
+    { k: "savings",   n: "Savings & investing",     t: "save" }
+  ];
+  var TAGS = { need: { n: "Need", pct: 50, label: "Needs" }, want: { n: "Want", pct: 30, label: "Wants" }, save: { n: "Savings", pct: 20, label: "Savings" } };
+  // Which column holds the per-category total, and where total income lives, for each table.
+  var SPLIT = { "monthly-budget": { col: "D", inc: "D7", per: "month" }, "yearly-projection": { col: "N", inc: "N10", per: "year" } };
+  var SECT_OF = (function () {
+    var m = {};
+    function put(key, names) { names.forEach(function (x) { m[nk(x)] = key; }); }
+    var byGroup = { "Housing": "housing", "Utilities and services": "utilities", "Transportation": "transport", "Food and drink": "dining", "Health": "health",
+      "Personal": "personal", "Family and kids": "family", "Pets": "pets", "Education": "education", "Debt and financial": "debt",
+      "Work and business": "work", "Fun and lifestyle": "fun", "Other": "other" };
+    POOL.expense.forEach(function (g) { put(byGroup[g.g] || "other", g.items); });
+    put("fun", ["Cable TV", "Streaming Services", "Memberships"]);
+    put("groceries", ["Specialty Groceries", "Water Delivery", "School Lunches"]);
+    put("giving", ["Donations and Charity", "Church Offering", "Tithe"]);
+    put("debt", ["Student Loan Payment", "Credit Cards"]);
+    put("savings", ["Savings Transfer", "Emergency Fund", "Retirement Contribution", "Investments", "Brokerage Deposit", "Sinking Fund", "Down Payment Fund", "Vacation Fund"]);
+    // the built-in starter rows
+    put("transport", ["Gasoline", "Transportation"]); put("dining", ["Restaurants"]); put("fun", ["Travel", "Gaming", "Sports", "Digital Entertainment"]);
+    put("personal", ["Shopping", "Electronics", "Clothing", "Personal Care"]); put("groceries", ["Groceries"]); put("utilities", ["Utilities"]);
+    put("pets", ["Pets"]); put("health", ["Healthcare", "Insurance"]); put("housing", ["Home", "Rent"]); put("other", ["Professional Services"]);
+    return m;
+  })();
+  // Names people type themselves: best guess from keywords, otherwise "Other".
+  var SECT_WORDS = [
+    ["giving", /tithe|church|offering|donat|charit|giving/],
+    ["savings", /saving|invest|retire|401k|\bira\b|roth|emergency fund|sinking|brokerage|\bfund\b/],
+    ["pets", /\bpets?\b|\bdogs?\b|\bcats?\b|\bvet\b|kennel/],
+    ["debt", /loan|debt|credit|interest|klarna|affirm|afterpay|collections/],
+    ["dining", /restaurant|dining|takeout|take out|coffee|starbucks|fast food|doordash|ubereats|uber eats|grubhub|lunch|dinner|breakfast|drinks|\bbar\b/],
+    ["groceries", /grocer|supermarket|costco|aldi|publix|kroger|sams club|food/],
+    ["housing", /\brent\b|mortgage|\bhoa\b|\bhome|house|apartment|furnit|repair|lawn|maintenance/],
+    ["utilities", /electric|power bill|\bwater\b|internet|wifi|wi-fi|phone|\bcell|utilit|trash|sewer|natural gas|\bfpl\b|duke energy/],
+    ["transport", /\bcar\b|\bcars\b|auto|gasoline|\bgas\b|fuel|uber|lyft|toll|parking|transit|\bbus\b|train|vehicle|sunpass|tires|oil change/],
+    ["health", /doctor|dent|medic|health|pharm|prescri|\bgym\b|insur|therap|vision|hospital|clinic/],
+    ["family", /child|\bkids?\b|daycare|baby|babysit|diaper|nanny/],
+    ["education", /tuition|school|class|course|textbook|college|universit|tutor/],
+    ["fun", /netflix|hulu|disney|spotify|stream|youtube|movie|game|concert|travel|vacation|trip|hobby|entertain|sport|\bclub\b|golf|fun/],
+    ["personal", /hair|barber|cloth|shoe|shop|amazon|target|beauty|nail|gift|personal|cosmetic|makeup|laundry|salon/],
+    ["work", /business|\bwork\b|office|client|uniform|tools|license|software/]
+  ];
+  function sectionOf(name) {
+    var key = SECT_OF[nk(name)]; if (key) return key;
+    var low = String(name).toLowerCase();
+    for (var i = 0; i < SECT_WORDS.length; i++) if (SECT_WORDS[i][1].test(low)) return SECT_WORDS[i][0];
+    return "other";
+  }
+  function expenseRows() { // expense rows in the order they sit on screen
+    var groups = rowGroups(), blk = customBlocks().filter(function (b) { return b.group !== "income"; })[0];
+    var slotIds = {}; if (blk) blk.slots.forEach(function (sl) { slotIds[sl.row] = 1; });
+    return Array.prototype.filter.call(document.querySelectorAll("#sheet tr[data-row], #sheet tr[data-slot]"), function (tr) {
+      if (tr.hasAttribute("data-slot")) return !!slotIds[tr.getAttribute("data-slot")];
+      return groups[Number(tr.getAttribute("data-row"))] === "expense" && !tr.className.trim();
+    });
+  }
+  function rowActive(tr) {
+    var s = tr.getAttribute("data-slot");
+    if (s) return meta.custom.indexOf(Number(s)) >= 0;
+    return meta.removed.indexOf(Number(tr.getAttribute("data-row"))) < 0;
+  }
+  function rowName(tr) { var nm = tr.querySelector("input.nm"); return nm ? nm.value.trim() : ""; }
+  function sectionize() {
+    if (!layout || !SPLIT[layout.id]) return;
+    var rows = expenseRows(); if (!rows.length) return;
+    var tbody = rows[0].parentNode, keys = layout.cols.map(function (c) { return c.key; });
+    Array.prototype.forEach.call(tbody.querySelectorAll("tr.grp"), function (g) { g.remove(); });
+    var anchor = tbody.querySelector("tr.addrow") || tbody.querySelector("tr.total") || null;
+    var buckets = {}; SECTIONS.forEach(function (s) { buckets[s.k] = []; });
+    rows.forEach(function (tr) {
+      var k = rowActive(tr) && rowName(tr) ? sectionOf(rowName(tr)) : "other";
+      tr.setAttribute("data-sec", k); buckets[k].push(tr);
+    });
+    SECTIONS.forEach(function (s) {
+      var members = buckets[s.k]; if (!members.length) return;
+      var g = document.createElement("tr");
+      g.className = "grp grp-" + s.t; g.setAttribute("data-grp", s.k);
+      g.innerHTML = '<td class="lab"><div class="gw"><span class="gname">' + esc(s.n) + '</span><span class="tag tag-' + s.t + '">' + TAGS[s.t].n + "</span></div></td>" +
+        keys.map(function (k) { return '<td class="num sub" data-sub="' + k + '"></td>'; }).join("");
+      tbody.insertBefore(g, anchor);
+      members.forEach(function (tr) { tbody.insertBefore(tr, anchor); });
+      g.hidden = !members.some(function (tr) { return !tr.hidden; });
+    });
+    // the 50/30/20 check sits right under the expense table
+    var table = tbody.closest("table"), box = $("split");
+    if (!box) { box = document.createElement("div"); box.id = "split"; box.className = "split"; }
+    if (table.nextSibling !== box) table.parentNode.insertBefore(box, table.nextSibling);
+    if (typeof applyPhone === "function") applyPhone();
+    updateSections();
+  }
+  function cellValue(tr, key) { // what a row shows in one column
+    var el = null, tds = tr.children;
+    for (var i = 1; i < tds.length; i++) {
+      var c = tds[i], i2 = c.querySelector("input.in");
+      var a = i2 ? i2.getAttribute("data-a") : c.getAttribute("data-c");
+      if (a && a.replace(/[0-9]/g, "") === key) { el = i2 ? { a: a, input: true } : { a: a }; break; }
+    }
+    if (!el) return null;
+    return el.input ? (vals()[el.a] || 0) : (lastValues[el.a] || 0);
+  }
+  function updateSections() {
+    var cfg = layout && SPLIT[layout.id]; if (!cfg) return;
+    var keys = layout.cols.map(function (c) { return c.key; }), haveCalc = Object.keys(lastValues).length > 0;
+    var byTag = { need: 0, want: 0, save: 0 };
+    Array.prototype.forEach.call(document.querySelectorAll("#sheet tr.grp"), function (g) {
+      var k = g.getAttribute("data-grp"), sec = SECTIONS.filter(function (s) { return s.k === k; })[0];
+      var members = Array.prototype.filter.call(document.querySelectorAll('#sheet tr[data-sec="' + k + '"]'), rowActive);
+      keys.forEach(function (key) {
+        var td = g.querySelector('td[data-sub="' + key + '"]'), tot = 0, any = false;
+        members.forEach(function (tr) { var v = cellValue(tr, key); if (v !== null) { any = true; tot += v; } });
+        td.textContent = any ? money.format(tot) : "";
+        if (key === cfg.col) byTag[sec.t] += tot;
+      });
+    });
+    var box = $("split"); if (!box) return;
+    var inc = lastValues[cfg.inc] || 0;
+    if (!haveCalc || inc <= 0) {
+      box.innerHTML = '<div class="splithead"><b>50/30/20 check</b><span class="sub">Add your income to see how your spending splits into needs, wants, and savings.</span></div>';
+      return;
+    }
+    var spent = byTag.need + byTag.want + byTag.save, left = inc - spent;
+    var saveAll = byTag.save + Math.max(left, 0);
+    var parts = [
+      { t: "need", v: byTag.need, note: "" },
+      { t: "want", v: byTag.want, note: "" },
+      { t: "save", v: saveAll, note: left > 0 ? "includes " + money.format(left) + " left over" : "" }
+    ];
+    var h = '<div class="splithead"><b>50/30/20 check</b><span class="sub">Based on ' + money.format(inc) + " income per " + cfg.per + (view === "actual" ? ", using what you actually spent" : "") + "</span></div>";
+    parts.forEach(function (p) {
+      var T = TAGS[p.t], pct = inc ? p.v / inc * 100 : 0, target = inc * T.pct / 100;
+      var ok = p.t === "save" ? pct >= T.pct - 0.5 : pct <= T.pct + 0.5;
+      var diff = p.t === "save" ? target - p.v : p.v - target;
+      var msg = ok ? "On track" : (p.t === "save" ? money.format(diff) + " short" : money.format(diff) + " over");
+      h += '<div class="splitrow"><span class="tag tag-' + p.t + '">' + T.label + "</span>" +
+        '<div class="splitbar"><i class="fill-' + p.t + '" style="width:' + Math.min(pct, 100).toFixed(1) + '%"></i><i class="mark" style="left:' + T.pct + '%"></i></div>' +
+        '<div class="splitnum"><b>' + Math.round(pct) + "%</b> <span class=\"sub\">of " + T.pct + "% &middot; " + money.format(p.v) + "</span>" +
+        '<span class="' + (ok ? "okay" : "warn") + '">' + msg + (p.note ? " &middot; " + p.note : "") + "</span></div></div>";
+    });
+    if (left < 0) h += '<p class="warnline">You&rsquo;re spending ' + money.format(-left) + " more than you bring in this " + cfg.per + ".</p>";
+    box.innerHTML = h;
+  }
+
   /* ---------- calculation happens on the server ---------- */
   function schedule() { clearTimeout(calcTimer); setStatus("Calculating…"); calcTimer = setTimeout(run, 300); }
   function authHeaders() {
@@ -957,6 +1139,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
         if (v > inc) td.classList.add("bad");
       }
     });
+    lastValues = values || {}; updateSections();
     if (needFit) { needFit = false; fitFont(); }
   }
 
@@ -1055,7 +1238,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
   }
   /* build() resets inputs, so keep saved ones across it */
   var _build = build;
-  build = function () { var keep = inputs; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); hlIdx = -1; $("sheet").classList.toggle("actualview", view === "actual"); };
+  build = function () { var keep = inputs; lastValues = {}; _build(); Object.keys(inputs).forEach(function (a) { if (a in keep) inputs[a] = keep[a]; }); applyPhone(); hlIdx = -1; $("sheet").classList.toggle("actualview", view === "actual"); };
   var FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   // Phone view of the Annual budget: one month at a time (plus the yearly total) instead of 14 columns.
   function applyPhone() {
