@@ -267,7 +267,7 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
 :root{--need:#1D4ED8;--need-bg:#E3ECFF;--want:#0369A1;--want-bg:#E0F2FE;--save:#15803D;--save-bg:#DCFCE7}
 tr.grp td,tr.grp td.lab{background:#F1F5FD;border-top:2px solid var(--ink);font-weight:700;color:var(--ink);height:38px}
 tr.grp td.sub{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--fs,inherit)}
-tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-shadow:inset 4px 0 0 var(--want)}tr.grp-save td.lab{box-shadow:inset 4px 0 0 var(--save)}
+tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-shadow:inset 4px 0 0 var(--want)}tr.grp-save td.lab{box-shadow:inset 4px 0 0 var(--save)}tr.grp-mix td.lab{box-shadow:inset 4px 0 0 var(--muted)}.gtags{display:inline-flex;gap:4px}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
 .tag{display:inline-block;font-size:11px;font-weight:700;line-height:18px;padding:0 8px;border-radius:99px;letter-spacing:.02em;white-space:nowrap}
@@ -931,24 +931,20 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
      Display only: rows are regrouped on screen by their current name, so saving,
      renaming, reordering and the server math all work exactly as before. */
   var lastValues = {};
+  // Each category is matched to a detailed type (used for the 50/30/20 math)...
+  var BUCKET = { housing: "need", utilities: "need", groceries: "need", transport: "need", health: "need", family: "need", pets: "need",
+    education: "need", debt: "need", work: "need", dining: "want", personal: "want", fun: "want", giving: "want", other: "want", savings: "save" };
+  // ...and shown in one of these simple sections.
   var SECTIONS = [
-    { k: "housing",   n: "Housing",                 t: "need" },
-    { k: "utilities", n: "Utilities & services",    t: "need" },
-    { k: "groceries", n: "Groceries",               t: "need" },
-    { k: "transport", n: "Transportation",          t: "need" },
-    { k: "health",    n: "Health & insurance",      t: "need" },
-    { k: "family",    n: "Family & kids",           t: "need" },
-    { k: "pets",      n: "Pets",                    t: "need" },
-    { k: "education", n: "Education",               t: "need" },
-    { k: "debt",      n: "Debt payments",           t: "need" },
-    { k: "work",      n: "Work & business",         t: "need" },
-    { k: "dining",    n: "Dining out",              t: "want" },
-    { k: "personal",  n: "Shopping & personal",     t: "want" },
-    { k: "fun",       n: "Fun & entertainment",     t: "want" },
-    { k: "giving",    n: "Giving",                  t: "want" },
-    { k: "other",     n: "Other",                   t: "want" },
-    { k: "savings",   n: "Savings & investing",     t: "save" }
+    { k: "bills",     n: "Bills & Housing",       has: ["housing", "utilities", "debt"] },
+    { k: "food",      n: "Food",                  has: ["groceries", "dining"] },
+    { k: "transport", n: "Transportation",        has: ["transport"] },
+    { k: "health",    n: "Health & Personal",     has: ["health", "family", "pets", "personal", "education"] },
+    { k: "fun",       n: "Entertainment & Fun",   has: ["fun"] },
+    { k: "other",     n: "Other",                 has: ["work", "giving", "other"] },
+    { k: "savings",   n: "Savings",               has: ["savings"] }
   ];
+  var SECTION_OF = {}; SECTIONS.forEach(function (s) { s.has.forEach(function (d) { SECTION_OF[d] = s.k; }); });
   var TAGS = { need: { n: "Need", pct: 50, label: "Needs" }, want: { n: "Want", pct: 30, label: "Wants" }, save: { n: "Savings", pct: 20, label: "Savings" } };
   // Which column holds the per-category total, and where total income lives, for each table.
   var SPLIT = { "monthly-budget": { col: "D", inc: "D7", per: "month" }, "yearly-projection": { col: "N", inc: "N10", per: "year" } };
@@ -1016,14 +1012,14 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     var anchor = tbody.querySelector("tr.addrow") || tbody.querySelector("tr.total") || null;
     var buckets = {}; SECTIONS.forEach(function (s) { buckets[s.k] = []; });
     rows.forEach(function (tr) {
-      var k = rowActive(tr) && rowName(tr) ? sectionOf(rowName(tr)) : "other";
-      tr.setAttribute("data-sec", k); buckets[k].push(tr);
+      var d = rowActive(tr) && rowName(tr) ? sectionOf(rowName(tr)) : "other", k = SECTION_OF[d];
+      tr.setAttribute("data-sec", k); tr.setAttribute("data-tag", BUCKET[d]); buckets[k].push(tr);
     });
     SECTIONS.forEach(function (s) {
       var members = buckets[s.k]; if (!members.length) return;
       var g = document.createElement("tr");
-      g.className = "grp grp-" + s.t; g.setAttribute("data-grp", s.k);
-      g.innerHTML = '<td class="lab"><div class="gw"><span class="gname">' + esc(s.n) + '</span><span class="tag tag-' + s.t + '">' + TAGS[s.t].n + "</span></div></td>" +
+      g.className = "grp"; g.setAttribute("data-grp", s.k);
+      g.innerHTML = '<td class="lab"><div class="gw"><span class="gname">' + esc(s.n) + '</span><span class="gtags"></span></div></td>' +
         keys.map(function (k) { return '<td class="num sub" data-sub="' + k + '"></td>'; }).join("");
       tbody.insertBefore(g, anchor);
       members.forEach(function (tr) { tbody.insertBefore(tr, anchor); });
@@ -1051,14 +1047,20 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     var keys = layout.cols.map(function (c) { return c.key; }), haveCalc = Object.keys(lastValues).length > 0;
     var byTag = { need: 0, want: 0, save: 0 };
     Array.prototype.forEach.call(document.querySelectorAll("#sheet tr.grp"), function (g) {
-      var k = g.getAttribute("data-grp"), sec = SECTIONS.filter(function (s) { return s.k === k; })[0];
+      var k = g.getAttribute("data-grp");
       var members = Array.prototype.filter.call(document.querySelectorAll('#sheet tr[data-sec="' + k + '"]'), rowActive);
       keys.forEach(function (key) {
         var td = g.querySelector('td[data-sub="' + key + '"]'), tot = 0, any = false;
         members.forEach(function (tr) { var v = cellValue(tr, key); if (v !== null) { any = true; tot += v; } });
         td.textContent = any ? money.format(tot) : "";
-        if (key === cfg.col) byTag[sec.t] += tot;
       });
+      // 50/30/20 tags: count each row in its own bucket, so a mixed section (Food = groceries + dining) stays accurate
+      var seen = {}, vis = members.filter(function (tr) { return !tr.hidden; });
+      (vis.length ? vis : members).forEach(function (tr) { seen[tr.getAttribute("data-tag")] = 1; });
+      members.forEach(function (tr) { var v = cellValue(tr, cfg.col); if (v) byTag[tr.getAttribute("data-tag")] += v; });
+      var tagKeys = ["need", "want", "save"].filter(function (t) { return seen[t]; });
+      g.className = "grp grp-" + (tagKeys.length === 1 ? tagKeys[0] : "mix");
+      g.querySelector(".gtags").innerHTML = tagKeys.map(function (t) { return '<span class="tag tag-' + t + '">' + TAGS[t].n + "</span>"; }).join("");
     });
     var box = $("split"); if (!box) return;
     var inc = lastValues[cfg.inc] || 0;
