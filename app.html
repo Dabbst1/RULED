@@ -268,6 +268,9 @@ td.lab[title]{white-space:normal;line-height:1.15;overflow:visible;text-overflow
 tr.grp td,tr.grp td.lab{background:#F1F5FD;border-top:2px solid var(--ink);font-weight:700;color:var(--ink);height:38px}
 tr.grp td.sub{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--fs,inherit)}
 tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-shadow:inset 4px 0 0 var(--want)}tr.grp-save td.lab{box-shadow:inset 4px 0 0 var(--save)}tr.grp-mix td.lab{box-shadow:inset 4px 0 0 var(--muted)}.gtags{display:inline-flex;gap:4px}
+.gadd{margin-left:auto;font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(--save);background:#fff;border:1.5px solid var(--save);border-radius:99px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.gadd:hover{background:var(--save);color:#fff}
+.leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
 .tag{display:inline-block;font-size:11px;font-weight:700;line-height:18px;padding:0 8px;border-radius:99px;letter-spacing:.02em;white-space:nowrap}
@@ -669,6 +672,10 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     if (!$("pickDlg").open) $("pickDlg").showModal();
     $("pickSearch").focus();
   }
+  function openSavingsPicker() {
+    var idx = -1; customBlocks().forEach(function (b, j) { if (idx < 0 && b.group !== "income") idx = j; });
+    pick = { mode: "add", idx: idx, sec: "savings" }; showPicker("Add a savings category", false);
+  }
   function openPicker(idx) { pick = { mode: "add", idx: idx }; showPicker(pickGroup() === "income" ? "Add an income source" : "Add an expense category", false); }
   function openSwap(row) { pick = { mode: "swap", row: row }; showPicker("Replace “" + builtinName(row) + "”", true); }
   function drawPick() {
@@ -678,7 +685,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       if (back.length) h += "<h3>Add back</h3>" + '<div class="chips">' + back.map(function (r) { return '<button type="button" class="chip" data-restore="' + r.row + '">' + esc(builtinName(r.row)) + "</button>"; }).join("") + "</div>";
     }
     POOL[grp].forEach(function (g) {
-      var items = g.items.filter(function (n) { return !used[n.toLowerCase()] && (!q || n.toLowerCase().indexOf(q) >= 0 || g.g.toLowerCase().indexOf(q) >= 0); });
+      var items = g.items.filter(function (n) { return !used[n.toLowerCase()] && (pick.sec !== "savings" || sectionOf(n) === "savings") && (!q || n.toLowerCase().indexOf(q) >= 0 || g.g.toLowerCase().indexOf(q) >= 0); });
       if (items.length) h += "<h3>" + esc(g.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip" data-pick="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
     });
     $("pickList").innerHTML = h || '<p class="sub">Nothing matches. Type your own name below.</p>';
@@ -696,6 +703,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     var slot = blk.slots.filter(function (sl) { return meta.custom.indexOf(sl.row) < 0; })[0];
     if (!slot) { $("pickMsg").textContent = "You’ve reached the limit of " + blk.max + "."; return; }
     meta.custom.push(slot.row); meta.labels[slot.row] = name; unGone(meta, name);
+    if (pick.sec === "savings") placeName(name, "savings");
     meta.hidden = meta.hidden.filter(function (x) { return x !== slot.row; });
     var tr = document.querySelector('tr[data-slot="' + slot.row + '"]'); tr.hidden = false; tr.querySelector("input.nm").value = name;
     updateAdd(); buildRowsPanel(); scheduleSave();
@@ -912,6 +920,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     if (clr) { clearColumn(clr); return; }
     var sw = t.getAttribute && t.getAttribute("data-swap");
     if (sw) { openSwap(Number(sw)); return; }
+    if (t.getAttribute && t.getAttribute("data-addsec") === "savings") { openSavingsPicker(); return; }
     var addIdx = t.getAttribute && t.getAttribute("data-add");
     if (addIdx !== null && addIdx !== undefined && addIdx !== "") { openPicker(Number(addIdx)); return; }
     var rm = t.getAttribute && t.getAttribute("data-rm");
@@ -945,6 +954,16 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     { k: "savings",   n: "Savings",               has: ["savings"] }
   ];
   var SECTION_OF = {}; SECTIONS.forEach(function (s) { s.has.forEach(function (d) { SECTION_OF[d] = s.k; }); });
+  // Names a member added under Savings by hand ("Boat money") stay in Savings, on every table and month.
+  var placed = {};
+  function loadPlaced() { return loadSaved("sections").then(function (d) { placed = d && d.__placed && typeof d.__placed === "object" ? d.__placed : {}; }).catch(function () {}); }
+  function savePlaced() { doSave("sections", { __placed: placed }); }
+  function placeName(name, key) {
+    var n = nk(name); if (!n) return;
+    if (SECTION_OF[sectionOf(name)] === key) delete placed[n]; else placed[n] = key;
+    savePlaced();
+  }
+  function detailOf(name) { return placed[nk(name)] === "savings" ? "savings" : sectionOf(name); }
   var TAGS = { need: { n: "Need", pct: 50, label: "Needs" }, want: { n: "Want", pct: 30, label: "Wants" }, save: { n: "Savings", pct: 20, label: "Savings" } };
   // Which column holds the per-category total, and where total income lives, for each table.
   var SPLIT = { "monthly-budget": { col: "D", inc: "D7", per: "month" }, "yearly-projection": { col: "N", inc: "N10", per: "year" } };
@@ -1012,18 +1031,19 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     var anchor = tbody.querySelector("tr.addrow") || tbody.querySelector("tr.total") || null;
     var buckets = {}; SECTIONS.forEach(function (s) { buckets[s.k] = []; });
     rows.forEach(function (tr) {
-      var d = rowActive(tr) && rowName(tr) ? sectionOf(rowName(tr)) : "other", k = SECTION_OF[d];
+      var d = rowActive(tr) && rowName(tr) ? detailOf(rowName(tr)) : "other", k = SECTION_OF[d];
       tr.setAttribute("data-sec", k); tr.setAttribute("data-tag", BUCKET[d]); buckets[k].push(tr);
     });
     SECTIONS.forEach(function (s) {
-      var members = buckets[s.k]; if (!members.length) return;
+      var members = buckets[s.k], always = s.k === "savings"; if (!members.length && !always) return;
       var g = document.createElement("tr");
       g.className = "grp"; g.setAttribute("data-grp", s.k);
-      g.innerHTML = '<td class="lab"><div class="gw"><span class="gname">' + esc(s.n) + '</span><span class="gtags"></span></div></td>' +
+      g.innerHTML = '<td class="lab"><div class="gw"><span class="gname">' + esc(s.n) + '</span><span class="gtags"></span>' +
+        (always ? '<button type="button" class="gadd" data-addsec="savings" aria-label="Add a savings category">+ Add</button>' : "") + "</div></td>" +
         keys.map(function (k) { return '<td class="num sub" data-sub="' + k + '"></td>'; }).join("");
       tbody.insertBefore(g, anchor);
       members.forEach(function (tr) { tbody.insertBefore(tr, anchor); });
-      g.hidden = !members.some(function (tr) { return !tr.hidden; });
+      g.hidden = !always && !members.some(function (tr) { return !tr.hidden; });
     });
     // the 50/30/20 check sits right under the expense table
     var table = tbody.closest("table"), box = $("split");
@@ -1059,6 +1079,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       (vis.length ? vis : members).forEach(function (tr) { seen[tr.getAttribute("data-tag")] = 1; });
       members.forEach(function (tr) { var v = cellValue(tr, cfg.col); if (v) byTag[tr.getAttribute("data-tag")] += v; });
       var tagKeys = ["need", "want", "save"].filter(function (t) { return seen[t]; });
+      if (!members.some(function (tr) { return !tr.hidden; }) && k === "savings") tagKeys = ["save"];
       g.className = "grp grp-" + (tagKeys.length === 1 ? tagKeys[0] : "mix");
       g.querySelector(".gtags").innerHTML = tagKeys.map(function (t) { return '<span class="tag tag-' + t + '">' + TAGS[t].n + "</span>"; }).join("");
     });
@@ -1069,11 +1090,10 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       return;
     }
     var spent = byTag.need + byTag.want + byTag.save, left = inc - spent;
-    var saveAll = byTag.save + Math.max(left, 0);
     var parts = [
       { t: "need", v: byTag.need, note: "" },
       { t: "want", v: byTag.want, note: "" },
-      { t: "save", v: saveAll, note: left > 0 ? "includes " + money.format(left) + " left over" : "" }
+      { t: "save", v: byTag.save, note: "" }
     ];
     var h = '<div class="splithead"><b>50/30/20 check</b><span class="sub">Based on ' + money.format(inc) + " income per " + cfg.per + (view === "actual" ? ", using what you actually spent" : "") + "</span></div>";
     parts.forEach(function (p) {
@@ -1086,6 +1106,8 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
         '<div class="splitnum"><b>' + Math.round(pct) + "%</b> <span class=\"sub\">of " + T.pct + "% &middot; " + money.format(p.v) + "</span>" +
         '<span class="' + (ok ? "okay" : "warn") + '">' + msg + (p.note ? " &middot; " + p.note : "") + "</span></div></div>";
     });
+    if (left > 0.5) h += '<p class="leftline"><b>' + money.format(left) + "</b> isn&rsquo;t assigned to anything yet." +
+      (byTag.save < inc * 0.2 ? " Add it to <b>Savings</b> to reach your 20%." : "") + "</p>";
     if (left < 0) h += '<p class="warnline">You&rsquo;re spending ' + money.format(-left) + " more than you bring in this " + cfg.per + ".</p>";
     box.innerHTML = h;
   }
@@ -2364,7 +2386,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     });
   });
   function start(h) {
-    loadBills(); loadSetup().then(function () {
+    loadBills(); Promise.all([loadSetup(), loadPlaced()]).then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
       makeTabs(); openTool();
     });
