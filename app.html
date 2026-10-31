@@ -1083,10 +1083,11 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         tbody.insertBefore(hr, anchor);
       }
     });
-    // the 50/30/20 check sits right under the expense table
     var table = tbody.closest("table"), box = $("split");
     if (!box) { box = document.createElement("div"); box.id = "split"; box.className = "split"; }
-    if (table.nextSibling !== box) table.parentNode.insertBefore(box, table.nextSibling);
+    // the check sits under Net Income, so the expense table and its Net Income stay together
+    var netRow = document.querySelector("#sheet tr.net"), after = netRow ? netRow.closest("table") : table;
+    if (after.nextSibling !== box) after.parentNode.insertBefore(box, after.nextSibling);
     if (typeof applyPhone === "function") applyPhone();
     updateSections();
   }
