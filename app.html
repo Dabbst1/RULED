@@ -1047,7 +1047,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var slotIds = {}; if (blk) blk.slots.forEach(function (sl) { slotIds[sl.row] = 1; });
     return Array.prototype.filter.call(document.querySelectorAll("#sheet tr[data-row], #sheet tr[data-slot]"), function (tr) {
       if (tr.hasAttribute("data-slot")) return !!slotIds[tr.getAttribute("data-slot")];
-      return groups[Number(tr.getAttribute("data-row"))] === "expense" && !tr.className.trim();
+      return groups[Number(tr.getAttribute("data-row"))] === "expense" && !tr.classList.contains("total") && !tr.classList.contains("net");
     });
   }
   function rowActive(tr) {
