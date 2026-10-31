@@ -273,6 +273,12 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
 .glink{margin:8px 0 0;font-size:13px;color:#51638f;line-height:20px}.glink.on{color:var(--save)}
 tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;padding:10px 12px;white-space:normal;text-align:left}
 .savehint-in{font-size:14px;line-height:21px;color:var(--ink);position:sticky;left:12px;max-width:640px}
+.tips{margin-top:12px;padding:12px 14px;border-radius:10px;background:#FFF7ED;border:1px solid #FED7AA}
+.tips > b{display:block;font-size:15px;color:#9A3412}.tips .sub{display:block;margin-bottom:4px}
+.tips ul{list-style:none;margin:0;padding:0}.tips li{padding:6px 0;border-top:1px solid #FDE3C7;font-size:14px;line-height:20px}.tips li:first-child{border-top:0}
+.tips .tip{display:block;color:#51638f;font-size:13px;margin-top:2px}
+.tips{position:relative}.tipsx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;color:#9A3412;cursor:pointer;padding:4px}
+.tips > b{padding-right:28px}.tipsoff{margin:10px 0 0;font-size:13px}.tipsoff .linkbtn,.tipshide{background:none;border:0;padding:0;color:var(--blue);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}.tipshide{font-size:13px;margin-left:4px}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -1050,7 +1056,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var buckets = {}; SECTIONS.forEach(function (s) { buckets[s.k] = []; });
     rows.forEach(function (tr) {
       var d = rowActive(tr) && rowName(tr) ? detailOf(rowName(tr)) : "other", k = SECTION_OF[d];
-      tr.setAttribute("data-sec", k); tr.setAttribute("data-tag", BUCKET[d]); buckets[k].push(tr);
+      tr.setAttribute("data-sec", k); tr.setAttribute("data-tag", BUCKET[d]); tr.setAttribute("data-detail", d); buckets[k].push(tr);
     });
     SECTIONS.forEach(function (s) {
       var members = buckets[s.k], always = s.k === "savings"; if (!members.length && !always) return;
@@ -1084,6 +1090,47 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }
     if (!el) return null;
     return el.input ? (vals()[el.a] || 0) : (lastValues[el.a] || 0);
+  }
+  /* Plain-language suggestions when Needs or Wants run over their share. Rule-based, from the member's own rows. */
+  var TIPS = {
+    housing: "Housing is usually the biggest lever. Aim to keep it near 30% of income: ask for a better rate at lease renewal, look at refinancing, or consider a roommate.",
+    utilities: "Call your internet and phone providers and ask for their current promo rate, switch to a lower-cost cell plan, and trim energy use.",
+    groceries: "Plan meals for the week, shop with a list, choose store brands, and use what&rsquo;s in the pantry before buying more.",
+    transport: "Compare car insurance quotes once a year, combine errands into fewer trips, and check whether refinancing the car payment lowers it.",
+    health: "Ask your doctor about generic prescriptions, use in-network providers, and compare plans at open enrollment.",
+    family: "Look into dependent-care FSA accounts, shared childcare with other families, and free community programs.",
+    pets: "Compare pet insurance and vet prices, and buy food and supplies in bulk.",
+    education: "Check for income-driven repayment, employer tuition help, or scholarships that lower what you pay.",
+    debt: "Only minimum payments are true needs. Ask about a lower interest rate or a consolidation loan to shrink the monthly payment.",
+    work: "Check which work costs can be reimbursed or written off at tax time.",
+    dining: "Set a weekly dining-out amount and cook at home a few more nights.",
+    personal: "Wait 48 hours before non-essential buys, and unsubscribe from store emails.",
+    fun: "Cancel subscriptions you haven&rsquo;t used in a month and look for free local events.",
+    giving: "Giving is personal. If you want to keep it as is, trim other Wants first.",
+    other: "Look through this category for anything you could pause for a month or two."
+  };
+  var tipsOff = false; try { tipsOff = localStorage.getItem("monerem-tips-off") === "1"; } catch (e) {}
+  function setTipsOff(v) { tipsOff = v; try { localStorage.setItem("monerem-tips-off", v ? "1" : "0"); } catch (e) {} updateSections(); }
+  document.addEventListener("click", function (e) { var t = e.target.closest && e.target.closest("[data-tips]"); if (t) setTipsOff(t.getAttribute("data-tips") === "off"); });
+  function budgetTips(inc, byTag, cfg) {
+    var out = "";
+    [["need", 0.5, "Needs"], ["want", 0.3, "Wants"]].forEach(function (b) {
+      var over = byTag[b[0]] - inc * b[1]; if (over <= 0.5) return;
+      var rows = [];
+      Array.prototype.forEach.call(document.querySelectorAll('#sheet tr[data-tag="' + b[0] + '"]'), function (tr) {
+        if (!rowActive(tr) || tr.hidden) return; var v = cellValue(tr, cfg.col) || 0; if (v > 0) rows.push({ n: rowName(tr), d: tr.getAttribute("data-detail"), v: v });
+      });
+      rows.sort(function (a, c) { return c.v - a.v; });
+      var tipped = {}, items = rows.slice(0, 3).map(function (r) {
+        var tip = tipped[r.d] ? "" : TIPS[r.d] || TIPS.other; tipped[r.d] = 1;
+        var extra = r.d === "housing" && r.v > inc * 0.3 ? " Right now it&rsquo;s " + Math.round(r.v / inc * 100) + "% of your income." : "";
+        return "<li><b>" + esc(r.n) + "</b> &middot; " + money.format(r.v) + " (" + Math.round(r.v / inc * 100) + "%)" + (tip ? '<span class="tip">' + tip + extra + "</span>" : "") + "</li>";
+      }).join("");
+      if (!items) return;
+      out += '<div class="tips tips-' + b[0] + '"><button type="button" class="tipsx" data-tips="off" aria-label="Hide suggestions" title="Hide suggestions">&times;</button><b>Ways to bring ' + b[2] + " down by " + money.format(over) + "</b>" +
+        '<span class="sub">Your biggest ' + b[2].toLowerCase() + " this " + cfg.per + ":</span><ul>" + items + "</ul></div>";
+    });
+    return out;
   }
   function updateSections() {
     var cfg = layout && SPLIT[layout.id]; if (!cfg) return;
@@ -1123,7 +1170,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       else if (left >= more) t += "Add <b>" + money.format(more) + "</b> more to your Savings lines. You have " + money.format(left) + " not assigned yet, so it fits.";
       else if (left > 0.5) t += "Add <b>" + money.format(more) + "</b> more. You have " + money.format(left) + " not assigned, so trim about <b>" + money.format(more - left) + "</b> from Wants to get there.";
       else t += "Add <b>" + money.format(more) + "</b> more. Everything is already assigned, so this would come from trimming Wants first, then Needs.";
-      hint.innerHTML = t; hint.parentNode.parentNode.hidden = false;
+      hint.innerHTML = t + ' <button type="button" class="linkbtn tipshide" data-tips="off">Hide suggestions</button>'; hint.parentNode.parentNode.hidden = tipsOff;
     }
     var parts = [
       { t: "need", v: byTag.need, note: "" },
@@ -1141,7 +1188,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         '<div class="splitnum"><b>' + (pct > 0 && pct < 1 ? "&lt;1" : Math.round(pct)) + "%</b> <span class=\"sub\">of " + T.pct + "% &middot; " + money.format(p.v) + "</span>" +
         '<span class="' + (ok ? "okay" : "warn") + '">' + msg + (p.note ? " &middot; " + p.note : "") + "</span></div></div>";
     });
-    if (left > 0.5) h += '<p class="leftline"><b>' + money.format(left) + "</b> isn&rsquo;t assigned to anything yet." +
+    var tipHtml = budgetTips(inc, byTag, cfg);
+    if (tipsOff) h += '<p class="tipsoff"><button type="button" class="linkbtn" data-tips="on">Show suggestions</button></p>';
+    else h += tipHtml;
+    if (left > 0.5 && !tipsOff) h += '<p class="leftline"><b>' + money.format(left) + "</b> isn&rsquo;t assigned to anything yet." +
       (byTag.save < inc * 0.2 ? " Add it to <b>Savings</b> to reach your 20%." : "") + "</p>";
     if (left < 0) h += '<p class="warnline">You&rsquo;re spending ' + money.format(-left) + " more than you bring in this " + cfg.per + ".</p>";
     box.innerHTML = h;
