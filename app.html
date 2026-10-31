@@ -270,6 +270,7 @@ tr.grp td.sub{font-weight:700;text-align:right;font-variant-numeric:tabular-nums
 tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-shadow:inset 4px 0 0 var(--want)}tr.grp-save td.lab{box-shadow:inset 4px 0 0 var(--save)}tr.grp-mix td.lab{box-shadow:inset 4px 0 0 var(--muted)}.gtags{display:inline-flex;gap:4px}
 .gadd{margin-left:auto;font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(--save);background:#fff;border:1.5px solid var(--save);border-radius:99px;padding:5px 10px;cursor:pointer;white-space:nowrap}
 .gadd:hover{background:var(--save);color:#fff}
+.glink{margin:8px 0 0;font-size:13px;color:#51638f;line-height:20px}.glink.on{color:var(--save)}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -675,6 +676,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
   function openSavingsPicker() {
     var idx = -1; customBlocks().forEach(function (b, j) { if (idx < 0 && b.group !== "income") idx = j; });
     pick = { mode: "add", idx: idx, sec: "savings" }; showPicker("Add a savings category", false);
+    loadGoals().then(function () { if ($("pickDlg").open && pick.sec === "savings") drawPick(); });
   }
   function openPicker(idx) { pick = { mode: "add", idx: idx }; showPicker(pickGroup() === "income" ? "Add an income source" : "Add an expense category", false); }
   function openSwap(row) { pick = { mode: "swap", row: row }; showPicker("Replace “" + builtinName(row) + "”", true); }
@@ -688,6 +690,10 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       var items = g.items.filter(function (n) { return !used[n.toLowerCase()] && (pick.sec !== "savings" || sectionOf(n) === "savings") && (!q || n.toLowerCase().indexOf(q) >= 0 || g.g.toLowerCase().indexOf(q) >= 0); });
       if (items.length) h += "<h3>" + esc(g.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip" data-pick="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
     });
+    if (pick.sec === "savings") {
+      var gl = goals.filter(function (g) { return g.kind === "save" && !used[g.name.toLowerCase()] && (!q || g.name.toLowerCase().indexOf(q) >= 0); });
+      if (gl.length) h = "<h3>Your savings goals</h3><p class=\"sub\" style=\"margin:0 0 6px\">Money you put on these lines is added to the goal.</p>" + '<div class="chips">' + gl.map(function (g) { return '<button type="button" class="chip" data-pick="' + esc(g.name) + '">' + esc(g.name) + "</button>"; }).join("") + "</div>" + h;
+    }
     $("pickList").innerHTML = h || '<p class="sub">Nothing matches. Type your own name below.</p>';
   }
   function addNamed(name) {
@@ -1218,7 +1224,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
-    if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); }); return; }
+    if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     var isBills = tp === "bills";
     if (isBills) { loadBills().then(function () { if (mine === loadSeq) renderBills(); }); return; }
@@ -1619,7 +1625,46 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     if (goalsLoaded) return Promise.resolve();
     return loadSaved("goals").then(function (saved) {
       goals = saved && Array.isArray(saved.__goals) ? saved.__goals : []; goalsLoaded = true;
+      goals.forEach(function (g) { if (g.kind === "save" && g.base === undefined) { g.base = g.current || 0; g.from = g.from || thisMonthKey(); } });
     }).catch(function () { goalsLoaded = true; });
+  }
+  /* Savings goals pick up money from a budget line with the same name (e.g. goal "Emergency Fund" +
+     a Savings line "Emergency Fund"). Each month from when the goal was set counts once: what was
+     actually put in if the member filled in Actual, otherwise the planned amount, never future months. */
+  function thisMonthKey() { var n = new Date(); return n.getFullYear() + "-" + pad(n.getMonth() + 1); }
+  function goalMonths(from) {
+    var p = String(from || thisMonthKey()).split("-"), y = +p[0], m = +p[1] - 1, now = new Date(), out = [];
+    if (!y || isNaN(m)) { y = now.getFullYear(); m = now.getMonth(); }
+    while ((y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth())) && out.length < 36) { out.push([y, m]); m++; if (m > 11) { m = 0; y++; } }
+    return out;
+  }
+  function lineAmount(doc, e) {
+    var act = 0, plan = 0, hasAct = false;
+    e.addrs.forEach(function (a) { var x = doc["a:" + a]; if (typeof x === "number" && x) { hasAct = true; act += x; } plan += typeof doc[a] === "number" ? doc[a] : 0; });
+    return hasAct ? act : plan;
+  }
+  var goalSyncBusy = null;
+  function syncSaveGoals() {
+    var list = goals.filter(function (g) { return g.kind === "save"; }); if (!list.length) return Promise.resolve(false);
+    if (goalSyncBusy) return goalSyncBusy;
+    var earliest = list.reduce(function (a, g) { var f = g.from || thisMonthKey(); return f < a ? f : a; }, thisMonthKey());
+    var months = goalMonths(earliest);
+    goalSyncBusy = Promise.all(months.map(function (ym) { return rcMonthState(ym[0], ym[1]).catch(function () { return null; }); })).then(function (states) {
+      var changed = false;
+      list.forEach(function (g) {
+        var from = g.from || thisMonthKey(), sum = 0, linked = false;
+        states.forEach(function (st, i) {
+          if (!st) return; var key = months[i][0] + "-" + pad(months[i][1] + 1); if (key < from) return;
+          st.cats.forEach(function (e) { if (nk(e.name) === nk(g.name)) { linked = true; sum += lineAmount(st.doc, e); } });
+        });
+        sum = Math.round(sum * 100) / 100;
+        var cur = Math.round(((g.base || 0) + sum) * 100) / 100;
+        if (g.fromBudget !== sum || g.current !== cur || !!g.linked !== linked) { g.fromBudget = sum; g.current = cur; g.linked = linked; changed = true; }
+      });
+      if (changed) saveGoals();
+      return changed;
+    }).catch(function () { return false; }).then(function (c) { goalSyncBusy = null; return c; });
+    return goalSyncBusy;
   }
   function saveGoals() { clearTimeout(goalTimer); goalTimer = setTimeout(function () { doSave("goals", { __goals: goals }); }, 500); }
   function stepsRatio(g) { var n = g.steps.length; return n ? g.steps.filter(function (x) { return x.done; }).length / n : 0; }
@@ -1652,10 +1697,11 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     var k = $("gKind").value, name = $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
     var g = { id: newId(), kind: k, name: name, start: 0, current: 0, target: 0, due: $("gDate").value || "",
       steps: STARTERS[k].map(function (t) { return { id: newId(), t: t, done: false }; }) };
-    if (k === "save") { g.target = num(k, $("g1").value); g.current = num(k, $("g2").value); }
+    if (k === "save") { g.target = num(k, $("g1").value); g.current = num(k, $("g2").value); g.base = g.current; g.from = thisMonthKey(); g.fromBudget = 0; }
     if (k === "debt") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value); }
     if (k === "credit") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value) || g.start; g.target = num(k, $("g3").value); }
     goals.unshift(g); $("goalForm").reset(); goalForm(); saveGoals(); renderGoals();
+    if (k === "save") syncSaveGoals().then(function (c) { if (c) renderGoals(); });
   });
   function renderGoals() {
     goalForm();
@@ -1668,6 +1714,9 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
         '<span class="gbtns"><button class="sm" data-editgoal="' + g.id + '">Edit goal</button> <button class="sm" data-delgoal="' + g.id + '">Delete goal</button></span></header>' +
         '<div class="bar' + (pc >= 100 ? " full" : "") + '" role="progressbar" aria-valuenow="' + pc + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pc + '%"></i></div>' +
         '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + upd +
+        (g.kind === "save" ? (g.linked
+          ? '<p class="glink on">&#128279; Linked to your <b>' + esc(g.name) + "</b> budget line" + (g.fromBudget ? " &middot; " + money.format(g.fromBudget) + " added from your budget" : " &middot; nothing added yet") + "</p>"
+          : '<p class="glink">Tip: add a Savings line named <b>' + esc(g.name) + "</b> in your Monthly budget and money you put there is added here automatically.</p>") : "") +
         g.steps.map(function (x) {
           return '<label class="chk' + (x.done ? " done" : "") + '"><input type="checkbox" data-step="' + g.id + ":" + x.id + '"' + (x.done ? " checked" : "") + "><span>" + esc(x.t) + '</span><button type="button" class="x" data-delstep="' + g.id + ":" + x.id + '" aria-label="Remove step">&times;</button></label>';
         }).join("") +
@@ -1691,10 +1740,12 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     e.preventDefault(); var g = goalById(id); if (!g) return;
     var fd = e.target.elements, nm = fd.name.value.trim().slice(0, 50); if (!nm) return;
     g.name = nm; g.due = fd.due.value || "";
-    if (g.kind === "save") { g.target = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); }
+    var oldName = g.name;
+    if (g.kind === "save") { g.target = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); g.base = g.current - (g.fromBudget || 0); }
     if (g.kind === "debt") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); }
     if (g.kind === "credit") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value) || g.start; g.target = num(g.kind, fd.c.value); }
     editingGoal = null; saveGoals(); renderGoals();
+    if (g.kind === "save" && nk(oldName) !== nk(g.name)) { g.base = g.current; g.fromBudget = 0; syncSaveGoals().then(function (c) { if (c) renderGoals(); }); }
   });
   function goalById(id) { return goals.filter(function (g) { return g.id === id; })[0]; }
   function addStep(id) {
@@ -1718,7 +1769,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
   $("goalList").addEventListener("change", function (e) {
     var t = e.target, v, p;
     if ((v = t.getAttribute("data-step"))) { p = v.split(":"); var g = goalById(p[0]); if (g) g.steps.forEach(function (x) { if (x.id === p[1]) x.done = t.checked; }); saveGoals(); renderGoals(); }
-    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); saveGoals(); renderGoals(); } }
+    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); if (g2.kind === "save") g2.base = g2.current - (g2.fromBudget || 0); saveGoals(); renderGoals(); } }
   });
 
   /* ---------- account ---------- */
