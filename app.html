@@ -271,6 +271,8 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
 .gadd{margin-left:auto;font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:var(--save);background:#fff;border:1.5px solid var(--save);border-radius:99px;padding:5px 10px;cursor:pointer;white-space:nowrap}
 .gadd:hover{background:var(--save);color:#fff}
 .glink{margin:8px 0 0;font-size:13px;color:#51638f;line-height:20px}.glink.on{color:var(--save)}
+tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;padding:10px 12px;white-space:normal;text-align:left}
+.savehint-in{font-size:14px;line-height:21px;color:var(--ink);position:sticky;left:12px;max-width:640px}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -1040,7 +1042,7 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     if (!layout || !SPLIT[layout.id]) return;
     var rows = expenseRows(); if (!rows.length) return;
     var tbody = rows[0].parentNode, keys = layout.cols.map(function (c) { return c.key; });
-    Array.prototype.forEach.call(tbody.querySelectorAll("tr.grp"), function (g) { g.remove(); });
+    Array.prototype.forEach.call(tbody.querySelectorAll("tr.grp, tr.savehint"), function (g) { g.remove(); });
     var anchor = tbody.querySelector("tr.addrow") || tbody.querySelector("tr.total") || null;
     var buckets = {}; SECTIONS.forEach(function (s) { buckets[s.k] = []; });
     rows.forEach(function (tr) {
@@ -1057,6 +1059,11 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       tbody.insertBefore(g, anchor);
       members.forEach(function (tr) { tbody.insertBefore(tr, anchor); });
       g.hidden = !always && !members.some(function (tr) { return !tr.hidden; });
+      if (always) {
+        var hr = document.createElement("tr"); hr.className = "savehint"; hr.hidden = true;
+        hr.innerHTML = '<td colspan="' + (keys.length + 1) + '"><div class="savehint-in" id="saveHint"></div></td>';
+        tbody.insertBefore(hr, anchor);
+      }
     });
     // the 50/30/20 check sits right under the expense table
     var table = tbody.closest("table"), box = $("split");
@@ -1098,11 +1105,23 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     });
     var box = $("split"); if (!box) return;
     var inc = lastValues[cfg.inc] || 0;
+    if ((!haveCalc || inc <= 0) && $("saveHint")) $("saveHint").parentNode.parentNode.hidden = true;
     if (!haveCalc || inc <= 0) {
       box.innerHTML = '<div class="splithead"><b>50/30/20 check</b><span class="sub">Add your income to see how your spending splits into needs, wants, and savings.</span></div>';
       return;
     }
     var spent = byTag.need + byTag.want + byTag.save, left = inc - spent;
+    var goal20 = Math.round(inc * 0.2 * 100) / 100, more = Math.max(0, Math.round((goal20 - byTag.save) * 100) / 100);
+    var hint = $("saveHint");
+    if (hint) {
+      var perMo = cfg.per === "year" ? " (about " + money.format(goal20 / 12) + " a month)" : "";
+      var t = '<b>Suggested savings: ' + money.format(goal20) + " per " + cfg.per + "</b>" + perMo + ", 20% of your income. ";
+      if (more <= 0.5) t += '<span class="okay">You&rsquo;re there. Nice work.</span>';
+      else if (left >= more) t += "Add <b>" + money.format(more) + "</b> more to your Savings lines. You have " + money.format(left) + " not assigned yet, so it fits.";
+      else if (left > 0.5) t += "Add <b>" + money.format(more) + "</b> more. You have " + money.format(left) + " not assigned, so trim about <b>" + money.format(more - left) + "</b> from Wants to get there.";
+      else t += "Add <b>" + money.format(more) + "</b> more. Everything is already assigned, so this would come from trimming Wants first, then Needs.";
+      hint.innerHTML = t; hint.parentNode.parentNode.hidden = false;
+    }
     var parts = [
       { t: "need", v: byTag.need, note: "" },
       { t: "want", v: byTag.want, note: "" },
@@ -1113,10 +1132,10 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       var T = TAGS[p.t], pct = inc ? p.v / inc * 100 : 0, target = inc * T.pct / 100;
       var ok = p.t === "save" ? pct >= T.pct - 0.5 : pct <= T.pct + 0.5;
       var diff = p.t === "save" ? target - p.v : p.v - target;
-      var msg = ok ? "On track" : (p.t === "save" ? money.format(diff) + " short" : money.format(diff) + " over");
+      var msg = ok ? "On track" : (p.t === "save" ? "Save " + money.format(diff) + " more to reach " + money.format(target) : money.format(diff) + " over");
       h += '<div class="splitrow"><span class="tag tag-' + p.t + '">' + T.label + "</span>" +
-        '<div class="splitbar"><i class="fill-' + p.t + '" style="width:' + Math.min(pct, 100).toFixed(1) + '%"></i><i class="mark" style="left:' + T.pct + '%"></i></div>' +
-        '<div class="splitnum"><b>' + Math.round(pct) + "%</b> <span class=\"sub\">of " + T.pct + "% &middot; " + money.format(p.v) + "</span>" +
+        '<div class="splitbar"><i class="fill-' + p.t + '" style="width:' + Math.min(pct, 100).toFixed(1) + '%' + (p.v > 0 ? ";min-width:6px" : "") + '"></i><i class="mark" style="left:' + T.pct + '%"></i></div>' +
+        '<div class="splitnum"><b>' + (pct > 0 && pct < 1 ? "&lt;1" : Math.round(pct)) + "%</b> <span class=\"sub\">of " + T.pct + "% &middot; " + money.format(p.v) + "</span>" +
         '<span class="' + (ok ? "okay" : "warn") + '">' + msg + (p.note ? " &middot; " + p.note : "") + "</span></div></div>";
     });
     if (left > 0.5) h += '<p class="leftline"><b>' + money.format(left) + "</b> isn&rsquo;t assigned to anything yet." +
