@@ -627,7 +627,13 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
       { g: "Family and kids", items: ["Childcare", "Daycare", "Child Support", "Alimony", "Kids Activities", "Allowance", "Baby Supplies", "Diapers and Formula", "Toys", "Elder Care", "Family Support", "Summer Camp", "Kids Clothing", "Babysitter"] },
       { g: "Pets", items: ["Pet Food", "Vet Bills", "Pet Insurance", "Pet Grooming", "Pet Sitting", "Pet Supplies", "Pet Medication"] },
       { g: "Education", items: ["Tuition", "Student Loan Payment", "School Supplies", "Textbooks", "Courses and Training", "Certifications", "Exam Fees", "Tutoring", "School Fees", "Online Learning"] },
-      { g: "Debt and financial", items: ["Personal Loan Payment", "Medical Debt Payment", "Bank Fees", "Overdraft Fees", "Late Fees", "Interest Charges", "Loan Payment", "Buy Now Pay Later", "Collections Payment", "Savings Transfer", "Emergency Fund", "Retirement Contribution", "Investments", "Brokerage Deposit", "Sinking Fund", "Down Payment Fund", "Vacation Fund"] },
+      { g: "Debt and financial", items: ["Personal Loan Payment", "Medical Debt Payment", "Bank Fees", "Overdraft Fees", "Late Fees", "Interest Charges", "Loan Payment", "Buy Now Pay Later", "Collections Payment"] },
+      { g: "Save for: safety net", items: ["Emergency Fund", "Rainy Day Fund", "Job Loss Cushion", "Medical Emergencies", "Car Repair Fund", "Home Repair Fund", "Pet Emergencies"] },
+      { g: "Save for: family", items: ["Children's Tuition", "College Fund", "Baby on the Way", "Wedding Fund", "Kids' Activities Fund", "Back to School", "Family Reunion", "Caring for Parents"] },
+      { g: "Save for: big purchases", items: ["Home Down Payment", "New Car", "Home Renovation", "Moving Fund", "Furniture Fund", "New Phone or Laptop", "Appliance Replacement"] },
+      { g: "Save for: your future", items: ["Retirement", "Investments", "Starting a Business", "Continuing Education", "Certification Fund", "Pay Off Debt Early"] },
+      { g: "Save for: yearly bills", items: ["Car Insurance (Yearly)", "Property Taxes", "Annual Subscriptions", "Car Registration Fund", "Tax Bill Fund"] },
+      { g: "Save for: fun and special days", items: ["Vacation Fund", "Christmas Fund", "Birthday Fund", "Anniversary Trip", "Mission Trip", "Concerts and Events Fund", "New Hobby"] },
       { g: "Work and business", items: ["Business Expenses", "Work Supplies", "Work Uniforms", "Tools and Equipment", "Licenses and Permits", "Professional Dues", "Home Office", "Coworking Space", "Advertising", "Legal Fees", "Business Insurance", "Business Travel", "Inventory", "Website and Hosting", "Contractors"] },
       { g: "Fun and lifestyle", items: ["Entertainment", "Movies and Events", "Concerts", "Sporting Events", "Vacations", "Hotels", "Flights", "Souvenirs", "Games and Apps", "Nightlife", "Club Dues", "Hobby Supplies", "Camping and Outdoors", "Boating", "Photography"] },
       { g: "Other", items: ["Postage and Shipping", "Cash Withdrawals", "Miscellaneous", "Church Offering", "Tips", "Emergency Expenses", "Lost or Stolen Items", "Legal Settlements", "Funeral Costs", "Notary and Document Fees", "Dues and Fees"] }
@@ -683,12 +689,12 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
   function drawPick() {
     var q = $("pickSearch").value.trim().toLowerCase(), grp = pickGroup(), used = usedNames(), h = "";
     if (pick.mode === "add") {
-      var back = layout.rows.filter(function (r) { return r.type === "data" && meta.removed.indexOf(r.row) >= 0 && rowGroups()[r.row] === grp && (!q || builtinName(r.row).toLowerCase().indexOf(q) >= 0); });
+      var back = layout.rows.filter(function (r) { return r.type === "data" && meta.removed.indexOf(r.row) >= 0 && rowGroups()[r.row] === grp && (pick.sec !== "savings" || detailOf(builtinName(r.row)) === "savings") && (!q || builtinName(r.row).toLowerCase().indexOf(q) >= 0); });
       if (back.length) h += "<h3>Add back</h3>" + '<div class="chips">' + back.map(function (r) { return '<button type="button" class="chip" data-restore="' + r.row + '">' + esc(builtinName(r.row)) + "</button>"; }).join("") + "</div>";
     }
     POOL[grp].forEach(function (g) {
       var items = g.items.filter(function (n) { return !used[n.toLowerCase()] && (pick.sec !== "savings" || sectionOf(n) === "savings") && (!q || n.toLowerCase().indexOf(q) >= 0 || g.g.toLowerCase().indexOf(q) >= 0); });
-      if (items.length) h += "<h3>" + esc(g.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip" data-pick="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
+      if (items.length) h += "<h3>" + esc(pick.sec === "savings" ? g.g.replace(/^Save for: /, "") : g.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip" data-pick="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
     });
     if (pick.sec === "savings") {
       var gl = goals.filter(function (g) { return g.kind === "save" && !used[g.name.toLowerCase()] && (!q || g.name.toLowerCase().indexOf(q) >= 0); });
@@ -977,7 +983,8 @@ tr.grp-need td.lab{box-shadow:inset 4px 0 0 var(--need)}tr.grp-want td.lab{box-s
     var m = {};
     function put(key, names) { names.forEach(function (x) { m[nk(x)] = key; }); }
     var byGroup = { "Housing": "housing", "Utilities and services": "utilities", "Transportation": "transport", "Food and drink": "dining", "Health": "health",
-      "Personal": "personal", "Family and kids": "family", "Pets": "pets", "Education": "education", "Debt and financial": "debt",
+      "Personal": "personal", "Family and kids": "family", "Pets": "pets", "Education": "education", "Debt and financial": "debt", "Save for: safety net": "savings", "Save for: family": "savings", "Save for: big purchases": "savings",
+      "Save for: your future": "savings", "Save for: yearly bills": "savings", "Save for: fun and special days": "savings",
       "Work and business": "work", "Fun and lifestyle": "fun", "Other": "other" };
     POOL.expense.forEach(function (g) { put(byGroup[g.g] || "other", g.items); });
     put("fun", ["Cable TV", "Streaming Services", "Memberships"]);
