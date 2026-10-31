@@ -773,7 +773,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   /* ---------- Actual view: hover a category to see its plan and fill it in ---------- */
   var tipTimer = null, tipRow = null;
   function hideTip() { clearTimeout(tipTimer); tipTimer = setTimeout(function () { $("planTip").hidden = true; tipRow = null; }, 280); }
-  function keepTip() { clearTimeout(tipTimer); }
+  var switchTimer = null;
+  function keepTip() { clearTimeout(tipTimer); clearTimeout(switchTimer); }
   function showTip(tr) {
     if (view !== "actual" || !tr || tr.hidden || !tr.querySelector("input.in") || tr.closest("thead")) return;
     keepTip(); if (tipRow === tr && !$("planTip").hidden) return; tipRow = tr;
@@ -787,9 +788,17 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>');
     var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
     tip.hidden = false; tip.style.left = Math.max(8, Math.min(r.left + 24, window.innerWidth - tip.offsetWidth - 8)) + "px";
-    var top = r.bottom - 4; if (top + tip.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - tip.offsetHeight + 4); tip.style.top = top + "px";
+    var top = r.bottom - 10; if (top + tip.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - tip.offsetHeight + 4); tip.style.top = top + "px";
   }
-  $("sheet").addEventListener("mouseover", function (e) { if (view === "actual") { var tr = e.target.closest && e.target.closest("tr"); if (tr) showTip(tr); } });
+  $("sheet").addEventListener("mouseover", function (e) {
+    if (view !== "actual") return;
+    var tr = e.target.closest && e.target.closest("tr"); if (!tr) return;
+    clearTimeout(switchTimer);
+    var open = !$("planTip").hidden && tipRow;
+    if (!open || tipRow === tr) { showTip(tr); return; }
+    clearTimeout(tipTimer);   // keep the current tip while deciding
+    switchTimer = setTimeout(function () { showTip(tr); }, 450);
+  });
   $("sheet").addEventListener("mouseleave", hideTip); $("planTip").addEventListener("mouseenter", keepTip); $("planTip").addEventListener("mouseleave", hideTip);
   $("sheet").addEventListener("focusin", function (e) { if (view === "actual" && e.target.classList && e.target.classList.contains("in")) showTip(e.target.closest("tr")); });
   $("planTip").addEventListener("mousedown", function (e) { e.preventDefault(); });
