@@ -343,7 +343,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     <div id="homeBody"></div>
   </section>
   <div id="sheetView">
-  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="fillAnnual" title="Fill this month from your Annual budget">Fill from Annual</button></div>
+  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
   <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
@@ -421,8 +421,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   var CFG = window.RULED_CONFIG;
   var TOOLS = [
     { id: "home", name: "Home", type: "home" },
-    { id: "yearly-projection", name: "Annual budget" },
     { id: "monthly-budget", name: "Monthly budget" },
+    { id: "yearly-projection", name: "Annual budget" },
     { id: "bills", name: "Bills", type: "bills" },
     { id: "receipts", name: "Receipts", type: "receipts" },
     { id: "goals", name: "Goals", type: "goals" },
@@ -766,7 +766,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
     $("planTip").hidden = true; tipRow = null;
     $("actNote").hidden = v !== "actual" || !layout || !layout.months;
-    ["copyPrev", "fillAnnual"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
+    ["copyPrev"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
     $("sheet").classList.toggle("actualview", v === "actual");
     if (!quiet) { fillInputs(); run(); }
   }
@@ -2175,10 +2175,16 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (key === "yearly-projection") {
       syncP = pushAnnual();
     } else if (key.indexOf("monthly-budget:" + Y + "-") === 0 && Lm) {
+      syncP = monthToAnnual(key, data, Lm, false);
+    }
+  }
+  // Copy one saved month of the Monthly budget into its column of the Annual budget (matching categories by name).
+  function monthToAnnual(key, data, Lm, force) {
       var idx = Number(key.slice(-2)) - 1, col = COLS12.charAt(idx);
-      syncP = fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (La) {
+      return fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (La) {
         return loadSaved("yearly-projection").then(function (doc) {
-          if (!doc) return;
+          if (!doc && !force) return;
+          if (!doc) { var sm = setup && setup.done ? metaFromSetup(La, setup) : null; doc = sm ? Object.assign({}, sm.toggles, { __meta: sm.meta }) : { __meta: {} }; }
           var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: (dm.removed || []).slice(), gone: (dm.gone || []).slice() };
           var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [];
           var ga = rowGroups(La), targets = {}, blocks = {};
@@ -2248,7 +2254,6 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
           return doSave("yearly-projection", nd).then(function () { return (movedOrder || adopted) ? pushAnnual() : null; });
         });
       }).catch(function () {});
-    }
   }
 
   /* ---------- annual -> monthly ---------- */
@@ -2326,7 +2331,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       return { meta: r.meta, toggles: r0.toggles, inputs: r.inputs, any: r.any };
     });
   }
-  $("fillAnnual").addEventListener("click", function () {
+  if ($("fillAnnual")) $("fillAnnual").addEventListener("click", function () {
     var idx = Number($("selMonth").value) - 1, hasData = Object.keys(inputs).some(function (k) { return inputs[k] !== 0; });
     if (hasData && !window.confirm("Replace this month’s amounts with your Annual budget for " + MONTHS[idx] + "?")) return;
     setStatus("Filling from your Annual budget…");
