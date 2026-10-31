@@ -2356,7 +2356,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     });
     $("wizard").innerHTML = '<h2>Building your tables…</h2>';
     Promise.all(jobs).then(function () {
-      tool = TOOLS.filter(function (t) { return t.id === "yearly-projection"; })[0]; history.replaceState(null, "", "#yearly-projection"); makeTabs(); openTool();
+      tool = TOOLS.filter(function (t) { return t.id === "monthly-budget"; })[0]; history.replaceState(null, "", "#monthly-budget"); makeTabs(); openTool();
     });
   }
 
