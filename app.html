@@ -376,11 +376,13 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     <p class="sub">Pick a goal, follow the checklist, and watch your progress. Change any step to fit your plan.</p>
     <form class="billform" id="goalForm">
       <label>Goal type<select id="gKind"><option value="debt">Pay off debt</option><option value="save">Save for something</option><option value="credit">Raise my credit score</option><option value="custom">Something else</option></select></label>
-      <label>Goal name<input id="gName" maxlength="50" required placeholder="Pay off Visa"></label>
+      <label id="glPick" hidden>Savings category<select id="gPick"></select></label>
+      <label id="glName">Goal name<input id="gName" maxlength="50" required placeholder="Pay off Visa"></label>
       <label id="gl1">Starting balance<input id="g1" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
       <label id="gl2">Balance now<input id="g2" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
       <label id="gl3" hidden>Target score<input id="g3" inputmode="numeric" autocomplete="off" placeholder="740"></label>
       <label>Target date (optional)<input id="gDate" type="date"></label>
+      <label id="glLink" class="chk" hidden style="grid-column:1/-1"><input type="checkbox" id="gLink" checked> <span>Also add it to my budget&rsquo;s Savings section, so money I put there counts toward this goal</span></label>
       <div><button class="btn" type="submit">Add goal</button></div>
     </form>
     <div id="goalList"></div>
@@ -718,6 +720,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (!slot) { $("pickMsg").textContent = "You’ve reached the limit of " + blk.max + "."; return; }
     meta.custom.push(slot.row); meta.labels[slot.row] = name; unGone(meta, name);
     if (pick.sec === "savings") placeName(name, "savings");
+    if (detailOf(name) === "savings") ensureGoal(name).then(function (made) { if (made) $("pickMsg").textContent = "Added " + name + ", and made a matching goal on your Goals tab."; });
     meta.hidden = meta.hidden.filter(function (x) { return x !== slot.row; });
     var tr = document.querySelector('tr[data-slot="' + slot.row + '"]'); tr.hidden = false; tr.querySelector("input.nm").value = name;
     updateAdd(); buildRowsPanel(); scheduleSave();
@@ -1637,6 +1640,35 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     tool = TOOLS.filter(function (x) { return x.id === "bills"; })[0]; history.replaceState(null, "", "#bills"); makeTabs(); openTool();
   });
 
+  /* ---------- keep Savings lines and savings goals in step ---------- */
+  function ensureGoal(name) {   // a Savings line was added: make the matching goal if there isn't one
+    return loadGoals().then(function () {
+      if (goals.some(function (g) { return g.kind === "save" && nk(g.name) === nk(name); }) || goals.length >= 30) return false;
+      goals.unshift({ id: newId(), kind: "save", name: name, start: 0, current: 0, target: 0, due: "", base: 0, from: thisMonthKey(), fromBudget: 0,
+        steps: STARTERS.save.map(function (t) { return { id: newId(), t: t, done: false }; }) });
+      saveGoals(); return true;
+    }).catch(function () { return false; });
+  }
+  function addSlotTo(L, doc, key, name) {   // put a Savings line named `name` into one saved table
+    var m = doc.__meta = doc.__meta || {}; m.labels = m.labels || {}; m.custom = m.custom || []; m.hidden = m.hidden || []; m.removed = m.removed || [];
+    var have = activeEntries(L, { labels: m.labels, custom: m.custom, removed: m.removed }).expense.some(function (e) { return nk(e.name) === nk(name); });
+    if (have) return Promise.resolve("had");
+    var blk = L.rows.filter(function (r) { return r.type === "custom" && r.group !== "income"; })[0]; if (!blk) return Promise.resolve("full");
+    var slot = blk.slots.filter(function (sl) { return m.custom.indexOf(sl.row) < 0; })[0]; if (!slot) return Promise.resolve("full");
+    m.custom.push(slot.row); m.labels[slot.row] = name; m.hidden = m.hidden.filter(function (x) { return x !== slot.row; });
+    if (L.months) doc.__filled = true;
+    return doSave(key, doc).then(function () { return "added"; });
+  }
+  function addSavingsLine(name) {   // a savings goal was made: add the matching line to this month and the Annual budget
+    placeName(name, "savings");
+    var n = new Date();
+    var month = rcMonthState(n.getFullYear(), n.getMonth()).then(function (st) { return addSlotTo(st.Lm, st.doc, st.key, name); });
+    var year = fetch("yearly-projection.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
+      return loadSaved("yearly-projection").then(function (saved) { return saved ? addSlotTo(L, saved, "yearly-projection", name) : "skip"; });
+    });
+    return Promise.all([month.catch(function () { return "err"; }), year.catch(function () { return "err"; })]);
+  }
+
   /* ---------- goals ---------- */
   var goals = [], goalsLoaded = false, goalTimer = null, editingGoal = null;
   var STARTERS = {
@@ -1709,25 +1741,71 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (g.kind === "credit" && g.target !== g.start) return "Score " + g.current + ", target " + g.target;
     return "";
   }
+  /* Savings goals are named from the same list as the budget's Savings lines, so the link always matches. */
+  var budgetSavings = [];   // savings lines already in this member's budget
+  function loadBudgetSavings() {
+    var n = new Date();
+    return Promise.all([rcMonthState(n.getFullYear(), n.getMonth()).catch(function () { return null; }), annualSnapshot().catch(function () { return { rows: [] }; })]).then(function (a) {
+      var seen = {}, out = [];
+      function add(name) { var k = nk(name); if (k && !seen[k] && detailOf(name) === "savings") { seen[k] = 1; out.push(name); } }
+      if (a[0]) a[0].cats.forEach(function (e) { add(e.name); });
+      (a[1].rows || []).forEach(function (r) { if (r.group === "expense") add(r.name); });
+      budgetSavings = out; return out;
+    });
+  }
+  function savingsChoicesHtml(current, skipUsed) {
+    var used = {}; if (skipUsed) goals.forEach(function (g) { if (g.kind === "save") used[nk(g.name)] = 1; });
+    var seen = {}, h = "";
+    function opts(list) { return list.filter(function (n) { var k = nk(n); if (seen[k] || (used[k] && k !== nk(current || ""))) return false; seen[k] = 1; return true; })
+      .map(function (n) { return '<option value="' + esc(n) + '"' + (nk(n) === nk(current || "") ? " selected" : "") + ">" + esc(n) + "</option>"; }).join(""); }
+    var mine = opts(budgetSavings); if (mine) h += '<optgroup label="Already in your budget">' + mine + "</optgroup>";
+    POOL.expense.forEach(function (g) { if (/^Save for: /.test(g.g)) { var o = opts(g.items); if (o) { var lb = g.g.replace(/^Save for: /, ""); h += '<optgroup label="' + esc(lb.charAt(0).toUpperCase() + lb.slice(1)) + '">' + o + "</optgroup>"; } } });
+    if (current && !seen[nk(current)]) h = '<option value="' + esc(current) + '" selected>' + esc(current) + "</option>" + h;
+    return h;
+  }
+  function fillGoalPick() {
+    var keep = $("gPick").value;
+    $("gPick").innerHTML = '<option value="">Choose a savings category</option>' + savingsChoicesHtml(keep, true) + '<option value="__own">Something else (type a name)</option>';
+    if (keep) $("gPick").value = keep;
+    syncGoalName();
+  }
+  function syncGoalName() {
+    var save = $("gKind").value === "save", v = $("gPick").value;
+    $("glPick").hidden = !save; $("glLink").hidden = !save;
+    $("glName").hidden = save && v !== "__own";
+    if (save && v && v !== "__own") $("gName").value = v; else if (save && v !== "__own") $("gName").value = "";
+    $("gName").required = !save || v === "__own";
+  }
+  $("gPick").addEventListener("change", function () { syncGoalName(); if ($("gPick").value === "__own") $("gName").focus(); });
   function goalForm() {
     var k = $("gKind").value, L = { debt: ["Starting balance", "Balance now"], save: ["Goal amount", "Saved so far"], credit: ["Starting score", "Current score"] }[k];
     $("gl1").hidden = $("gl2").hidden = !L; $("gl3").hidden = k !== "credit";
     if (L) { $("gl1").firstChild.textContent = L[0]; $("gl2").firstChild.textContent = L[1]; }
     var money_ = k === "debt" || k === "save"; ["g1", "g2"].forEach(function (id) { $(id).placeholder = money_ ? "$0.00" : "600"; });
-    $("gName").placeholder = { debt: "Pay off Visa", save: "Emergency fund", credit: "Reach a 700 score", custom: "My goal" }[k];
+    $("gName").placeholder = { debt: "Pay off Visa", save: "Boat money", credit: "Reach a 700 score", custom: "My goal" }[k];
+    if (k === "save") { fillGoalPick(); loadBudgetSavings().then(function () { if ($("gKind").value === "save") fillGoalPick(); }); }
+    else { $("glPick").hidden = true; $("glName").hidden = false; $("gName").required = true; }
   }
   $("gKind").addEventListener("change", goalForm);
   function num(k, v) { return k === "credit" ? (parseFloat(v) || 0) : parseMoney(v); }
   $("goalForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var k = $("gKind").value, name = $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
+    var k = $("gKind").value;
+    if (k === "save" && !$("gPick").value) { $("gPick").focus(); return; }
+    var name = $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
     var g = { id: newId(), kind: k, name: name, start: 0, current: 0, target: 0, due: $("gDate").value || "",
       steps: STARTERS[k].map(function (t) { return { id: newId(), t: t, done: false }; }) };
     if (k === "save") { g.target = num(k, $("g1").value); g.current = num(k, $("g2").value); g.base = g.current; g.from = thisMonthKey(); g.fromBudget = 0; }
     if (k === "debt") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value); }
     if (k === "credit") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value) || g.start; g.target = num(k, $("g3").value); }
-    goals.unshift(g); $("goalForm").reset(); goalForm(); saveGoals(); renderGoals();
-    if (k === "save") syncSaveGoals().then(function (c) { if (c) renderGoals(); });
+    goals.unshift(g); $("goalForm").reset(); $("gKind").value = k; goalForm(); saveGoals(); renderGoals();
+    if (k === "save") {
+      var addLine = $("gLink").checked && !budgetSavings.some(function (n) { return nk(n) === nk(name); });
+      (addLine ? addSavingsLine(name) : Promise.resolve(null)).then(function (res) {
+        if (res && res[0] === "full") alert("Your Monthly budget has no room for another category, so " + name + " wasn’t added there. Remove one you don’t use, then add it from Savings.");
+        return syncSaveGoals();
+      }).then(function () { loadBudgetSavings(); renderGoals(); });
+    }
   });
   function renderGoals() {
     goalForm();
@@ -1741,8 +1819,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         '<div class="bar' + (pc >= 100 ? " full" : "") + '" role="progressbar" aria-valuenow="' + pc + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pc + '%"></i></div>' +
         '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + upd +
         (g.kind === "save" ? (g.linked
-          ? '<p class="glink on">&#128279; Linked to your <b>' + esc(g.name) + "</b> budget line" + (g.fromBudget ? " &middot; " + money.format(g.fromBudget) + " added from your budget" : " &middot; nothing added yet") + "</p>"
-          : '<p class="glink">Tip: add a Savings line named <b>' + esc(g.name) + "</b> in your Monthly budget and money you put there is added here automatically.</p>") : "") +
+          ? '<p class="glink on">&#128279; Linked to your <b>' + esc(g.name) + "</b> budget line" + (g.fromBudget ? " &middot; " + money.format(g.fromBudget) + " added from your budget" : " &middot; nothing added yet") + "</p>" +
+            (g.target ? "" : '<p class="glink">Set how much you want to save: tap <b>Edit goal</b>.</p>')
+          : '<p class="glink">Not linked yet. In your Monthly budget, tap <b>+ Add</b> on Savings and choose <b>' + esc(g.name) + "</b>. Money you put there is added here automatically.</p>") : "") +
         g.steps.map(function (x) {
           return '<label class="chk' + (x.done ? " done" : "") + '"><input type="checkbox" data-step="' + g.id + ":" + x.id + '"' + (x.done ? " checked" : "") + "><span>" + esc(x.t) + '</span><button type="button" class="x" data-delstep="' + g.id + ":" + x.id + '" aria-label="Remove step">&times;</button></label>';
         }).join("") +
@@ -1752,7 +1831,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function editGoalHtml(g) {
     var cr = g.kind === "credit", mv = function (v) { return esc(cr ? v : money.format(v)); }, f = "";
     var L = { debt: ["Starting balance", "Balance now"], save: ["Goal amount", "Saved so far"], credit: ["Starting score", "Current score"] }[g.kind];
-    f += '<label>Goal name<input name="name" maxlength="50" required value="' + esc(g.name) + '"></label>';
+    if (g.kind === "save") f += '<label>Savings category<select name="name">' + savingsChoicesHtml(g.name, true) + "</select></label>";
+    else f += '<label>Goal name<input name="name" maxlength="50" required value="' + esc(g.name) + '"></label>';
     if (L) {
       f += '<label>' + L[0] + '<input name="a" inputmode="decimal" autocomplete="off" value="' + mv(g.kind === "save" ? g.target : g.start) + '"></label>';
       f += '<label>' + L[1] + '<input name="b" inputmode="decimal" autocomplete="off" value="' + mv(g.current) + '"></label>';
