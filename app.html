@@ -16,7 +16,9 @@ window.RULED_CONFIG = {
   calcUrl: "https://qytsgfjyiybxucxtbcne.supabase.co/functions/v1/calc",
   supabaseUrl: "https://qytsgfjyiybxucxtbcne.supabase.co",
   supabaseAnonKey: "sb_publishable_Sp2syhCiuMZvNIssD9lpPA_1W3xZ2su",
-  homeUrl: "index.html"
+  homeUrl: "index.html",
+  // Accounts that see the hidden Admin tools on the Account page. A plain username like "tester" means tester@monerem.test.
+  admins: ["taylordavid0911@gmail.com", "tester@monerem.test"]
 };
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -279,6 +281,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .tips .tip{display:block;color:#51638f;font-size:13px;margin-top:2px}
 .tips{position:relative}.tipsx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;color:#9A3412;cursor:pointer;padding:4px}
 .tips > b{padding-right:28px}.tipsoff{margin:10px 0 0;font-size:13px}.tipsoff .linkbtn,.tipshide{background:none;border:0;padding:0;color:var(--blue);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}.tipshide{font-size:13px;margin-left:4px}
+.admintools summary{cursor:pointer;font-weight:700;color:var(--muted)}#clearAll:disabled{opacity:.45;cursor:not-allowed}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -308,7 +311,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   <h2 id="loginTitle">Log in</h2>
   <form id="loginForm">
     <label for="email">Email</label>
-    <input id="email" type="email" autocomplete="email" required>
+    <input id="email" type="text" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="username" required>
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" required>
     <button class="btn" type="submit" id="loginBtn">Log in</button>
@@ -373,6 +376,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         <p class="pickmsg" id="pwMsg" role="status"></p>
       </form></div>
     <div class="panel"><button class="btn ghost" type="button" id="acOut">Log out</button></div>
+    <details class="panel admintools" id="adminTools" hidden><summary>Admin tools</summary>
+      <p class="sub" style="margin:10px 0">Clears every amount in your Monthly budget (all months, Plan and Actual) and your Annual budget. Your categories, savings goals, bills and receipts stay.</p>
+      <label for="clearConfirm" class="sub">Type <b>CLEAR</b> to confirm</label>
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><input id="clearConfirm" autocomplete="off" style="max-width:180px"><button class="btn danger" type="button" id="clearAll" disabled>Clear all numbers</button></div>
+      <p class="pickmsg" id="clearMsg" role="status"></p>
+    </details>
   </section>
   <section id="setupView" hidden>
     <div class="panel" id="wizard"></div>
@@ -1942,7 +1951,42 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function displayName(u) { return (u && u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || ""; }
   function shortDate(v) { return v ? new Date(v).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : ""; }
   function currentUser() { return CFG.devMode ? { email: "you@example.com", created_at: new Date().toISOString(), user_metadata: {} } : (session && session.user); }
+  function isAdmin() {
+    var u = currentUser(), em = u && u.email ? String(u.email).toLowerCase() : "";
+    return CFG.devMode || (!!em && (CFG.admins || []).some(function (a) { return String(a).toLowerCase() === em; }));
+  }
+  $("clearConfirm").addEventListener("input", function () { $("clearAll").disabled = this.value.trim().toUpperCase() !== "CLEAR"; });
+  $("clearAll").addEventListener("click", function () {
+    if (!isAdmin() || $("clearConfirm").value.trim().toUpperCase() !== "CLEAR") return;
+    var btn = this; btn.disabled = true; $("clearMsg").textContent = "Clearing…"; flushSave();
+    // keep switches like "count tithe" (they're stored as numbers but aren't amounts)
+    var keep = {};
+    Promise.all(["monthly-budget", "yearly-projection"].map(function (id) { return fetch(id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }); })).then(function (Ls) {
+      Ls.forEach(function (L) { L.rows.forEach(function (r) { if (r.toggle) keep[r.toggle] = 1; }); });
+      var listP = CFG.devMode
+        ? Promise.resolve(Object.keys(localStorage).filter(function (k) { return k.indexOf("moneres-dev-") === 0; }).map(function (k) { return { sheet_id: k.slice(12), inputs: JSON.parse(localStorage.getItem(k) || "null") }; }))
+        : supa.from("member_inputs").select("sheet_id,inputs").eq("user_id", session.user.id).then(function (r) { if (r.error) throw r.error; return r.data || []; });
+      return listP;
+    }).then(function (rows) {
+      var jobs = [], n = 0;
+      rows.forEach(function (row) {
+        var id = row.sheet_id, doc = row.inputs;
+        if (!doc || !(id === "yearly-projection" || id.indexOf("monthly-budget:") === 0)) return;
+        var nd = {}; Object.keys(doc).forEach(function (k) {
+          if (k.slice(0, 2) === "a:") return;                                   // actual amounts
+          nd[k] = typeof doc[k] === "number" && !keep[k] ? 0 : doc[k];
+        });
+        n++; jobs.push(doSave(id, nd));
+      });
+      return Promise.all(jobs).then(function () { return n; });
+    }).then(function (n) {
+      try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf("monerem-hist:") === 0) localStorage.removeItem(k); }); } catch (e) {}
+      $("clearConfirm").value = ""; btn.disabled = true;
+      $("clearMsg").textContent = n ? "Cleared every amount in " + n + (n === 1 ? " table." : " tables.") : "There was nothing to clear.";
+    }).catch(function () { btn.disabled = false; $("clearMsg").textContent = "Couldn’t clear everything. Try again."; });
+  });
   function renderAccount() {
+    $("adminTools").hidden = !isAdmin(); $("clearMsg").textContent = "";
     var u = currentUser(); if (!u) return;
     $("acName").value = displayName(u); $("acEmail").value = u.email || ""; $("acMsg").textContent = ""; $("pwMsg").textContent = "";
     $("pwForm").reset();
@@ -2618,6 +2662,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     e.preventDefault(); $("loginMsg").textContent = "";
     var em = $("email").value.trim(), pw = $("password").value;
     if (mode === "signup") {
+      if (em.indexOf("@") < 0) { $("loginMsg").textContent = "Enter your email address to create an account."; return; }
       if (pw.length < 8) { $("loginMsg").textContent = "Use at least 8 characters for your password."; return; }
       supa.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: location.origin + location.pathname } }).then(function (r) {
         if (r.error) { $("loginMsg").textContent = r.error.message; return; }
@@ -2626,6 +2671,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       });
       return;
     }
+    // Test logins: a plain username (no @) signs in as username@monerem.test, an address that never receives mail.
+    if (em.indexOf("@") < 0) em = em.toLowerCase().replace(/[^a-z0-9._-]/g, "") + "@monerem.test";
     supa.auth.signInWithPassword({ email: em, password: pw }).then(function (r) {
       if (r.error) { $("loginMsg").textContent = "That email and password don’t match."; return; }
       session = r.data.session; afterLogin();
