@@ -281,7 +281,16 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .tips .tip{display:block;color:#51638f;font-size:13px;margin-top:2px}
 .tips{position:relative}.tipsx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;color:#9A3412;cursor:pointer;padding:4px}
 .tips > b{padding-right:28px}.tipsoff{margin:10px 0 0;font-size:13px}.tipsoff .linkbtn,.tipshide{background:none;border:0;padding:0;color:var(--blue);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}.tipshide{font-size:13px;margin-left:4px}
-.admintools summary{cursor:pointer;font-weight:700;color:var(--muted)}#clearAll:disabled{opacity:.45;cursor:not-allowed}
+.admintools summary{cursor:pointer;font-weight:700;color:var(--muted)}
+.admh{margin:22px 0 8px;font-size:17px}.admh .sub{font-weight:400;font-size:13px}.admh4{margin:16px 0 6px;font-size:15px}
+.admgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.admgrid .sub{font-size:13px;margin:6px 0 0}
+.admrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.admrow .btn,.admgrid .btn{margin:0}
+.admrow input,.admrow select{height:40px;border:1px solid var(--line,#D6E3F8);border-radius:10px;padding:0 10px;font:inherit;background:#fff}
+.bstats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.bstat{background:#F5F8FE;border:1px solid var(--line,#D6E3F8);border-radius:12px;padding:10px 12px}
+.bstat b{display:block;font-size:24px;line-height:1.1}.bstat span{font-size:12px;color:#51638f}.bstat.wide{grid-column:span 2}
+.blist{list-style:none;margin:0;padding:0}.blist li{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line,#D6E3F8);font-size:14px}
+.bmember{margin-top:8px;padding:12px 14px;border:1px solid var(--line,#D6E3F8);border-radius:12px;background:#fff}.kv{display:flex;justify-content:space-between;font-size:14px;padding:3px 0}.kv span:first-child{color:#51638f}
+@media (max-width:600px){.bstats{grid-template-columns:1fr 1fr}}#clearAll:disabled{opacity:.45;cursor:not-allowed}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -321,6 +330,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 </section>
 
 <section id="inactive" class="card" hidden>
+  <p id="previewNote" hidden style="margin:0 0 10px;font:600 13px/1.4 inherit;color:#9A3412">Admin preview. <button type="button" class="linkbtn" id="exitPreview">Back to my tools</button></p>
   <h2>Your membership isn&rsquo;t active</h2>
   <p id="inactiveMsg">Choose a plan to get into your tools. Any numbers you’ve saved are still here.</p>
   <div class="wizbtns" style="margin-top:14px"><button class="btn" type="button" data-plan="monthly">Monthly — $9</button><button class="btn" type="button" data-plan="annual">Annual — $79</button></div>
@@ -377,6 +387,19 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       </form></div>
     <div class="panel"><button class="btn ghost" type="button" id="acOut">Log out</button></div>
     <details class="panel admintools" id="adminTools" hidden><summary>Admin tools</summary>
+      <h3 class="admh">Business</h3>
+      <div id="bizPanel" class="sub">Open this section to load your numbers.</div>
+      <p class="pickmsg" id="bizMsg" role="status"></p>
+      <h3 class="admh">Testing <span class="sub">(your account only)</span></h3>
+      <div class="admgrid">
+        <div><button class="btn ghost" type="button" data-adm="sample">Load sample budget</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal. Good for demos and screenshots.</p></div>
+        <div><button class="btn ghost" type="button" data-adm="resetcats">Reset categories</button><p class="sub">Puts back the starter categories everywhere and runs first-time setup again.</p></div>
+        <div><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
+        <div><button class="btn ghost" type="button" data-adm="previewinactive">Preview &ldquo;membership inactive&rdquo;</button><p class="sub">See what an expired member sees.</p></div>
+      </div>
+      <div class="admrow"><button class="btn ghost" type="button" data-adm="cleargoals">Clear goals</button><button class="btn ghost" type="button" data-adm="clearbills">Clear bills</button><button class="btn ghost" type="button" data-adm="clearreceipts">Clear receipts</button></div>
+      <p class="pickmsg" id="admMsg" role="status"></p>
+      <h3 class="admh">Clear all numbers</h3>
       <p class="sub" style="margin:10px 0">Clears every amount in your Monthly budget (all months, Plan and Actual) and your Annual budget. Your categories, savings goals, bills and receipts stay.</p>
       <label for="clearConfirm" class="sub">Type <b>CLEAR</b> to confirm</label>
       <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><input id="clearConfirm" autocomplete="off" style="max-width:180px"><button class="btn danger" type="button" id="clearAll" disabled>Clear all numbers</button></div>
@@ -1985,8 +2008,148 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       $("clearMsg").textContent = n ? "Cleared every amount in " + n + (n === 1 ? " table." : " tables.") : "There was nothing to clear.";
     }).catch(function () { btn.disabled = false; $("clearMsg").textContent = "Couldn’t clear everything. Try again."; });
   });
+  /* ---------- admin: testing tools (only touch the signed-in account) ---------- */
+  function admMsg(t) { $("admMsg").textContent = t || ""; }
+  function layoutsP() { return Promise.all(["monthly-budget", "yearly-projection"].map(function (id) { return fetch(id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }); })); }
+  function myBudgetDocs() {
+    return (CFG.devMode
+      ? Promise.resolve(Object.keys(localStorage).filter(function (k) { return k.indexOf("moneres-dev-") === 0; }).map(function (k) { return { sheet_id: k.slice(12), inputs: JSON.parse(localStorage.getItem(k) || "null") }; }))
+      : supa.from("member_inputs").select("sheet_id,inputs").eq("user_id", session.user.id).then(function (r) { if (r.error) throw r.error; return r.data || []; }))
+      .then(function (rows) { return rows.filter(function (r) { return r.inputs && (r.sheet_id === "yearly-projection" || r.sheet_id.indexOf("monthly-budget:") === 0); }); });
+  }
+  function rowAddr(L, label, col) { var r = L.rows.filter(function (x) { return x.type === "data" && x.label === label; })[0]; return r && r.cells[col] && r.cells[col].k === "input" ? r.cells[col].a : null; }
+  function loadSample() {
+    var n = new Date(), key = "monthly-budget:" + n.getFullYear() + "-" + pad(n.getMonth() + 1);
+    admMsg("Loading a sample budget…"); flushSave();
+    return layoutsP().then(function (Ls) {
+      var Lm = Ls[0], doc = { __filled: true }, put = function (label, col, v, act) { var a = rowAddr(Lm, label, col); if (a) { doc[a] = v; if (act !== undefined) doc["a:" + a] = act; } };
+      put("Check", "B", 2000); put("Check", "C", 2000);
+      put("Rent", "B", 1500, 1500); put("Utilities", "C", 220, 236); put("Credit Cards", "C", 250, 250);
+      put("Groceries", "B", 250, 280); put("Groceries", "C", 250, 265); put("Gasoline", "B", 65); put("Gasoline", "C", 65);
+      put("Restaurants", "C", 300, 340); put("Digital Entertainment", "B", 45, 45); put("Shopping", "C", 120); put("Tithe", "B", 400, 400);
+      var blk = Lm.rows.filter(function (r) { return r.type === "custom" && r.group !== "income"; })[0], sl = blk.slots[0], a0 = inAddrs(sl.cells).sort(function (x, y) { return colKey(x) - colKey(y); })[0];
+      doc[a0] = 250; doc["a:" + a0] = 250;
+      doc.__meta = { labels: {}, custom: [sl.row], hidden: [], removed: [], gone: [] }; doc.__meta.labels[sl.row] = "Vacation Fund";
+      return doSave(key, doc).then(function () { return monthToAnnual(key, doc, Lm, true); });
+    }).then(function () { return ensureGoal("Vacation Fund"); }).then(function () {
+      var g = goals.filter(function (x) { return x.kind === "save" && nk(x.name) === nk("Vacation Fund"); })[0];
+      if (g && !g.target) { g.target = 2000; saveGoals(); }
+      return syncSaveGoals();
+    }).then(function () { admMsg("Sample budget loaded for " + MONTHS[n.getMonth()] + ". Open Monthly budget to see it."); })
+      .catch(function () { admMsg("Couldn’t load the sample. Try again."); });
+  }
+  function resetCategories() {
+    if (!window.confirm("Put back the starter categories in every month and your Annual budget, and run first-time setup again? Amounts in categories you added yourself are cleared.")) return;
+    admMsg("Resetting categories…"); flushSave();
+    layoutsP().then(function (Ls) {
+      var byId = { "monthly-budget": Ls[0], "yearly-projection": Ls[1] };
+      return myBudgetDocs().then(function (rows) {
+        return Promise.all(rows.map(function (row) {
+          var L = byId[row.sheet_id === "yearly-projection" ? "yearly-projection" : "monthly-budget"], d = Object.assign({}, row.inputs);
+          L.rows.forEach(function (r) {
+            if (r.type === "custom") r.slots.forEach(function (sl) { inAddrs(sl.cells).forEach(function (a) { d[a] = 0; delete d["a:" + a]; }); });
+            if (r.toggle) d[r.toggle] = 1;
+          });
+          d.__meta = { labels: {}, custom: [], hidden: [], removed: [], gone: [] };
+          return doSave(row.sheet_id, d);
+        }));
+      });
+    }).then(function () {
+      setup = null; setupLoaded = true; placed = {}; savePlaced();
+      return doSave("setup", { __setup: null });
+    }).then(function () {
+      admMsg(""); tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0]; makeTabs(); openTool();
+    }).catch(function () { admMsg("Couldn’t reset everything. Try again."); });
+  }
+  $("adminTools").addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-adm]"); if (!b || !isAdmin()) return;
+    var a = b.getAttribute("data-adm");
+    if (a === "sample") { if (window.confirm("Replace this month’s Monthly budget with a sample budget?")) loadSample(); }
+    else if (a === "resetcats") resetCategories();
+    else if (a === "previewsetup") { tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0]; makeTabs(); openTool(); }
+    else if (a === "previewinactive") { $("inactiveMsg").textContent = "Choose a plan to get into your tools."; $("inactivePortal").hidden = true; $("previewNote").hidden = false; show("inactive"); }
+    else if (a === "cleargoals") { if (window.confirm("Delete all your goals?")) loadGoals().then(function () { goals = []; return doSave("goals", { __goals: [] }); }).then(function () { admMsg("Goals cleared."); }); }
+    else if (a === "clearbills") { if (window.confirm("Delete all your bills and reminders?")) loadBills().then(function () { bills = []; renderBanner(); return doSave(billsKey(), { __bills: [] }); }).then(function () { admMsg("Bills cleared."); }); }
+    else if (a === "clearreceipts") { if (window.confirm("Delete all your saved receipts? Amounts they already added to your budget stay.")) rcLoad().then(function () { receipts = []; return doSave("receipts", { __receipts: [], __rules: rcRules }); }).then(function () { admMsg("Receipts cleared."); }); }
+  });
+  $("adminTools").addEventListener("toggle", function () { if ($("adminTools").open) loadBiz(); });
+  /* ---------- admin: business tools (the "admin" server function checks you're an admin) ---------- */
+  function adminCall(action, extra) {
+    var h = authHeaders(); if (session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
+    return fetch(fnUrl("admin"), { method: "POST", headers: h, body: JSON.stringify(Object.assign({ action: action }, extra || {})) })
+      .then(function (r) { return r.text().then(function (t) { var j = {}; try { j = JSON.parse(t); } catch (x) {} if (!r.ok) { var e = new Error(j.error || ("error " + r.status)); e.status = r.status; throw e; } return j; }); });
+  }
+  function fmtD(iso) { return iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"; }
+  var bizLoaded = false;
+  function loadBiz(force) {
+    if (bizLoaded && !force) return; bizLoaded = true;
+    var el = $("bizPanel"); el.innerHTML = "Loading your numbers…";
+    adminCall("stats").then(function (d) {
+      var c = d.counts, stat = function (n, l, cls) { return '<div class="bstat' + (cls ? " " + cls : "") + '"><b>' + n + "</b><span>" + l + "</span></div>"; };
+      var h = '<div class="bstats">' +
+        stat(c.paying, "Paying") + stat(c.trial, "On free trial") + stat(c.free, "Free access") + stat(c.inactive, "Signed up, not active") +
+        stat(d.mrr === null ? "—" : money.format(d.mrr), "Monthly revenue", "wide") + stat(d.mrr === null ? "—" : money.format(d.mrr * 12), "Yearly run rate", "wide") + "</div>" +
+        '<p class="sub" style="margin:8px 0 0">' + c.accounts + " accounts total &middot; " + d.newThisWeek + " new this week &middot; " + d.monthlyPlans + " monthly and " + d.annualPlans + " annual plans &middot; Stripe " + d.stripeMode + " mode</p>";
+      h += '<h4 class="admh4">Trials ending in the next 7 days</h4>' + (d.trialsEnding.length ? '<ul class="blist">' + d.trialsEnding.map(function (t) { return "<li><span>" + esc(t.email) + "</span><span>" + fmtD(t.ends) + "</span></li>"; }).join("") + "</ul>" : '<p class="sub">None right now.</p>');
+      h += '<h4 class="admh4">Look up a member</h4><form id="bizFind" class="admrow"><input id="bizEmail" placeholder="Email (or a tester name)" autocomplete="off" style="flex:1;min-width:200px"><button class="btn" type="submit">Look up</button></form><div id="bizMember"></div>';
+      h += '<h4 class="admh4">Export members</h4><div class="admrow"><select id="bizFilter"><option value="all">Everyone</option><option value="paying">Paying</option><option value="trial">On free trial</option><option value="free">Free access</option><option value="inactive">Signed up, not active</option></select><button class="btn ghost" type="button" id="bizExport">Download CSV</button></div>' +
+        '<p class="sub">Test accounts are left out. Only send marketing emails to people who agreed to hear from you, and include a way to unsubscribe.</p>' +
+        '<p style="margin-top:10px"><button type="button" class="linkbtn" id="bizRefresh">Refresh numbers</button></p>';
+      el.innerHTML = h;
+    }).catch(function (e) {
+      bizLoaded = false;
+      el.innerHTML = e.status === 404 ? "Business tools aren’t set up yet. Deploy the <b>admin</b> function in Supabase to turn them on."
+        : e.status === 403 ? "This account isn’t on the admin list. Add its email to the <b>ADMIN_EMAILS</b> secret in Supabase."
+        : "Couldn’t load your numbers (" + esc(e.message) + "). <button type=\"button\" class=\"linkbtn\" id=\"bizRefresh\">Try again</button>";
+    });
+  }
+  function showMember(email) {
+    var box = $("bizMember"); box.innerHTML = '<p class="sub">Looking up…</p>';
+    adminCall("lookup", { email: email }).then(function (m) {
+      var acc = { paying: "Paying", trial: "On free trial", free: "Free access", inactive: "Not active" }[m.access];
+      var rows = [["Access", acc + (m.access === "free" && m.accessUntil ? " until " + fmtD(m.accessUntil) : "")], ["Joined", fmtD(m.joined)], ["Last log in", fmtD(m.lastLogin)]];
+      if (m.stripe) rows.push(["Plan", m.stripe.plan + " (" + m.stripe.status + ")" + (m.stripe.canceling ? ", canceling" : "")], ["Trial ends", fmtD(m.stripe.trialEnds)], [m.stripe.canceling ? "Access ends" : "Renews", fmtD(m.stripe.renews)]);
+      box.innerHTML = '<div class="bmember"><b>' + esc(m.email) + "</b>" + rows.map(function (r) { return '<div class="kv"><span>' + r[0] + "</span><span>" + esc(r[1]) + "</span></div>"; }).join("") +
+        '<div class="admrow"><label class="sub">Free access until <input type="date" id="bizUntil"></label><button class="btn ghost" type="button" data-biz="grant">Give free access</button>' +
+        (m.access === "free" ? '<button class="btn ghost" type="button" data-biz="revoke">End free access</button>' : "") + "</div>" +
+        '<div class="admrow"><button class="btn ghost" type="button" data-biz="extend" data-days="7">Extend trial 7 days</button><button class="btn ghost" type="button" data-biz="extend" data-days="14">Extend 14 days</button></div>' +
+        '<p class="sub">Leave the date empty to give free access with no end date.</p></div>';
+      box.setAttribute("data-email", m.email);
+    }).catch(function (e) { box.innerHTML = '<p class="sub">' + (e.message === "no_such_member" ? "No account with that email." : "Couldn’t look that up (" + esc(e.message) + ").") + "</p>"; });
+  }
+  $("bizPanel").addEventListener("submit", function (e) { if (e.target.id !== "bizFind") return; e.preventDefault(); var v = $("bizEmail").value.trim(); if (v) showMember(v); });
+  $("bizPanel").addEventListener("click", function (e) {
+    var t = e.target; if (t.id === "bizRefresh") { loadBiz(true); return; }
+    if (t.id === "bizExport") {
+      $("bizMsg").textContent = "Preparing…";
+      adminCall("export", { filter: $("bizFilter").value }).then(function (d) {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([d.csv], { type: "text/csv" }));
+        a.download = "monerem-members-" + $("bizFilter").value + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+        $("bizMsg").textContent = "Downloaded " + d.count + (d.count === 1 ? " member." : " members.");
+      }).catch(function (er) { $("bizMsg").textContent = "Couldn’t export (" + er.message + ")."; });
+      return;
+    }
+    var act = t.getAttribute && t.getAttribute("data-biz"); if (!act) return;
+    var email = $("bizMember").getAttribute("data-email"), extra = { email: email };
+    if (act === "grant") { extra.until = $("bizUntil").value || null; if (!window.confirm("Give " + email + " free access" + (extra.until ? " until " + extra.until : " with no end date") + "?")) return; }
+    if (act === "revoke" && !window.confirm("End free access for " + email + "? They’ll be asked to pick a plan.")) return;
+    if (act === "extend") extra.days = Number(t.getAttribute("data-days"));
+    t.disabled = true;
+    adminCall(act, extra).then(function (r) {
+      $("bizMsg").textContent = act === "extend" ? "Extended. New end date: " + fmtD(r.newEnd) + "." : act === "grant" ? "Free access given." : "Free access ended.";
+      loadBizCounts();
+    }).catch(function (er) {
+      t.disabled = false;
+      $("bizMsg").textContent = er.message === "no_trial" ? "There’s no trial or dated free access to extend for this member." : er.message === "has_paid_plan" ? "This member has a paid plan. Cancel it in Stripe instead." : "That didn’t work (" + er.message + ").";
+    });
+  });
+  function loadBizCounts() {   // refresh the counts but keep the member card open
+    var em = $("bizMember") && $("bizMember").getAttribute("data-email");
+    adminCall("stats").then(function () { bizLoaded = false; loadBiz(true); setTimeout(function () { if (em && $("bizMember")) showMember(em); }, 700); }).catch(function () {});
+  }
+  $("exitPreview").addEventListener("click", function () { $("previewNote").hidden = true; show("app"); openTool(); });
   function renderAccount() {
-    $("adminTools").hidden = !isAdmin(); $("clearMsg").textContent = "";
+    $("adminTools").hidden = !isAdmin(); $("clearMsg").textContent = ""; admMsg("");
     var u = currentUser(); if (!u) return;
     $("acName").value = displayName(u); $("acEmail").value = u.email || ""; $("acMsg").textContent = ""; $("pwMsg").textContent = "";
     $("pwForm").reset();
