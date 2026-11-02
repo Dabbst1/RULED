@@ -393,7 +393,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       <p class="pickmsg" id="bizMsg" role="status"></p>
       <h3 class="admh">Testing <span class="sub">(your account only)</span></h3>
       <div class="admgrid">
-        <div><button class="btn ghost" type="button" data-adm="sample">Load sample budget</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal. Good for demos and screenshots.</p></div>
+        <div><button class="btn ghost" type="button" data-adm="sample">Load sample month</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal. Good for demos and screenshots.</p></div>
+        <div><button class="btn ghost" type="button" data-adm="sampleyear">Load sample annual budget</button><p class="sub">Fills all 12 months with a realistic year: seasonal bills, holidays, a summer trip and three savings goals.</p></div>
         <div><button class="btn ghost" type="button" data-adm="resetcats">Reset categories</button><p class="sub">Puts back the starter categories everywhere and runs first-time setup again.</p></div>
         <div><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
         <div><button class="btn ghost" type="button" data-adm="previewinactive">Preview &ldquo;membership inactive&rdquo;</button><p class="sub">See what an expired member sees.</p></div>
@@ -2047,6 +2048,48 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }).then(function () { admMsg("Sample budget loaded for " + MONTHS[n.getMonth()] + ". Open Monthly budget to see it."); })
       .catch(function () { admMsg("Couldn’t load the sample. Try again."); });
   }
+  function loadSampleYear() {
+    admMsg("Loading a sample year…"); flushSave();
+    var M12 = COLS12.split("");
+    return layoutsP().then(function (Ls) {
+      var La = Ls[1], doc = {};
+      function put(label, vals) { var r = La.rows.filter(function (x) { return x.type === "data" && x.label === label; })[0]; if (!r) return; M12.forEach(function (c, i) { var cell = r.cells[c]; if (cell && cell.k === "input") doc[cell.a] = typeof vals === "number" ? vals : vals[i]; }); }
+      //                 Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
+      put("Paycheck1",   2100);
+      put("Paycheck2",  [2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2000,2600]);   // holiday bonus
+      put("Rent",        1500);
+      put("Utilities",  [180, 170, 180, 200, 240, 280, 300, 300, 270, 230, 190, 190]);   // Florida summers
+      put("Groceries",  [500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 600, 650]);
+      put("Gasoline",    130);
+      put("Insurance",   160);
+      put("Credit Cards",150);
+      put("Healthcare",  40);
+      put("Pets",        60);
+      put("Restaurants",[180, 280, 180, 180, 200, 180, 220, 180, 180, 180, 200, 300]);   // Valentine's, holidays
+      put("Shopping",   [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 260, 420]);
+      put("Clothing",   [0,   0,   150, 0,   0,   0,   0,   200, 0,   0,   100, 0]);    // spring, back to school
+      put("Travel",     [0,   0,   0,   0,   0,   0,   900, 0,   0,   0,   0,   0]);    // summer trip
+      put("Digital Entertainment", 45);
+      put("Personal Care", 50);
+      var tithe = La.rows.filter(function (x) { return x.toggle; })[0]; if (tithe) doc[tithe.toggle] = 1;   // 10% tithe on
+      var blk = La.rows.filter(function (r) { return r.type === "custom" && r.group !== "income"; })[0];
+      var funds = [["Emergency Fund", [200,200,200,200,200,200,200,200,200,200,200,200]], ["Vacation Fund", [100,100,100,100,100,100,0,100,100,100,100,100]], ["Christmas Fund", [50,50,50,50,50,50,50,50,50,50,50,0]]];
+      var meta = { labels: {}, custom: [], removed: [], gone: [], hidden: [] };
+      funds.forEach(function (f, k) { var sl = blk.slots[k]; meta.custom.push(sl.row); meta.labels[sl.row] = f[0]; M12.forEach(function (c, i) { if (sl.cells[c]) doc[sl.cells[c].a] = f[1][i]; }); });
+      ["Electronics", "Gaming", "Sports", "Home", "Professional Services", "Transportation"].forEach(function (lb) { var r = La.rows.filter(function (x) { return x.type === "data" && x.label === lb; })[0]; if (r) meta.hidden.push(r.row); });
+      doc.__meta = meta;
+      return doSave("yearly-projection", doc);
+    }).then(function () { return pushAnnual(); })
+      .then(function () {
+        var targets = { "Emergency Fund": 5000, "Vacation Fund": 2000, "Christmas Fund": 600 };
+        return Object.keys(targets).reduce(function (p, nm) { return p.then(function () { return ensureGoal(nm); }); }, Promise.resolve()).then(function () {
+          goals.forEach(function (g) { if (g.kind === "save" && targets[g.name] && !g.target) g.target = targets[g.name]; }); saveGoals();
+        });
+      })
+      .then(function () { return syncSaveGoals(); })
+      .then(function () { admMsg("Sample year loaded. Open Annual budget to see it. Months you open in Monthly budget fill in from it."); })
+      .catch(function () { admMsg("Couldn’t load the sample year. Try again."); });
+  }
   function resetCategories() {
     if (!window.confirm("Put back the starter categories in every month and your Annual budget, and run first-time setup again? Amounts in categories you added yourself are cleared.")) return;
     admMsg("Resetting categories…"); flushSave();
@@ -2074,6 +2117,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var b = e.target.closest && e.target.closest("[data-adm]"); if (!b || !isAdmin()) return;
     var a = b.getAttribute("data-adm");
     if (a === "sample") { if (window.confirm("Replace this month’s Monthly budget with a sample budget?")) loadSample(); }
+    else if (a === "sampleyear") { if (window.confirm("Replace your Annual budget with a sample year? Months of this year you’ve already filled in are updated to match.")) loadSampleYear(); }
     else if (a === "resetcats") resetCategories();
     else if (a === "previewsetup") { tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0]; makeTabs(); openTool(); }
     else if (a === "previewinactive") { $("inactiveMsg").textContent = "Choose a plan to get into your tools."; $("inactivePortal").hidden = true; $("previewNote").hidden = false; show("inactive"); }
