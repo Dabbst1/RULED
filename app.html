@@ -17,8 +17,9 @@ window.RULED_CONFIG = {
   supabaseUrl: "https://qytsgfjyiybxucxtbcne.supabase.co",
   supabaseAnonKey: "sb_publishable_Sp2syhCiuMZvNIssD9lpPA_1W3xZ2su",
   homeUrl: "index.html",
-  // Accounts that see the hidden Admin tools on the Account page. A plain username like "tester" means tester@monerem.test.
-  admins: ["taylordavid0911@gmail.com", "tester@monerem.test"]
+  // Accounts that see the hidden Admin tools on the Account page. Every test account (anything@monerem.test) also sees them.
+  // Business numbers are protected separately on the server by the ADMIN_EMAILS secret.
+  admins: ["taylordavid0911@gmail.com"]
 };
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1976,7 +1977,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function currentUser() { return CFG.devMode ? { email: "you@example.com", created_at: new Date().toISOString(), user_metadata: {} } : (session && session.user); }
   function isAdmin() {
     var u = currentUser(), em = u && u.email ? String(u.email).toLowerCase() : "";
-    return CFG.devMode || (!!em && (CFG.admins || []).some(function (a) { return String(a).toLowerCase() === em; }));
+    return CFG.devMode || /@monerem\.test$/.test(em) || (!!em && (CFG.admins || []).some(function (a) { return String(a).toLowerCase() === em; }));
   }
   $("clearConfirm").addEventListener("input", function () { $("clearAll").disabled = this.value.trim().toUpperCase() !== "CLEAR"; });
   $("clearAll").addEventListener("click", function () {
