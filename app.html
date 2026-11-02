@@ -632,7 +632,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var r = Number(e.target.getAttribute("data-vis")); if (!r) return;
     meta.hidden = meta.hidden.filter(function (x) { return x !== r; });
     if (!e.target.checked) meta.hidden.push(r);
-    applyHidden(); scheduleSave();
+    applyHidden(); schedule(); scheduleSave();
   });
   $("sheet").addEventListener("keydown", function (e) {
     var t = e.target, k = e.key;
@@ -1184,13 +1184,13 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       var members = Array.prototype.filter.call(document.querySelectorAll('#sheet tr[data-sec="' + k + '"]'), rowActive);
       keys.forEach(function (key) {
         var td = g.querySelector('td[data-sub="' + key + '"]'), tot = 0, any = false;
-        members.forEach(function (tr) { var v = cellValue(tr, key); if (v !== null) { any = true; tot += v; } });
+        members.forEach(function (tr) { if (tr.hidden) return; var v = cellValue(tr, key); if (v !== null) { any = true; tot += v; } });
         td.textContent = any ? money.format(tot) : "";
       });
       // 50/30/20 tags: count each row in its own bucket, so a mixed section (Food = groceries + dining) stays accurate
       var seen = {}, vis = members.filter(function (tr) { return !tr.hidden; });
       (vis.length ? vis : members).forEach(function (tr) { seen[tr.getAttribute("data-tag")] = 1; });
-      members.forEach(function (tr) { var v = cellValue(tr, cfg.col); if (v) byTag[tr.getAttribute("data-tag")] += v; });
+      members.forEach(function (tr) { if (tr.hidden) return; var v = cellValue(tr, cfg.col); if (v) byTag[tr.getAttribute("data-tag")] += v; });
       var tagKeys = ["need", "want", "save"].filter(function (t) { return seen[t]; });
       if (!members.some(function (tr) { return !tr.hidden; }) && k === "savings") tagKeys = ["save"];
       g.className = "grp grp-" + (tagKeys.length === 1 ? tagKeys[0] : "mix");
@@ -1247,10 +1247,17 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (!CFG.devMode && session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
     return h;
   }
+  // Addresses of a row's typed-in cells (built-in row or a custom slot), plus its on/off switch if it has one.
+  function rowAddrsAll(rn) {
+    var r = rowObj(rn); if (r) return rowInputs(rn).concat(r.toggle ? [r.toggle] : []);
+    var out = []; customBlocks().forEach(function (b) { b.slots.forEach(function (sl) { if (sl.row === rn) out = inAddrs(sl.cells); }); });
+    return out;
+  }
   function calcInputs() {
-    if (view !== "actual") return inputs;
     var o = Object.assign({}, inputs);
-    Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) { var a = el.getAttribute("data-a"); if (a) o[a] = actual[a] || 0; });
+    if (view === "actual") Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) { var a = el.getAttribute("data-a"); if (a) o[a] = actual[a] || 0; });
+    // hidden rows are left out of every total until they're shown again (their amounts stay saved)
+    (meta.hidden || []).forEach(function (rn) { rowAddrsAll(rn).forEach(function (a) { o[a] = 0; }); });
     return o;
   }
   function run() {
@@ -1806,7 +1813,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         var from = g.from || thisMonthKey(), sum = 0, linked = false;
         states.forEach(function (st, i) {
           if (!st) return; var key = months[i][0] + "-" + pad(months[i][1] + 1); if (key < from) return;
-          st.cats.forEach(function (e) { if (nk(e.name) === nk(g.name)) { linked = true; sum += lineAmount(st.doc, e); } });
+          var hidM = (st.doc.__meta && st.doc.__meta.hidden) || [];
+          st.cats.forEach(function (e) { if (nk(e.name) === nk(g.name)) { linked = true; if (hidM.indexOf(e.row) < 0) sum += lineAmount(st.doc, e); } });
         });
         sum = Math.round(sum * 100) / 100;
         var cur = Math.round(((g.base || 0) + sum) * 100) / 100;
@@ -2395,7 +2403,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
           if (!doc && !force) return;
           if (!doc) { var sm = setup && setup.done ? metaFromSetup(La, setup) : null; doc = sm ? Object.assign({}, sm.toggles, { __meta: sm.meta }) : { __meta: {} }; }
           var dm = doc.__meta || {}, am = { labels: dm.labels || {}, custom: (dm.custom || []).slice(), removed: (dm.removed || []).slice(), gone: (dm.gone || []).slice() };
-          var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [];
+          var mm = data.__meta || {}, ml = mm.labels || {}, mc = mm.custom || [], mr = mm.removed || [], mh = mm.hidden || [];
           var ga = rowGroups(La), targets = {}, blocks = {};
           // Annual's Tithe is a calculated row; never mirror Monthly's Tithe into a second, typed-in row (and clean up any earlier copy)
           var skip = {}, dup = false;
@@ -2450,10 +2458,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
           }
           Lm.rows.forEach(function (r) {
             if (r.type === "data" && !r.cls && mr.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length)
-              put(ml[r.row] || r.label, gm[r.row], rowInputs(r.row, Lm).reduce(function (a, k) { return a + (data[k] || 0); }, 0));
+              put(ml[r.row] || r.label, gm[r.row], mh.indexOf(r.row) >= 0 ? 0 : rowInputs(r.row, Lm).reduce(function (a, k) { return a + (data[k] || 0); }, 0));
             if (r.type === "custom") r.slots.forEach(function (sl) {
               if (mc.indexOf(sl.row) < 0 || !ml[sl.row]) return;
-              put(ml[sl.row], r.group === "income" ? "income" : "expense", Object.keys(sl.cells).reduce(function (a, c) { return a + (sl.cells[c].k === "input" ? data[sl.cells[c].a] || 0 : 0); }, 0));
+              put(ml[sl.row], r.group === "income" ? "income" : "expense", mh.indexOf(sl.row) >= 0 ? 0 : Object.keys(sl.cells).reduce(function (a, c) { return a + (sl.cells[c].k === "input" ? data[sl.cells[c].a] || 0 : 0); }, 0));
             });
           });
           var movedOrder = applyOrder(La, { labels: am.labels, custom: am.custom, removed: am.removed }, nd, mOrd);
@@ -2474,9 +2482,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       return loadSaved("yearly-projection").then(function (saved) {
         if (!saved) return { rows: [] };
         var inp = numericOf(saved), m = saved.__meta || {};
-        var am = { labels: m.labels || {}, custom: m.custom || [], removed: m.removed || [], gone: m.gone || [] }, groups = rowGroups(L), list = [], tithe = null;
+        var am = { labels: m.labels || {}, custom: m.custom || [], removed: m.removed || [], gone: m.gone || [] }, hid = m.hidden || [], groups = rowGroups(L), list = [], tithe = null;
         L.rows.forEach(function (r) {
-          if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0) {
+          if (r.type === "data" && !r.cls && am.removed.indexOf(r.row) < 0 && hid.indexOf(r.row) < 0) {
             var name = am.labels[r.row] || r.label;
             if (rowInputs(r.row, L).length) {
               var vals = {}; COLS12.split("").forEach(function (c) { vals[c] = inp[c + r.row] || 0; });
@@ -2484,7 +2492,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
             } else if (r.toggle && inp[r.toggle] !== 0) tithe = { name: name, group: groups[r.row], row: r.row };
           }
           if (r.type === "custom") r.slots.forEach(function (sl) {
-            if (am.custom.indexOf(sl.row) < 0 || !am.labels[sl.row]) return;
+            if (am.custom.indexOf(sl.row) < 0 || !am.labels[sl.row] || hid.indexOf(sl.row) >= 0) return;
             var vals = {}; COLS12.split("").forEach(function (c) { vals[c] = inp[c + sl.row] || 0; });
             list.push({ name: am.labels[sl.row], group: r.group === "income" ? "income" : "expense", vals: vals });
           });
