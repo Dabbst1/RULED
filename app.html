@@ -319,6 +319,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .dscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}#debtView .dplan .seg{border:0;padding:0;background:none;box-shadow:none;border-radius:0}
 @media (max-width:700px){#debtView .cards{grid-template-columns:1fr 1fr}#debtView .cards .stat:last-child{grid-column:auto}#debtView .stat b{font-size:22px}
 .hb{grid-template-columns:1fr auto;row-gap:4px}.hb-t{grid-column:1/-1;grid-row:2}.dtable{min-width:520px}.dtable.cmp{min-width:0}.dtable.cmp th:nth-child(4),.dtable.cmp td:nth-child(4){display:none}.dtable th:nth-child(5),.dtable td:nth-child(5){display:none}.dplan input{width:100%}.dplan label{width:100%}}
+.admsel{height:40px;border:1px solid var(--line,#D6E3F8);border-radius:10px;padding:0 8px;font:inherit;font-size:14px;background:#fff;width:100%;max-width:100%;text-overflow:ellipsis}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -433,7 +434,14 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       <h3 class="admh">Testing <span class="sub">(your account only)</span></h3>
       <div class="admgrid">
         <div><button class="btn ghost" type="button" data-adm="sample">Load sample month</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal. Good for demos and screenshots.</p></div>
-        <div><button class="btn ghost" type="button" data-adm="sampledebts">Load sample debts</button><p class="sub">Five realistic debts (cards, car, student loan, medical) with six months of progress, for the Debt tab.</p></div>
+        <div><label class="sub" for="debtEx" style="display:block;margin-bottom:4px">Debt example</label><select id="debtEx" class="admsel">
+            <option value="mixed">Mixed: 2 cards, car, student loan, medical</option>
+            <option value="cards">Credit card trouble: 4 maxed-out cards</option>
+            <option value="grad">New grad: student loans + a first car</option>
+            <option value="family">Family: mortgage, 2 cars, card, daycare loan</option>
+            <option value="growing">Warning case: minimums don’t cover interest</option>
+            <option value="almost">Almost there: 2 small debts left</option>
+          </select><button class="btn ghost" type="button" data-adm="sampledebts" style="margin-top:8px">Load debt example</button><p class="sub">Replaces your debts with the example, plus six months of progress, for demos of the Debt tab.</p></div>
         <div><button class="btn ghost" type="button" data-adm="sampleyear">Load sample annual budget</button><p class="sub">Fills all 12 months with a realistic year: seasonal bills, holidays, a summer trip and three savings goals.</p></div>
         <div><button class="btn ghost" type="button" data-adm="resetcats">Reset categories</button><p class="sub">Puts back the starter categories everywhere and runs first-time setup again.</p></div>
         <div><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
@@ -1914,6 +1922,15 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }).join("") + (opts && opts.foot ? '<p class="sub" style="margin-top:6px">' + opts.foot + "</p>" : "");
   }
 
+  // Admin demo data for the Debt tab: [name, type, balance, APR %, minimum, credit limit]
+  var DEBT_EXAMPLES = {
+    mixed:   { label: "Mixed", extra: 150, pace: 360, debts: [["Visa", "card", 4800, 24.99, 145, 6000], ["Discover", "card", 1250, 19.99, 40, 3000], ["Car loan", "car", 14200, 6.9, 385], ["Student loan", "student", 18500, 5.5, 210], ["Hospital bill", "medical", 600, 0, 50]] },
+    cards:   { label: "Credit card trouble", extra: 100, pace: 120, debts: [["Chase Freedom", "card", 7400, 27.24, 220, 7500], ["Capital One", "card", 3900, 29.99, 125, 4000], ["Amex", "card", 2650, 22.49, 80, 3000], ["Store card", "card", 1180, 31.99, 45, 1200]] },
+    grad:    { label: "New grad", extra: 75, pace: 260, plan: "snowball", debts: [["Federal student loan", "student", 27500, 5.5, 290], ["Private student loan", "student", 9800, 8.75, 135], ["First car", "car", 16900, 7.4, 345], ["Visa", "card", 900, 23.99, 35, 2500]] },
+    family:  { label: "Family", extra: 200, pace: 900, debts: [["Mortgage", "mortgage", 238000, 6.25, 1465], ["Minivan", "car", 22400, 5.9, 520], ["Commuter car", "car", 8300, 8.2, 265], ["Mastercard", "card", 3600, 21.99, 110, 10000], ["Daycare loan", "personal", 4200, 11.5, 185]] },
+    growing: { label: "Warning case", extra: 0, pace: -70, debts: [["Payday-style loan", "personal", 2400, 36, 60], ["Maxed card", "card", 5200, 29.99, 115, 5200], ["Car loan", "car", 11800, 9.9, 330], ["Buy now, pay later", "bnpl", 640, 0, 160]] },
+    almost:  { label: "Almost there", extra: 250, pace: 950, plan: "snowball", debts: [["Car loan", "car", 2100, 6.5, 385], ["Discover", "card", 450, 19.99, 35, 3000]] }
+  };
   /* ---------- the Debt page ---------- */
   var budgetLeft = null;
   function loadBudgetLeft() {   // what's not assigned yet in this month's plan
@@ -2400,16 +2417,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (a === "sample") { if (window.confirm("Replace this month’s Monthly budget with a sample budget?")) loadSample(); }
     else if (a === "sampleyear") { if (window.confirm("Replace your Annual budget with a sample year? Months of this year you’ve already filled in are updated to match.")) loadSampleYear(); }
     else if (a === "resetcats") resetCategories();
-    else if (a === "sampledebts") { if (window.confirm("Replace your debts with a sample set?")) loadDebts().then(function () {
-      var now = new Date(), hist = [];
-      for (var k = 6; k >= 1; k--) { var dt = new Date(now.getFullYear(), now.getMonth() - k, 1); hist.push({ d: iso(dt), t: 41500 - (6 - k) * 300 }); }
-      debtState = { extra: 150, plan: "avalanche", hist: hist, debts: [
-        { id: newId(), name: "Visa", type: "card", balance: 4800, apr: 24.99, min: 145, limit: 6000 },
-        { id: newId(), name: "Discover", type: "card", balance: 1250, apr: 19.99, min: 40, limit: 3000 },
-        { id: newId(), name: "Car loan", type: "car", balance: 14200, apr: 6.9, min: 385, limit: 0 },
-        { id: newId(), name: "Student loan", type: "student", balance: 18500, apr: 5.5, min: 210, limit: 0 },
-        { id: newId(), name: "Hospital bill", type: "medical", balance: 600, apr: 0, min: 50, limit: 0 } ] };
-      debtLoaded = true; saveDebts(); admMsg("Sample debts loaded. Open the Debt tab to see them.");
+    else if (a === "sampledebts") { var ex = DEBT_EXAMPLES[$("debtEx").value] || DEBT_EXAMPLES.mixed; if (window.confirm("Replace your debts with the “" + ex.label + "” example?")) loadDebts().then(function () {
+      var now = new Date(), list = ex.debts.map(function (d) { return { id: newId(), name: d[0], type: d[1], balance: d[2], apr: d[3], min: d[4], limit: d[5] || 0 }; });
+      var tot = list.reduce(function (a2, d) { return a2 + d.balance; }, 0), hist = [];
+      for (var k = 6; k >= 1; k--) { var dt = new Date(now.getFullYear(), now.getMonth() - k, 3); hist.push({ d: iso(dt), t: Math.round(tot + k * ex.pace) }); }
+      debtState = { extra: ex.extra, plan: ex.plan || "avalanche", hist: hist, debts: list };
+      debtLoaded = true; saveDebts(); admMsg("“" + ex.label + "” loaded. Open the Debt tab to see it.");
     }); }
     else if (a === "previewsetup") { tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0]; makeTabs(); openTool(); }
     else if (a === "previewinactive") { $("inactiveMsg").textContent = "Choose a plan to get into your tools."; $("inactivePortal").hidden = true; $("previewNote").hidden = false; show("inactive"); }
