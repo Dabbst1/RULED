@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="monerem-icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Your tools | Monerem.</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:,">
@@ -17,6 +20,8 @@ window.RULED_CONFIG = {
   supabaseUrl: "https://qytsgfjyiybxucxtbcne.supabase.co",
   supabaseAnonKey: "sb_publishable_Sp2syhCiuMZvNIssD9lpPA_1W3xZ2su",
   homeUrl: "index.html",
+  // Stripe publishable key (safe to be public). Test key = Stripe's test banks; switch to pk_live_... for real banks.
+  stripePk: "pk_test_51UVYB6PplLhzExkPnPrEvQybErhgMBhn2vRkFUZ7BSmjARcdKjMGzjpYQyZfVoYIIEWwH54hLf2qZJjvyLBAgNoa00j53tDE0j",
   // Accounts that see the hidden Admin tools on the Account page. Every test account (anything@monerem.test) also sees them.
   // Business numbers are protected separately on the server by the ADMIN_EMAILS secret.
   admins: ["taylordavid0911@gmail.com"]
@@ -323,6 +328,20 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .dmiss{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#FFF7ED;font-size:14px}
 #debtView .dtable tr.dinc td{background:#FFFBF5}.dgoal{display:inline-block;font:700 11px/18px inherit;font-family:inherit;padding:0 7px;border-radius:99px;background:#E3ECFF;color:var(--blue);vertical-align:1px}
 #glDebt select,#glDType select{width:100%}
+/* bank */
+.bmsg{margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#F3F7FE;border:1px solid var(--line,#D6E3F8);font-size:14px}
+.bperks{list-style:none;padding:0;margin:6px 0 16px}.bperks li{padding:6px 0 6px 28px;position:relative;font-size:15px}.bperks li::before{content:"\2713";position:absolute;left:4px;color:#15803D;font-weight:800}
+.bhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.bhead h2{margin:0}.bhead .btn{margin:0}
+.bacct{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid #EEF2FA}.bacct small{display:block;color:#51638f;font-size:12px}.bacct b{font-size:15px}
+.bbal{text-align:right}.bbal b{font-variant-numeric:tabular-nums}
+#bankView .sm{border:1px solid var(--line,#D6E3F8);background:#fff;border-radius:8px;padding:6px 12px;font:600 13px inherit;font-family:inherit;color:#B42318;cursor:pointer}
+.brow{display:grid;grid-template-columns:28px 70px 1fr 110px 220px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #EEF2FA;font-size:14px}
+.brow.bhd{font-size:12px;color:#51638f;font-weight:600;border-top:0}.brow .r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}.brow .in{color:#15803D}
+.brow .bdesc{min-width:0}.brow .bdesc b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.brow .bdesc small{color:#51638f;font-size:12px}
+.brow select{width:100%;height:36px;border:1px solid var(--line,#D6E3F8);border-radius:8px;padding:0 6px;font:inherit;font-size:13px;background:#fff}
+.brow input[type=checkbox]{width:18px;height:18px;accent-color:var(--blue)}
+.dgoal.dbank{background:#DCFCE7;color:#15803D}
+@media (max-width:700px){.brow{grid-template-columns:24px 1fr auto;row-gap:6px}.brow > span:nth-child(2){display:none}.brow > span:last-child{grid-column:2/-1}.brow.bhd{display:none}.bacct{grid-template-columns:1fr auto}.bacct .sm{grid-column:1/-1;justify-self:start}}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -483,6 +502,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     <div id="goalList"></div>
   </section>
   <section id="debtView" hidden></section>
+  <section id="bankView" hidden></section>
   <section id="receiptsView" hidden>
     <h1>Receipts</h1>
     <p class="sub">Take a photo or choose a receipt. Monerem reads it on your device, you check the details, and the amount is added to that month&rsquo;s Actual spending. Photos are not saved, only the details.</p>
@@ -517,6 +537,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     { id: "receipts", name: "Receipts", type: "receipts" },
     { id: "goals", name: "Goals", type: "goals" },
     { id: "debt", name: "Debt", type: "debt" },
+    { id: "bank", name: "Bank", type: "bank" },
     { id: "setup", name: "My categories", type: "setup", hidden: true },
     { id: "account", name: "Account", type: "account", hidden: true }
   ];
@@ -1408,11 +1429,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     show("app");
     scrollTab();
     var tp = tool.type;
-    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt";
+    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank";
     renderBanner();
     if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
+    if (tp === "bank") { bankLoad(true); return; }
     if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(syncDebtGoals).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
     if (tp === "goals") { loadGoals().then(syncDebtGoals).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
@@ -2014,7 +2036,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       all.map(function (d) {
         if (d.id === debtEditing) return '<tr><td colspan="7">' + debtFormHtml(d) + "</td></tr>";
         var po = sim.paidOff[d.id], it = monthInterest(d), inc = !debtComplete(d), bad = !inc && +d.balance > 0 && +d.min <= it + 0.005;
-        return "<tr" + (inc ? ' class="dinc"' : "") + "><td><b>" + esc(d.name) + "</b>" + (d.goalId ? ' <span class="dgoal">Goal</span>' : "") + '<small>' + esc(DEBT_TYPES[d.type] || "Other") + (inc ? " · needs rate &amp; minimum" : "") + "</small></td><td>" + money.format(+d.balance || 0) + "</td><td>" + (+d.apr || 0) + "%</td><td>" + money.format(+d.min || 0) + "</td><td" + (bad ? ' class="neg"' : "") + ">" + money.format(it) + "</td><td>" + (+d.balance <= 0 ? "Paid off" : po ? monYr(po) : "—") +
+        return "<tr" + (inc ? ' class="dinc"' : "") + "><td><b>" + esc(d.name) + "</b>" + (d.goalId ? ' <span class="dgoal">Goal</span>' : "") + (d.bankId ? ' <span class="dgoal dbank">Linked bank</span>' : "") + '<small>' + esc(DEBT_TYPES[d.type] || "Other") + (inc ? " · needs rate &amp; minimum" : "") + "</small></td><td>" + money.format(+d.balance || 0) + "</td><td>" + (+d.apr || 0) + "%</td><td>" + money.format(+d.min || 0) + "</td><td" + (bad ? ' class="neg"' : "") + ">" + money.format(it) + "</td><td>" + (+d.balance <= 0 ? "Paid off" : po ? monYr(po) : "—") +
           '</td><td class="act"><button type="button" class="sm" data-debt="edit" data-id="' + d.id + '">Update</button></td></tr>';
       }).join("") + "</tbody></table></div></div>";
     if (!debtEditing) h += debtFormHtml(null);
@@ -2046,7 +2068,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     return '<form class="panel billform dform" data-dform="' + (d ? d.id : "new") + '"><h2 style="grid-column:1/-1;margin:0">' + (d ? "Update " + esc(d.name) : "Add a debt") + "</h2>" +
       '<label>Name<input name="name" maxlength="40" required placeholder="Visa, car loan…" value="' + esc(e.name || "") + '"></label>' +
       '<label>Type<select name="type">' + t + "</select></label>" +
-      '<label>Balance owed<input name="balance" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.balance || 0) : "") + '"></label>' +
+      '<label>Balance owed<input name="balance" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.balance || 0) : "") + '">' + (e.bankId ? '<small class="sub">Updates from your linked bank</small>' : "") + "</label>" +
       '<label>Interest rate (APR %)<input name="apr" inputmode="decimal" placeholder="24.99" value="' + (d ? (+e.apr || 0) : "") + '"></label>' +
       '<label>Minimum payment<input name="min" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.min || 0) : "") + '"></label>' +
       '<label class="dlimit"' + (e.type === "card" ? "" : " hidden") + '>Credit limit (optional)<input name="limit" inputmode="decimal" placeholder="$0.00" value="' + (+e.limit ? money.format(+e.limit) : "") + '"></label>' +
@@ -2077,6 +2099,183 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   });
   var debtResize = null;
   window.addEventListener("resize", function () { if ($("debtView").hidden) return; clearTimeout(debtResize); debtResize = setTimeout(renderDebt, 200); });
+
+  /* ---------- bank linking (Stripe Financial Connections, read-only) ---------- */
+  var bankData = { accounts: [], review: [], loading: false }, bankBusy = false, bankMsg = "", bankChoice = {};
+  function bankCall(action, extra) {
+    var h = authHeaders(); if (session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
+    return fetch(fnUrl("bank"), { method: "POST", headers: h, body: JSON.stringify(Object.assign({ action: action }, extra || {})) })
+      .then(function (r) { return r.text().then(function (t) { var j = {}; try { j = JSON.parse(t); } catch (x) {} if (!r.ok) { var e = new Error(j.error || ("error " + r.status)); e.status = r.status; throw e; } return j; }); });
+  }
+  var stripeJsP = null;
+  function loadStripeJs() {
+    if (window.Stripe) return Promise.resolve(window.Stripe);
+    if (!stripeJsP) stripeJsP = new Promise(function (ok, bad) { var s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = function () { ok(window.Stripe); }; s.onerror = bad; document.head.appendChild(s); });
+    return stripeJsP;
+  }
+  function merchantKey(desc) { return String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(pos|debit|purchase|card|ach|online|www|com|inc|llc|store|sq|tst|pp)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" "); }
+  var NOT_SPENDING = /payment|thank you|transfer|xfer|autopay|zelle to|venmo|cash app|withdrawal|atm|credit card|cc pymt/i;
+  var PAYCHECK = /payroll|direct dep|dir dep|salary|paycheck|adp|gusto|paychex/i;
+  function bankGuess(t, cats, incs) {
+    if (t.amount > 0) return PAYCHECK.test(t.description) && incs[0] ? "in:" + incs[0].name : "skip";
+    if (NOT_SPENDING.test(t.description)) return "skip";
+    var g = rcGuessCat(t.description, merchantKey(t.description), cats);
+    return g ? "ex:" + g : "";
+  }
+  function bankLoad(doSync) {
+    bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">Loading…</p>';
+    return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list")]).then(function (a) {
+      bankData = a[2]; return syncCardsToDebt(bankData.accounts);
+    }).then(renderBank).catch(function (e) {
+      $("bankView").innerHTML = '<h1>Bank accounts</h1><div class="panel"><p>' + (e.status === 404 ? "Bank linking isn’t set up yet. Deploy the <b>bank</b> function in Supabase to turn it on." : "Couldn’t load your bank accounts (" + esc(e.message) + "). Try again in a moment.") + "</p></div>";
+    });
+  }
+  // linked credit cards and loans keep the Debt tab up to date
+  function syncCardsToDebt(accts) {
+    var changed = false;
+    (accts || []).forEach(function (a) {
+      var b = a.balance || {}; if (a.category !== "credit" || a.status === "disconnected" || b.owed === null || b.owed === undefined) return;
+      var d = debtState.debts.filter(function (x) { return x.bankId === a.id; })[0];
+      if (!d) {
+        d = { id: newId(), name: (a.name || "Card") + (a.last4 ? " ••" + a.last4 : ""), type: a.subcategory === "mortgage" ? "mortgage" : a.subcategory === "line_of_credit" ? "personal" : "card", balance: +b.owed || 0, apr: 0, min: 0, limit: 0, bankId: a.id };
+        debtState.debts.push(d); changed = true;
+      } else if (Math.abs((+d.balance || 0) - (+b.owed || 0)) > 0.004) { d.balance = +b.owed || 0; pushDebtToGoal(d); changed = true; }
+    });
+    if (changed) saveDebts();
+  }
+  function bankMonthCats() {   // this month's categories, for the dropdowns
+    var n = new Date();
+    return rcMonthState(n.getFullYear(), n.getMonth()).then(function (s) { return { ex: s.cats, inc: activeEntries(s.Lm, s.st).income }; }).catch(function () { return { ex: [], inc: [] }; });
+  }
+  function renderBank() {
+    return bankMonthCats().then(function (C) {
+      var v = $("bankView"), A = bankData.accounts || [], R = bankData.review || [], h = "";
+      h += '<h1>Bank accounts</h1><p class="sub">Link your accounts so your spending and balances fill in for you. Read-only: Monerem can never move money.</p>';
+      if (bankMsg) h += '<p class="bmsg">' + bankMsg + "</p>";
+      if (!A.length) {
+        h += '<div class="panel bintro"><h2>Link a bank or credit card</h2><ul class="bperks"><li><b>Spending fills in for you.</b> Review your transactions and add them to your budget’s Actual numbers in one tap.</li>' +
+          '<li><b>Credit card balances stay current</b> on your Debt tab.</li><li><b>Safe and private.</b> You sign in to your bank through Stripe. Monerem never sees your bank password, and you can unlink anytime.</li></ul>' +
+          '<button type="button" class="btn" data-bank="link"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Link a bank") + '</button><p class="sub" style="margin-top:10px">See our <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> for how bank data is handled.</p></div>';
+        v.innerHTML = h; return;
+      }
+      // accounts
+      h += '<div class="panel"><div class="bhead"><h2>Linked accounts</h2><span><button type="button" class="btn ghost" data-bank="sync">Refresh</button> <button type="button" class="btn" data-bank="link"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "+ Link another") + "</button></span></div>";
+      h += A.map(function (a) {
+        var b = a.balance || {}, bal = b.kind === "credit" ? (b.owed !== null && b.owed !== undefined ? money.format(b.owed) + " owed" : "—") : (b.current !== null && b.current !== undefined ? money.format(b.current) : "—");
+        var sub = b.kind === "cash" && b.available !== null && b.available !== undefined && b.available !== b.current ? money.format(b.available) + " available" : "";
+        return '<div class="bacct"><div><b>' + esc(a.name || "Account") + (a.last4 ? " ••" + esc(a.last4) : "") + "</b><small>" + esc(a.institution || "") + (a.subcategory ? " · " + esc(String(a.subcategory).replace(/_/g, " ")) : "") + (a.category === "credit" ? " · on your Debt tab" : "") + (a.status && a.status !== "active" ? " · " + esc(a.status) : "") + "</small></div>" +
+          '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (a.balance_at ? "updated " + new Date(a.balance_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "") + "</small></div>" +
+          '<button type="button" class="sm" data-bank="unlink" data-id="' + esc(a.id) + '" data-name="' + esc((a.name || "this account") + (a.last4 ? " ••" + a.last4 : "")) + '">Unlink</button></div>';
+      }).join("") + "</div>";
+      // review
+      h += '<div class="panel"><h2>New transactions to review</h2>';
+      if (bankData.loading) h += '<p class="bmsg">Your bank is still sending transactions. This can take a minute after you link. Tap <b>Refresh</b> shortly.</p>';
+      if (!R.length) h += '<p class="sub">' + (bankData.loading ? "" : "You’re all caught up. New transactions show up here when your bank sends them (usually once a day).") + "</p>";
+      else {
+        var acctName = {}; A.forEach(function (a) { acctName[a.id] = (a.name || "") + (a.last4 ? " ••" + a.last4 : ""); });
+        var opts = function (t) {
+          var cur = bankChoice[t.id] !== undefined ? bankChoice[t.id] : bankGuess(t, C.ex, C.inc);
+          var o = '<option value="">Choose a category</option><option value="skip"' + (cur === "skip" ? " selected" : "") + ">Don’t add (transfer, card payment…)</option>";
+          if (t.amount > 0) o += '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (cur === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+          o += '<optgroup label="Expenses">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (cur === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+          return o;
+        };
+        h += '<p class="sub" style="margin-bottom:8px">We guessed a category for each one. Fix anything that’s off, then add them to your budget’s <b>Actual</b> numbers for the month they happened.</p>';
+        h += '<div class="brow bhd"><label><input type="checkbox" id="bAll" checked aria-label="Select all"></label><span>Date</span><span>Description</span><span class="r">Amount</span><span>Category</span></div>';
+        h += R.map(function (t) {
+          return '<div class="brow"><label><input type="checkbox" class="bsel" data-id="' + esc(t.id) + '" checked aria-label="Select"></label><span>' + new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
+            '<span class="bdesc"><b>' + esc(t.description || "Transaction") + "</b><small>" + esc(acctName[t.account] || "") + (t.status === "pending" ? " · pending" : "") + "</small></span>" +
+            '<span class="r ' + (t.amount > 0 ? "in" : "out") + '">' + (t.amount > 0 ? "+" : "−") + money.format(Math.abs(t.amount)) + "</span>" +
+            '<span><select class="bcat" data-id="' + esc(t.id) + '" aria-label="Category">' + opts(t) + "</select></span></div>";
+        }).join("");
+        h += '<div class="admrow" style="margin-top:12px"><button type="button" class="btn" data-bank="import">Add selected to my budget</button><button type="button" class="btn ghost" data-bank="skip">Skip selected</button></div>';
+      }
+      h += "</div>";
+      v.innerHTML = h;
+    });
+  }
+  function bankLink() {
+    if (bankBusy) return; bankBusy = true; bankMsg = ""; renderBank();
+    var sid = null;
+    bankCall("session").then(function (r) {
+      return loadStripeJs().then(function (S) { return S(CFG.stripePk).collectFinancialConnectionsAccounts({ clientSecret: r.clientSecret }); });
+    }).then(function (res) {
+      if (res.error) throw new Error(res.error.message || "linking_failed");
+      var fs = res.financialConnectionsSession || {}; sid = fs.id;
+      if (!fs.accounts || !fs.accounts.length) { bankMsg = "No accounts were linked."; return null; }
+      return bankCall("save", { session: sid });
+    }).then(function (r) {
+      bankBusy = false;
+      if (r) { bankData = r; bankMsg = "Linked " + r.linked + (r.linked === 1 ? " account." : " accounts.") + (r.loading ? " Your transactions are on their way." : ""); return syncCardsToDebt(r.accounts); }
+    }).then(renderBank).catch(function (e) {
+      bankBusy = false; bankMsg = e.message === "too_many_accounts" ? "You’ve linked the most accounts we allow (12). Unlink one first." : "Couldn’t link your bank (" + esc(e.message) + "). Please try again."; renderBank();
+    });
+  }
+  function bankSelected() { return Array.prototype.filter.call(document.querySelectorAll("#bankView .bsel"), function (c) { return c.checked; }).map(function (c) { return c.getAttribute("data-id"); }); }
+  function bankImport() {
+    var ids = bankSelected(); if (!ids.length) { bankMsg = "Select at least one transaction."; renderBank(); return; }
+    var byId = {}; bankData.review.forEach(function (t) { byId[t.id] = t; });
+    var pick = {}, missing = 0;
+    ids.forEach(function (id) { var sel = document.querySelector('#bankView .bcat[data-id="' + id + '"]'); pick[id] = sel ? sel.value : ""; if (!pick[id]) missing++; });
+    if (missing) { bankMsg = "Choose a category for " + missing + (missing === 1 ? " transaction" : " transactions") + " (or “Don’t add”) first."; renderBank(); return; }
+    // learn from changes, so next time the guess is right
+    ids.forEach(function (id) { var t = byId[id], p = pick[id]; if (bankChoice[id] && p.indexOf("ex:") === 0) { var k = merchantKey(t.description); if (k) rcRules[nk(k)] = p.slice(3); } });
+    var months = {};
+    ids.forEach(function (id) { if (pick[id] === "skip") return; var d = new Date(byId[id].date); var k = d.getFullYear() + "-" + d.getMonth(); (months[k] = months[k] || []).push(id); });
+    var added = [], notFound = [];
+    var chain = Promise.resolve();
+    Object.keys(months).forEach(function (k) {
+      chain = chain.then(function () {
+        var p = k.split("-");
+        return rcMonthState(+p[0], +p[1]).then(function (s) {
+          var inc = activeEntries(s.Lm, s.st).income;
+          months[k].forEach(function (id) {
+            var t = byId[id], sel = pick[id], name = sel.slice(3), col = new Date(t.date).getDate() <= 15 ? 0 : 1, ok;
+            if (sel.indexOf("in:") === 0) {
+              var e = inc.filter(function (c) { return nk(c.name) === nk(name); })[0];
+              if (e) { var a = e.addrs[Math.min(col, e.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + t.amount) * 100) / 100; ok = true; }
+            } else ok = rcApply(s, name, col, Math.abs(t.amount), 1) !== null;
+            (ok ? added : notFound).push(id);
+          });
+          return doSave(s.key, s.doc);
+        });
+      });
+    });
+    chain.then(function () {
+      var skipped = ids.filter(function (id) { return pick[id] === "skip"; });
+      var jobs = [];
+      if (added.length) jobs.push(bankCall("mark", { ids: added, state: "imported" }));
+      if (skipped.length) jobs.push(bankCall("mark", { ids: skipped, state: "skipped" }));
+      jobs.push(rcSave());
+      return Promise.all(jobs);
+    }).then(function () {
+      bankData.review = bankData.review.filter(function (t) { return notFound.indexOf(t.id) >= 0 || ids.indexOf(t.id) < 0; });
+      bankMsg = (added.length ? "Added " + added.length + (added.length === 1 ? " transaction" : " transactions") + " to your budget’s Actual numbers." : "") +
+        (notFound.length ? " " + notFound.length + " couldn’t be added because that category isn’t in that month’s budget. Pick another category for " + (notFound.length === 1 ? "it." : "them.") : "");
+      renderBank();
+    }).catch(function () { bankMsg = "Couldn’t add those right now. Try again."; renderBank(); });
+  }
+  $("bankView").addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.id === "bAll") Array.prototype.forEach.call(document.querySelectorAll("#bankView .bsel"), function (c) { c.checked = t.checked; });
+    if (t.classList && t.classList.contains("bcat")) bankChoice[t.getAttribute("data-id")] = t.value;
+  });
+  $("bankView").addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-bank]"); if (!b) return;
+    var a = b.getAttribute("data-bank");
+    if (a === "link") bankLink();
+    else if (a === "sync") bankLoad(true);
+    else if (a === "import") bankImport();
+    else if (a === "skip") { var ids = bankSelected(); if (!ids.length) return; bankCall("mark", { ids: ids, state: "skipped" }).then(function () { bankData.review = bankData.review.filter(function (t) { return ids.indexOf(t.id) < 0; }); bankMsg = "Skipped " + ids.length + "."; renderBank(); }); }
+    else if (a === "unlink") {
+      var id = b.getAttribute("data-id");
+      if (!window.confirm("Unlink " + b.getAttribute("data-name") + "? Monerem will stop reading this account and delete its saved transactions. Amounts you already added to your budget stay.")) return;
+      bankCall("unlink", { account: id }).then(function (r) {
+        bankData = r; debtState.debts.forEach(function (d) { if (d.bankId === id) delete d.bankId; }); saveDebts();
+        bankMsg = "Unlinked."; renderBank();
+      }).catch(function (er) { bankMsg = "Couldn’t unlink (" + esc(er.message) + ")."; renderBank(); });
+    }
+  });
 
   /* ---------- link "Pay off debt" goals with the Debt tab ---------- */
   function debtComplete(d) { return (+d.min || 0) > 0 || (+d.balance || 0) <= 0; }
