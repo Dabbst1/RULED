@@ -292,6 +292,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .blist{list-style:none;margin:0;padding:0}.blist li{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line,#D6E3F8);font-size:14px}
 .bmember{margin-top:8px;padding:12px 14px;border:1px solid var(--line,#D6E3F8);border-radius:12px;background:#fff}.kv{display:flex;justify-content:space-between;font-size:14px;padding:3px 0}.kv span:first-child{color:#51638f}
 @media (max-width:600px){.bstats{grid-template-columns:1fr 1fr}}#clearAll:disabled{opacity:.45;cursor:not-allowed}
+.projset{border:0;padding:0;margin:0}.projset legend{font-weight:700;margin-bottom:6px}.projset label,.projkeep{display:flex;gap:10px;align-items:center;padding:8px 0;font-size:15px}
+.projkeep{border-top:1px solid var(--line,#D6E3F8);margin-top:6px;padding-top:12px}
+#projDlg input[type=radio],#projDlg input[type=checkbox]{width:20px;height:20px;min-width:20px;flex:0 0 20px;margin:0;padding:0;border:0;box-shadow:none;background:none;accent-color:var(--blue)}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -339,6 +342,18 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   <p style="margin-top:12px;font-size:14px"><button type="button" class="linkbtn" id="inactivePortal" hidden>Manage billing</button> <button type="button" class="linkbtn" id="inactiveOut">Log out</button></p>
 </section>
 
+<dialog id="projDlg" aria-labelledby="projTitle">
+  <h2 id="projTitle" style="margin:0 0 6px">Project my year</h2>
+  <p class="sub" id="projLead" style="margin:0 0 14px"></p>
+  <fieldset class="projset"><legend>Which months?</legend>
+    <label><input type="radio" name="projRange" value="rest" checked> <span id="projRest">The rest of the year</span></label>
+    <label><input type="radio" name="projRange" value="all"> <span id="projAll">All 12 months</span></label>
+  </fieldset>
+  <label class="projkeep"><input type="checkbox" id="projKeep" checked> Don&rsquo;t change months I&rsquo;ve already filled in</label>
+  <p class="sub" style="margin:12px 0 0">Only your <b>Plan</b> amounts are copied. Actual amounts you&rsquo;ve entered are never changed.</p>
+  <p class="pickmsg" id="projMsg" role="status"></p>
+  <div class="pickbtns" style="margin-top:12px"><button type="button" class="btn" id="projGo">Project my year</button><button type="button" class="btn ghost" id="projCancel">Cancel</button></div>
+</dialog>
 <dialog id="pickDlg" aria-labelledby="pickTitle">
   <h2 id="pickTitle">Add a category</h2>
   <input id="pickSearch" type="search" placeholder="Search, for example “gym” or “salary”" autocomplete="off" aria-label="Search categories">
@@ -357,7 +372,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     <div id="homeBody"></div>
   </section>
   <div id="sheetView">
-  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button></div>
+  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="projectYear" title="Use this month's plan for the rest of the year">Project my year</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
   <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
@@ -800,6 +815,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
     $("planTip").hidden = true; tipRow = null;
     $("actNote").hidden = v !== "actual" || !layout || !layout.months;
+    $("projectYear").disabled = v === "actual"; $("projectYear").title = v === "actual" ? "Switch to Plan to use this" : "Use this month's plan for the rest of the year";
     ["copyPrev"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
     $("sheet").classList.toggle("actualview", v === "actual");
     if (!quiet) { fillInputs(); run(); }
@@ -2727,6 +2743,54 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   });
 
   /* ---------- copy last month ---------- */
+  /* ---------- project this month's plan across the year ---------- */
+  function hasAmounts(doc) { return !!doc && Object.keys(doc).some(function (k) { return k.slice(0, 2) !== "a:" && k.slice(0, 2) !== "__" && typeof doc[k] === "number" && doc[k] !== 0 && !/^Q\d+$/.test(k); }); }
+  $("projectYear").addEventListener("click", function () {
+    if (!layout || !layout.months || view === "actual") return;
+    if (!Object.keys(inputs).some(function (k) { return inputs[k] !== 0; })) { setStatus("Fill in this month’s plan first, then project your year.", true); return; }
+    var mo = Number($("selMonth").value) - 1, y = $("selYear").value;
+    $("projLead").textContent = "Copies your planned income and expenses for " + MONTHS[mo] + " " + y + " into other months, and fills in your Annual budget.";
+    $("projRest").textContent = mo < 11 ? "The rest of the year (" + MONTHS[mo + 1] + "–December)" : "The rest of the year (nothing left after December)";
+    $("projAll").textContent = "All 12 months of " + y;
+    document.querySelector('input[name=projRange][value=' + (mo < 11 ? "rest" : "all") + "]").checked = true;
+    $("projMsg").textContent = ""; $("projGo").disabled = false; $("projDlg").showModal();
+  });
+  $("projCancel").addEventListener("click", function () { $("projDlg").close(); });
+  $("projGo").addEventListener("click", function () {
+    var mo = Number($("selMonth").value) - 1, y = $("selYear").value, Lm = layout;
+    var range = document.querySelector("input[name=projRange]:checked").value, keepFilled = $("projKeep").checked;
+    var targets = []; for (var i = 0; i < 12; i++) if (i !== mo && (range === "all" || i > mo)) targets.push(i);
+    if (!targets.length) { $("projMsg").textContent = "There are no months after December to fill. Choose All 12 months."; return; }
+    flushSave(); $("projGo").disabled = true; $("projMsg").textContent = "Projecting…";
+    // the plan for this month: amounts + categories, never the Actual numbers
+    var plan = {}; Object.keys(inputs).forEach(function (k) { plan[k] = inputs[k]; });
+    plan.__meta = JSON.parse(JSON.stringify(meta)); plan.__filled = true;
+    var thisKey = Lm.id + ":" + y + "-" + pad(mo + 1), done = 0, skipped = 0, olds = {};
+    var keyOf = function (ti) { return Lm.id + ":" + y + "-" + pad(ti + 1); };
+    // 1. read every month first, so nothing below can change what counts as "already filled in"
+    var chain = Promise.all(targets.map(function (ti) { return loadSaved(keyOf(ti)).then(function (d) { olds[ti] = d; }); }))
+      .then(function () {
+        // 2. months we keep go into the Annual budget first, so later syncing can't wipe them
+        var keep = targets.filter(function (ti) { return keepFilled && hasAmounts(olds[ti]); });
+        skipped = keep.length;
+        return keep.reduce(function (p, ti) { return p.then(function () { return monthToAnnual(keyOf(ti), olds[ti], Lm, true); }); }, Promise.resolve());
+      })
+      .then(function () { return monthToAnnual(thisKey, plan, Lm, true); });   // this month's own Annual column
+    // 3. copy the plan into the other months
+    targets.forEach(function (ti) {
+      chain = chain.then(function () {
+        if (keepFilled && hasAmounts(olds[ti])) return;
+        var doc = JSON.parse(JSON.stringify(plan)), old = olds[ti];
+        if (old) Object.keys(old).forEach(function (k) { if (k.slice(0, 2) === "a:") doc[k] = old[k]; });   // keep that month's Actual amounts
+        done++;
+        return doSave(keyOf(ti), doc).then(function () { return monthToAnnual(keyOf(ti), doc, Lm, true); });
+      });
+    });
+    chain.then(function () {
+      $("projDlg").close();
+      setStatus("Projected " + done + (done === 1 ? " month" : " months") + " from " + MONTHS[mo] + (skipped ? ". Left " + skipped + " already filled-in " + (skipped === 1 ? "month as it was" : "months as they were") : "") + ". Open Annual budget to see your year.");
+    }).catch(function () { $("projGo").disabled = false; $("projMsg").textContent = "Couldn’t finish projecting. Try again."; });
+  });
   $("copyPrev").addEventListener("click", function () {
     var y = Number($("selYear").value), mo = Number($("selMonth").value) - 1; mo--; if (mo < 0) { mo = 11; y--; }
     var key = layout.id + ":" + y + "-" + pad(mo + 1), name = MONTHS[mo] + " " + y;
