@@ -320,6 +320,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 @media (max-width:700px){#debtView .cards{grid-template-columns:1fr 1fr}#debtView .cards .stat:last-child{grid-column:auto}#debtView .stat b{font-size:22px}
 .hb{grid-template-columns:1fr auto;row-gap:4px}.hb-t{grid-column:1/-1;grid-row:2}.dtable{min-width:520px}.dtable.cmp{min-width:0}.dtable.cmp th:nth-child(4),.dtable.cmp td:nth-child(4){display:none}.dtable th:nth-child(5),.dtable td:nth-child(5){display:none}.dplan input{width:100%}.dplan label{width:100%}}
 .admsel{height:40px;border:1px solid var(--line,#D6E3F8);border-radius:10px;padding:0 8px;font:inherit;font-size:14px;background:#fff;width:100%;max-width:100%;text-overflow:ellipsis}
+.dmiss{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#FFF7ED;font-size:14px}
+#debtView .dtable tr.dinc td{background:#FFFBF5}.dgoal{display:inline-block;font:700 11px/18px inherit;font-family:inherit;padding:0 7px;border-radius:99px;background:#E3ECFF;color:var(--blue);vertical-align:1px}
+#glDebt select,#glDType select{width:100%}
 .leftline{margin:10px 0 0;font-size:14px;color:var(--ink)}
 .gw{display:flex;align-items:center;gap:8px;padding-left:6px;flex-wrap:wrap;row-gap:0}
 .gname{text-transform:uppercase;letter-spacing:.04em;font-size:13px}
@@ -465,7 +468,11 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     <form class="billform" id="goalForm">
       <label>Goal type<select id="gKind"><option value="debt">Pay off debt</option><option value="save">Save for something</option><option value="credit">Raise my credit score</option><option value="custom">Something else</option></select></label>
       <label id="glPick" hidden>Savings category<select id="gPick"></select></label>
+      <label id="glDebt" hidden>Which debt?<select id="gDebt"></select></label>
       <label id="glName">Goal name<input id="gName" maxlength="50" required placeholder="Pay off Visa"></label>
+      <label id="glDType" hidden>Type of debt<select id="gDType"></select></label>
+      <label id="glApr" hidden>Interest rate (APR %)<input id="gApr" inputmode="decimal" autocomplete="off" placeholder="24.99"></label>
+      <label id="glMin" hidden>Minimum payment<input id="gMin" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
       <label id="gl1">Starting balance<input id="g1" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
       <label id="gl2">Balance now<input id="g2" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
       <label id="gl3" hidden>Target score<input id="g3" inputmode="numeric" autocomplete="off" placeholder="740"></label>
@@ -1406,8 +1413,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
-    if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
-    if (tp === "goals") { loadGoals().then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
+    if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(syncDebtGoals).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
+    if (tp === "goals") { loadGoals().then(syncDebtGoals).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     var isBills = tp === "bills";
     if (isBills) { loadBills().then(function () { if (mine === loadSeq) renderBills(); }); return; }
@@ -1977,6 +1984,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         '<div class="panel"><h2>How it works</h2><ol class="dsteps"><li>Add each debt with its balance, interest rate and minimum payment.</li><li>Choose how much extra you can pay each month.</li><li>Compare payoff plans and follow the one you like. Update balances as you pay, and watch your progress.</li></ol></div>';
       return;
     }
+    var all = ds; ds = all.filter(debtComplete);
+    var missing = all.filter(function (d) { return !debtComplete(d); });
     var sims = { min: simulate(ds, 0, "min"), avalanche: simulate(ds, debtState.extra, "avalanche"), snowball: simulate(ds, debtState.extra, "snowball") }, sim = sims[debtState.plan];
     var mins = ds.reduce(function (a, d) { return a + (+d.min || 0); }, 0), intNow = ds.reduce(function (a, d) { return a + monthInterest(d); }, 0);
     var start = debtState.hist.length ? Math.max.apply(null, debtState.hist.map(function (x) { return x.t; })) : tot, paid = Math.max(0, start - tot);
@@ -1990,6 +1999,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     h += '<div class="panel"><h2>Your payoff plan</h2>' +
       '<div class="dplan"><label>Extra each month, on top of minimums<input id="dExtra" inputmode="decimal" value="' + (debtState.extra ? money.format(debtState.extra) : "") + '" placeholder="$0.00"></label>' +
       '<div class="seg" role="group" aria-label="Payoff plan"><button type="button" data-plan="avalanche" class="' + (debtState.plan === "avalanche" ? "on" : "") + '">Avalanche<small>Highest rate first · saves the most</small></button><button type="button" data-plan="snowball" class="' + (debtState.plan === "snowball" ? "on" : "") + '">Snowball<small>Smallest balance first · quick wins</small></button></div></div>' +
+      (missing.length ? '<p class="dmiss">' + missing.map(function (d) { return "<b>" + esc(d.name) + "</b>"; }).join(", ") + (missing.length === 1 ? " isn’t" : " aren’t") + ' in your plan yet. Tap <b>Update</b> below and add the interest rate and minimum payment.</p>' : "") +
       '<p class="sub" style="margin:8px 0 0">You’ll pay <b>' + money.format(mins + debtState.extra) + "</b> a month in total. When a debt is paid off, its payment rolls into the next one.</p>";
     var row = function (nm, s, k) { var save = sims.min.months === null ? null : sims.min.interest - s.interest; return '<tr class="' + (k === debtState.plan ? "on" : "") + '"><td>' + nm + "</td><td>" + (s.months === null ? "Never at this rate" : monYr(s.months)) + "</td><td>" + (s.months === null ? "—" : money.format(s.interest)) + "</td><td>" + (k === "min" ? "—" : save === null ? "Pays it off" : money.format(Math.max(0, save))) + "</td></tr>"; };
     h += '<div class="dscroll"><table class="dtable cmp"><thead><tr><th>Plan</th><th>Debt-free by</th><th>Total interest</th><th>Interest saved</th></tr></thead><tbody>' +
@@ -2001,10 +2011,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     h += '<div class="panel"><h2>Ways to pay it off faster</h2><ul class="dadv">' + adv.map(function (a) { return '<li class="' + a.k + '">' + a.t + "</li>"; }).join("") + '</ul><p class="sub" style="margin-top:10px">General information to help you plan, not financial advice. Rates and terms vary, so check with your lender before you change anything.</p></div>';
     // debts list
     h += '<div class="panel"><h2>Your debts</h2><div id="dBal"></div><div class="dscroll"><table class="dtable"><thead><tr><th>Debt</th><th>Balance</th><th>Rate</th><th>Minimum</th><th>Interest / mo</th><th>Paid off</th><th></th></tr></thead><tbody>' +
-      ds.map(function (d) {
+      all.map(function (d) {
         if (d.id === debtEditing) return '<tr><td colspan="7">' + debtFormHtml(d) + "</td></tr>";
-        var po = sim.paidOff[d.id], it = monthInterest(d), bad = +d.balance > 0 && +d.min <= it + 0.005;
-        return "<tr><td><b>" + esc(d.name) + '</b><small>' + esc(DEBT_TYPES[d.type] || "Other") + "</small></td><td>" + money.format(+d.balance || 0) + "</td><td>" + (+d.apr || 0) + "%</td><td>" + money.format(+d.min || 0) + "</td><td" + (bad ? ' class="neg"' : "") + ">" + money.format(it) + "</td><td>" + (+d.balance <= 0 ? "Paid off" : po ? monYr(po) : "—") +
+        var po = sim.paidOff[d.id], it = monthInterest(d), inc = !debtComplete(d), bad = !inc && +d.balance > 0 && +d.min <= it + 0.005;
+        return "<tr" + (inc ? ' class="dinc"' : "") + "><td><b>" + esc(d.name) + "</b>" + (d.goalId ? ' <span class="dgoal">Goal</span>' : "") + '<small>' + esc(DEBT_TYPES[d.type] || "Other") + (inc ? " · needs rate &amp; minimum" : "") + "</small></td><td>" + money.format(+d.balance || 0) + "</td><td>" + (+d.apr || 0) + "%</td><td>" + money.format(+d.min || 0) + "</td><td" + (bad ? ' class="neg"' : "") + ">" + money.format(it) + "</td><td>" + (+d.balance <= 0 ? "Paid off" : po ? monYr(po) : "—") +
           '</td><td class="act"><button type="button" class="sm" data-debt="edit" data-id="' + d.id + '">Update</button></td></tr>';
       }).join("") + "</tbody></table></div></div>";
     if (!debtEditing) h += debtFormHtml(null);
@@ -2023,7 +2033,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var maxM = Math.max.apply(null, sim.order.map(function (id) { return sim.paidOff[id] || 0; }).concat([1]));
     barList($("dOrder"), sim.order.slice().sort(function (a, b) { return (sim.paidOff[a] || 1e9) - (sim.paidOff[b] || 1e9); }).map(function (id) { var m = sim.paidOff[id]; return { label: byId[id].name, v: m || maxM, text: m ? monYr(m) : "Not yet", tip: m ? "Paid off in " + durTxt(m) : "" }; }),
       { foot: "Bar length is how long until each debt is gone. Extra money goes to " + (debtState.plan === "avalanche" ? "the highest rate" : "the smallest balance") + " first: " + sim.order.filter(function (id) { return (+byId[id].min || 0) > 0; }).map(function (id) { return esc(byId[id].name); }).join(" → ") + "." });
-    barList($("dBal"), ds.filter(function (d) { return +d.balance > 0; }).slice().sort(function (a, b) { return b.balance - a.balance; }).map(function (d) { return { label: d.name, v: +d.balance, text: money.format(+d.balance) + " · " + (+d.apr || 0) + "%", tip: money.format(monthInterest(d)) + " interest a month" }; }));
+    barList($("dBal"), all.filter(function (d) { return +d.balance > 0; }).slice().sort(function (a, b) { return b.balance - a.balance; }).map(function (d) { return { label: d.name, v: +d.balance, text: money.format(+d.balance) + " · " + (+d.apr || 0) + "%", tip: money.format(monthInterest(d)) + " interest a month" }; }));
     if (debtState.hist.length >= 2) {
       var hs = debtState.hist.slice(-60);
       var top0 = Math.max.apply(null, debtState.hist.map(function (x) { return x.t; }));
@@ -2052,7 +2062,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var el = f.elements, rec = { name: el.name.value.trim().slice(0, 40), type: el.type.value || "other", balance: Math.max(0, parseMoney(el.balance.value)), apr: Math.max(0, Math.min(100, parseFloat(String(el.apr.value).replace(/[^0-9.]/g, "")) || 0)), min: Math.max(0, parseMoney(el.min.value)), limit: Math.max(0, parseMoney(el.limit.value)) };
     if (!rec.name) return;
     if (id === "new") { if (debtState.debts.length >= 40) return; rec.id = newId(); debtState.debts.push(rec); }
-    else { var d = debtState.debts.filter(function (x) { return x.id === id; })[0]; if (d) Object.assign(d, rec); debtEditing = null; }
+    else { var d = debtState.debts.filter(function (x) { return x.id === id; })[0]; if (d) { Object.assign(d, rec); pushDebtToGoal(d); } debtEditing = null; }
     saveDebts(); renderDebt();
   });
   $("debtView").addEventListener("click", function (e) {
@@ -2061,12 +2071,53 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var a = b.getAttribute("data-debt"), id = b.getAttribute("data-id");
     if (a === "edit") { debtEditing = id; renderDebt(); var f = document.querySelector('form[data-dform="' + id + '"] input[name=balance]'); if (f) { f.focus(); f.select(); } }
     else if (a === "cancel") { debtEditing = null; renderDebt(); }
-    else if (a === "del") { if (window.confirm("Delete this debt?")) { debtState.debts = debtState.debts.filter(function (x) { return x.id !== id; }); debtEditing = null; saveDebts(); renderDebt(); } }
-    else if (a === "paid") { var d = debtState.debts.filter(function (x) { return x.id === id; })[0]; if (d) { d.balance = 0; debtEditing = null; saveDebts(); renderDebt(); } }
+    else if (a === "del") { if (window.confirm("Delete this debt?")) { debtState.debts.forEach(function (x) { if (x.id === id) pushDebtToGoal(x, true); }); debtState.debts = debtState.debts.filter(function (x) { return x.id !== id; }); debtEditing = null; saveDebts(); renderDebt(); } }
+    else if (a === "paid") { var d = debtState.debts.filter(function (x) { return x.id === id; })[0]; if (d) { d.balance = 0; pushDebtToGoal(d); debtEditing = null; saveDebts(); renderDebt(); } }
     else if (a === "usebudget" && budgetLeft > 0) { debtState.extra = Math.round(budgetLeft * 100) / 100; saveDebts(); renderDebt(); }
   });
   var debtResize = null;
   window.addEventListener("resize", function () { if ($("debtView").hidden) return; clearTimeout(debtResize); debtResize = setTimeout(renderDebt, 200); });
+
+  /* ---------- link "Pay off debt" goals with the Debt tab ---------- */
+  function debtComplete(d) { return (+d.min || 0) > 0 || (+d.balance || 0) <= 0; }
+  function syncDebtGoals() {   // runs when Goals or Debt opens
+    return Promise.all([loadGoals(), loadDebts()]).then(function () {
+      var cg = false, cd = false;
+      goals.forEach(function (g) {
+        if (g.kind !== "debt") return;
+        var d = g.debtId ? debtState.debts.filter(function (x) { return x.id === g.debtId; })[0] : null;
+        if (g.debtId && !d) { delete g.debtId; cg = true; }
+        if (!d) {   // older goal: find its debt by name, or add it to the Debt tab
+          var nm = g.name.replace(/^pay off\s+/i, "");
+          d = debtState.debts.filter(function (x) { return !x.goalId && (nk(x.name) === nk(g.name) || nk(x.name) === nk(nm)); })[0];
+          if (!d) { d = { id: newId(), name: nm || g.name, type: "other", balance: g.current || g.start || 0, apr: 0, min: 0, limit: 0 }; debtState.debts.push(d); }
+          g.debtId = d.id; cg = cd = true;
+        }
+        if (d.goalId !== g.id) { d.goalId = g.id; cd = true; }
+        if (Math.abs((+g.current || 0) - (+d.balance || 0)) > 0.004) { g.current = +d.balance || 0; cg = true; }
+        if ((+g.start || 0) < g.current) { g.start = g.current; cg = true; }
+      });
+      debtState.debts.forEach(function (d) { if (d.goalId && !goals.some(function (g) { return g.id === d.goalId; })) { delete d.goalId; cd = true; } });
+      if (cg) saveGoals(); if (cd) saveDebts();
+    });
+  }
+  function pushDebtToGoal(d, deleted) {   // a debt changed on the Debt tab
+    loadGoals().then(function () {
+      var g = goals.filter(function (x) { return x.kind === "debt" && x.debtId === d.id; })[0]; if (!g) return;
+      if (deleted) delete g.debtId; else g.current = +d.balance || 0;
+      saveGoals();
+    });
+  }
+  function pushGoalToDebt(g) {   // a goal's "Balance now" changed on the Goals tab
+    if (!g.debtId) return;
+    loadDebts().then(function () { var d = debtState.debts.filter(function (x) { return x.id === g.debtId; })[0]; if (d) { d.balance = +g.current || 0; saveDebts(); } });
+  }
+  function debtGoalNote(g) {
+    var d = debtState.debts.filter(function (x) { return x.id === g.debtId; })[0]; if (!d) return "";
+    if (!debtComplete(d)) return '<p class="glink">&#128279; Linked to your Debt tab. Add its interest rate and minimum payment there to see when it’ll be paid off.</p>';
+    var sim = simulate(debtState.debts.filter(debtComplete), debtState.extra, debtState.plan), m = sim.paidOff[d.id];
+    return '<p class="glink on">&#128279; Linked to your Debt tab' + (+d.balance <= 0 ? " &middot; paid off!" : m ? " &middot; paid off by <b>" + monYr(m) + "</b> on your " + (debtState.plan === "avalanche" ? "Avalanche" : "Snowball") + " plan" : "") + "</p>";
+  }
 
   /* ---------- goals ---------- */
   var goals = [], goalsLoaded = false, goalTimer = null, editingGoal = null;
@@ -2185,18 +2236,48 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     $("gName").placeholder = { debt: "Pay off Visa", save: "Boat money", credit: "Reach a 700 score", custom: "My goal" }[k];
     if (k === "save") { fillGoalPick(); loadBudgetSavings().then(function () { if ($("gKind").value === "save") fillGoalPick(); }); }
     else { $("glPick").hidden = true; $("glName").hidden = false; $("gName").required = true; }
+    if (k === "debt") { fillDebtPick(); loadDebts().then(function () { if ($("gKind").value === "debt") fillDebtPick(); }); }
+    else { ["glDebt", "glDType", "glApr", "glMin"].forEach(function (id) { $(id).hidden = true; }); }
   }
+  /* "Pay off debt" goals are the same debts as on the Debt tab: pick one, or a new one is added there */
+  function fillDebtPick() {
+    var keep = $("gDebt").value || "__new", taken = {};
+    goals.forEach(function (g) { if (g.kind === "debt" && g.debtId) taken[g.debtId] = 1; });
+    $("gDebt").innerHTML = '<option value="__new">A new debt (adds it to your Debt tab)</option>' + debtState.debts.filter(function (d) { return !taken[d.id] && +d.balance > 0; })
+      .map(function (d) { return '<option value="' + d.id + '">' + esc(d.name) + " · " + money.format(+d.balance || 0) + "</option>"; }).join("");
+    if ($("gDType").options.length === 0) $("gDType").innerHTML = Object.keys(DEBT_TYPES).map(function (k2) { return '<option value="' + k2 + '">' + DEBT_TYPES[k2] + "</option>"; }).join("");
+    $("gDebt").value = Array.prototype.some.call($("gDebt").options, function (o) { return o.value === keep; }) ? keep : "__new";
+    syncDebtFields();
+  }
+  function syncDebtFields() {
+    var v = $("gDebt").value, isNew = v === "__new", d = debtState.debts.filter(function (x) { return x.id === v; })[0];
+    $("glDebt").hidden = false; $("glName").hidden = !isNew; $("gName").required = isNew;
+    $("glDType").hidden = $("glApr").hidden = $("glMin").hidden = !isNew;
+    if (d) { $("g2").value = money.format(+d.balance || 0); if (!$("g1").value) $("g1").value = money.format(+d.balance || 0); }
+  }
+  $("gDebt").addEventListener("change", function () { if ($("gDebt").value === "__new") { $("g1").value = ""; $("g2").value = ""; } syncDebtFields(); });
   $("gKind").addEventListener("change", goalForm);
   function num(k, v) { return k === "credit" ? (parseFloat(v) || 0) : parseMoney(v); }
   $("goalForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var k = $("gKind").value;
     if (k === "save" && !$("gPick").value) { $("gPick").focus(); return; }
-    var name = $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
+    var pickD = k === "debt" ? debtState.debts.filter(function (x) { return x.id === $("gDebt").value; })[0] : null;
+    var name = pickD ? ("Pay off " + pickD.name).slice(0, 50) : $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
     var g = { id: newId(), kind: k, name: name, start: 0, current: 0, target: 0, due: $("gDate").value || "",
       steps: STARTERS[k].map(function (t) { return { id: newId(), t: t, done: false }; }) };
     if (k === "save") { g.target = num(k, $("g1").value); g.current = num(k, $("g2").value); g.base = g.current; g.from = thisMonthKey(); g.fromBudget = 0; }
-    if (k === "debt") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value); }
+    if (k === "debt") {
+      g.start = num(k, $("g1").value); g.current = num(k, $("g2").value);
+      if (pickD) { g.current = +pickD.balance || 0; g.start = Math.max(g.start, g.current); g.debtId = pickD.id; pickD.goalId = g.id; }
+      else {
+        var nd = { id: newId(), name: name.replace(/^pay off\s+/i, "") || name, type: $("gDType").value || "other", balance: g.current || g.start,
+          apr: Math.max(0, Math.min(100, parseFloat(String($("gApr").value).replace(/[^0-9.]/g, "")) || 0)), min: Math.max(0, parseMoney($("gMin").value)), limit: 0, goalId: g.id };
+        if (!g.current) g.current = nd.balance; if (!g.start) g.start = g.current;
+        debtState.debts.push(nd); g.debtId = nd.id;
+      }
+      saveDebts();
+    }
     if (k === "credit") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value) || g.start; g.target = num(k, $("g3").value); }
     goals.unshift(g); $("goalForm").reset(); $("gKind").value = k; goalForm(); saveGoals(); renderGoals();
     if (k === "save") {
@@ -2218,6 +2299,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         '<span class="gbtns"><button class="sm" data-editgoal="' + g.id + '">Edit goal</button> <button class="sm" data-delgoal="' + g.id + '">Delete goal</button></span></header>' +
         '<div class="bar' + (pc >= 100 ? " full" : "") + '" role="progressbar" aria-valuenow="' + pc + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pc + '%"></i></div>' +
         '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + upd +
+        (g.kind === "debt" && g.debtId ? debtGoalNote(g) : "") +
         (g.kind === "save" ? (g.linked
           ? '<p class="glink on">&#128279; Linked to your <b>' + esc(g.name) + "</b> budget line" + (g.fromBudget ? " &middot; " + money.format(g.fromBudget) + " added from your budget" : " &middot; nothing added yet") + "</p>" +
             (g.target ? "" : '<p class="glink">Set how much you want to save: tap <b>Edit goal</b>.</p>')
@@ -2248,7 +2330,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     g.name = nm; g.due = fd.due.value || "";
     var oldName = g.name;
     if (g.kind === "save") { g.target = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); g.base = g.current - (g.fromBudget || 0); }
-    if (g.kind === "debt") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); }
+    if (g.kind === "debt") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); pushGoalToDebt(g); }
     if (g.kind === "credit") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value) || g.start; g.target = num(g.kind, fd.c.value); }
     editingGoal = null; saveGoals(); renderGoals();
     if (g.kind === "save" && nk(oldName) !== nk(g.name)) { g.base = g.current; g.fromBudget = 0; syncSaveGoals().then(function (c) { if (c) renderGoals(); }); }
@@ -2264,7 +2346,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var t = e.target, v, p;
     if ((v = t.getAttribute("data-editgoal"))) { editingGoal = v; renderGoals(); var nmi = document.querySelector('form[data-editform="' + v + '"] input[name=name]'); if (nmi) nmi.focus(); }
     else if (t.getAttribute("data-canceledit")) { editingGoal = null; renderGoals(); }
-    else if ((v = t.getAttribute("data-delgoal"))) { if (window.confirm("Delete this goal and its checklist?")) { goals = goals.filter(function (g) { return g.id !== v; }); saveGoals(); renderGoals(); } }
+    else if ((v = t.getAttribute("data-delgoal"))) { if (window.confirm("Delete this goal and its checklist?")) { var gd = goalById(v); if (gd && gd.debtId) debtState.debts.forEach(function (d) { if (d.id === gd.debtId) { delete d.goalId; saveDebts(); } }); goals = goals.filter(function (g) { return g.id !== v; }); saveGoals(); renderGoals(); } }
     else if ((v = t.getAttribute("data-addstep"))) addStep(v);
     else if ((v = t.getAttribute("data-delstep"))) { p = v.split(":"); var g = goalById(p[0]); if (g) { g.steps = g.steps.filter(function (x) { return x.id !== p[1]; }); saveGoals(); renderGoals(); } }
   });
@@ -2275,7 +2357,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   $("goalList").addEventListener("change", function (e) {
     var t = e.target, v, p;
     if ((v = t.getAttribute("data-step"))) { p = v.split(":"); var g = goalById(p[0]); if (g) g.steps.forEach(function (x) { if (x.id === p[1]) x.done = t.checked; }); saveGoals(); renderGoals(); }
-    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); if (g2.kind === "save") g2.base = g2.current - (g2.fromBudget || 0); saveGoals(); renderGoals(); } }
+    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); if (g2.kind === "save") g2.base = g2.current - (g2.fromBudget || 0); if (g2.kind === "debt") pushGoalToDebt(g2); saveGoals(); renderGoals(); } }
   });
 
   /* ---------- account ---------- */
