@@ -13,7 +13,7 @@
    devMode false = real login and membership check through Supabase. */
 window.RULED_CONFIG = {
   devMode: false,
-  calcUrl: "https://qytsgfjyiybxucxtbcne.supabase.co/functions/v1/calc",
+  calcUrl: "https://qytsgfjyiybxucxtbcne.supabase.co/functions/v1/calc-v2",
   supabaseUrl: "https://qytsgfjyiybxucxtbcne.supabase.co",
   supabaseAnonKey: "sb_publishable_Sp2syhCiuMZvNIssD9lpPA_1W3xZ2su",
   homeUrl: "index.html",
@@ -2247,7 +2247,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 
   /* ---------- guided setup ---------- */
   var setup = null, setupLoaded = false;
-  var WIZ_INCOME_MAX = 11, WIZ_EXPENSE_MAX = 31;
+  var WIZ_INCOME_MAX = 31, WIZ_EXPENSE_MAX = 81;
   var BUILTIN_INCOME = ["Paycheck1", "Paycheck2", "Check"];
   var BUILTIN_EXPENSE = ["Gasoline", "Restaurants", "Travel", "Shopping", "Groceries", "Transportation", "Electronics", "Utilities", "Clothing", "Gaming", "Pets", "Sports", "Healthcare", "Personal Care", "Digital Entertainment", "Home", "Rent", "Insurance", "Professional Services", "Tithe", "Credit Cards"];
   var wiz = { step: 0, income: [], expense: [], q: "" };
@@ -2835,7 +2835,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }
     check();
   }
-  function fnUrl(name) { return CFG.calcUrl.replace(/\/calc$/, "/" + name); }
+  function fnUrl(name) { return CFG.calcUrl.replace(/\/[^\/]+$/, "/" + name); }
   function callFn(name, body) {
     return fetch(fnUrl(name), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: CFG.supabaseAnonKey }, body: JSON.stringify(body || {}) })
       .then(function (r) { return r.text().then(function (t) { var j = {}; try { j = JSON.parse(t); } catch (x) {} if (!r.ok || !j.url) throw new Error(r.status + " " + (j.error || j.msg || j.message || t.slice(0, 80) || "no response")); return j.url; }); });
