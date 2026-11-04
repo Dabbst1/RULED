@@ -63,6 +63,10 @@ tr.total td, tr.total td.lab{font-weight:700;background:var(--hl)}
 tr.total td.lab{background:var(--hl)}
 td.good{background:var(--good-bg)!important;color:var(--good);font-weight:700}
 td.bad{background:var(--bad-bg)!important;color:var(--bad);font-weight:700}
+td.pend{background:#FCF4F4!important;color:#B4636E;font-weight:700;background-image:repeating-linear-gradient(135deg,rgba(180,99,110,.07) 0 6px,transparent 6px 12px)!important}
+td.pend::before,td.bad.over::before{content:"Month in progress";float:left;font-size:11px;font-weight:600;letter-spacing:.02em;opacity:.85;margin-top:2px}
+td.bad.over::before{content:"Month ended"}td.pend.nolab::before{display:none}
+@media (max-width:600px){td.pend::before,td.bad.over::before{display:none}}
 #sheet{width:max-content;min-width:100%}
 .section{margin:24px 0 8px 8px;font-size:18px;font-weight:800;position:sticky;left:8px;width:max-content}
 input.in{font-size:13px;width:100%;height:32px;border:1px solid transparent;border-radius:3px;background:transparent;font:inherit;text-align:right;color:var(--ink);padding:0 4px;font-variant-numeric:tabular-nums}
@@ -1429,15 +1433,27 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }
     sh.style.setProperty("--fs", "12px");
   }
+  // Monthly net: green when positive; negative stays a soft "pending" red until the month is over, then turns red
+  function monthOver() {
+    if (!layout || !layout.months) return true;
+    var y = Number($("selYear").value), m = Number($("selMonth").value) - 1, now = new Date();
+    return y < now.getFullYear() || (y === now.getFullYear() && m < now.getMonth());
+  }
   function paint(values) {
-    var r = layout.rows.length && layout.rules;
+    var r = layout.rows.length && layout.rules, over = monthOver();
     Array.prototype.forEach.call(document.querySelectorAll("td[data-c]"), function (td) {
       var v = values[td.getAttribute("data-c")];
       td.textContent = money.format(v || 0);
-      td.classList.remove("good", "bad");
+      td.classList.remove("good", "bad", "pend", "over", "nolab"); td.removeAttribute("title");
       var label = td.parentNode.firstChild.textContent, col = td.getAttribute("data-col");
       var yearly = col === "N" || col === "O" || (layout.months && col === "D");
-      if (label === r.netIncomeLabel && !yearly) { if (v < 0) td.classList.add("bad"); else if (v > 0) td.classList.add("good"); }
+      if (label === r.netIncomeLabel && layout.months && (col === "D" || col === "B" || col === "C")) {
+        if (v > 0.004) td.classList.add("good");
+        else if (v < -0.004) {
+          if (over) { td.classList.add("bad"); if (col === "D") td.classList.add("over"); td.title = "This month is over and ended in the negative."; }
+          else { td.classList.add("pend"); if (col !== "D") td.classList.add("nolab"); td.title = "In the negative for now. The month isn't over, so this can still change."; }
+        }
+      } else if (label === r.netIncomeLabel && !yearly) { if (v < 0) td.classList.add("bad"); else if (v > 0) td.classList.add("good"); }
       if (label === r.expenseTotalLabel && !yearly) {
         var inc = values[col + r.incomeRow] || 0;
         if (v > inc) td.classList.add("bad");
