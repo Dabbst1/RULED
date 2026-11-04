@@ -920,6 +920,11 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     keepTip(); if (tipRow === tr && !$("planTip").hidden) return; tipRow = tr;
     var table = tr.closest("table"), heads = table ? table.querySelectorAll("thead th") : [], tot = 0, lines = "";
     Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) {
+      if (el.classList.contains("fullin")) {   // Full month view: one box holds both paychecks
+        var pb = inputs[el.getAttribute("data-fb")] || 0, pc = inputs[el.getAttribute("data-fc")] || 0; tot += pb + pc;
+        if (pb && pc) lines += "<div><span>Paycheck 1</span><b>" + money.format(pb) + "</b></div><div><span>Paycheck 2</span><b>" + money.format(pc) + "</b></div>";
+        return;
+      }
       var a = el.getAttribute("data-a"), v = inputs[a] || 0, th = heads[el.closest("td").cellIndex]; tot += v;
       lines += "<div><span>" + esc(th ? th.textContent.replace(/\u00d7/g, "").trim() : "Amount") + "</span><b>" + money.format(v) + "</b></div>";
     });
@@ -945,7 +950,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   window.addEventListener("scroll", function () { $("planTip").hidden = true; tipRow = null; }, true);
   $("planTip").addEventListener("click", function (e) {
     if (e.target.id !== "tipFill" || !tipRow) return;
-    Array.prototype.forEach.call(tipRow.querySelectorAll("input.in"), function (el) { var a = el.getAttribute("data-a"); actual[a] = inputs[a] || 0; el.value = fmt(actual[a]); });
+    Array.prototype.forEach.call(tipRow.querySelectorAll("input.in"), function (el) {
+      if (el.classList.contains("fullin")) { [el.getAttribute("data-fb"), el.getAttribute("data-fc")].forEach(function (a) { actual[a] = inputs[a] || 0; }); el.value = fmt(fullSum(el)); return; }
+      var a = el.getAttribute("data-a"); actual[a] = inputs[a] || 0; el.value = fmt(actual[a]);
+    });
     $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave(); setStatus("Filled from your plan.");
   });
   $("fillAllPlan").addEventListener("click", function () {
@@ -1011,6 +1019,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function fullRatio(el) {   // keep the row's own split; a new row follows how your income is split; nothing yet = all on Paycheck 1
     var v = vals(), b = +v[el.getAttribute("data-fb")] || 0, c = +v[el.getAttribute("data-fc")] || 0;
     if (b + c > 0) return b / (b + c);
+    if (view === "actual") { var pb = +inputs[el.getAttribute("data-fb")] || 0, pc = +inputs[el.getAttribute("data-fc")] || 0; if (pb + pc > 0) return pb / (pb + pc); }   // actual follows that row's plan
     var ib = +(lastValues && lastValues.B7) || 0, ic = +(lastValues && lastValues.C7) || 0;
     return ib + ic > 0 ? ib / (ib + ic) : 1;
   }
