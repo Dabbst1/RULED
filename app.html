@@ -2784,9 +2784,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     return layoutsP().then(function (Ls) {
       var Lm = Ls[0], doc = { __filled: true }, put = function (label, col, v, act) { var a = rowAddr(Lm, label, col); if (a) { doc[a] = v; if (act !== undefined) doc["a:" + a] = act; } };
       put("Check", "B", 2000); put("Check", "C", 2000);
+      Lm.rows.forEach(function (r) { if (r.toggle) doc[r.toggle] = 1; });   // Tithe works itself out: 10% of income
       put("Rent", "B", 1500, 1500); put("Utilities", "C", 220, 236); put("Credit Cards", "C", 250, 250);
       put("Groceries", "B", 250, 280); put("Groceries", "C", 250, 265); put("Gasoline", "B", 65); put("Gasoline", "C", 65);
-      put("Restaurants", "C", 300, 340); put("Digital Entertainment", "B", 45, 45); put("Shopping", "C", 120); put("Tithe", "B", 400, 400);
+      put("Restaurants", "C", 300, 340); put("Digital Entertainment", "B", 45, 45); put("Shopping", "C", 120);
       var blk = Lm.rows.filter(function (r) { return r.type === "custom" && r.group !== "income"; })[0], sl = blk.slots[0], a0 = inAddrs(sl.cells).sort(function (x, y) { return colKey(x) - colKey(y); })[0];
       doc[a0] = 250; doc["a:" + a0] = 250;
       doc.__meta = { labels: {}, custom: [sl.row], hidden: [], removed: [], gone: [] }; doc.__meta.labels[sl.row] = "Vacation Fund";
@@ -3324,7 +3325,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       if (r.type === "data" && !r.cls && m.removed.indexOf(r.row) < 0 && rowInputs(r.row, Lm).length) targets[(m.labels[r.row] || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = addrs(r.cells);
       if (r.type === "custom") r.slots.forEach(function (sl) { if (m.custom.indexOf(sl.row) >= 0 && m.labels[sl.row]) targets[m.labels[sl.row].replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = addrs(sl.cells); });
     });
+    // rows the Monthly sheet works out itself (Tithe = 10% of income) are never copied in as typed amounts
+    var calcRows = {}; Lm.rows.forEach(function (r) { if (r.toggle) calcRows[(m.labels[r.row] || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase()] = 1; });
     snap.rows.forEach(function (ar) {
+      if (calcRows[ar.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()]) return;
       var v = Math.round((ar.vals[col] || 0) * 100) / 100, t = targets[ar.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()];
       if (!v && !(zeros && t)) return;
       if (!t) {
