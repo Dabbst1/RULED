@@ -2258,7 +2258,18 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   $("bankView").addEventListener("change", function (e) {
     var t = e.target;
     if (t.id === "bAll") Array.prototype.forEach.call(document.querySelectorAll("#bankView .bsel"), function (c) { c.checked = t.checked; });
-    if (t.classList && t.classList.contains("bcat")) bankChoice[t.getAttribute("data-id")] = t.value;
+    if (t.classList && t.classList.contains("bcat")) {
+      var id0 = t.getAttribute("data-id"); bankChoice[id0] = t.value;
+      // same merchant elsewhere in the list (and same direction: money in vs out) gets the same category
+      var src = bankData.review.filter(function (x) { return x.id === id0; })[0]; if (!src || !t.value) return;
+      var key = merchantKey(src.description), n = 0;
+      bankData.review.forEach(function (x) {
+        if (x.id === id0 || merchantKey(x.description) !== key || (x.amount > 0) !== (src.amount > 0)) return;
+        var sel = document.querySelector('#bankView .bcat[data-id="' + x.id + '"]');
+        if (sel && Array.prototype.some.call(sel.options, function (o) { return o.value === t.value; })) { sel.value = t.value; bankChoice[x.id] = t.value; n++; }
+      });
+      if (n) { var note = $("bankView").querySelector(".bfill"); if (!note) { note = document.createElement("p"); note.className = "bfill sub"; t.closest(".panel").querySelector("h2").insertAdjacentElement("afterend", note); } note.textContent = "Also set " + n + " other “" + src.description + "” " + (n === 1 ? "transaction" : "transactions") + " to the same category."; }
+    }
   });
   $("bankView").addEventListener("click", function (e) {
     var b = e.target.closest && e.target.closest("[data-bank]"); if (!b) return;
