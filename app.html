@@ -311,7 +311,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 #debtView .dtable td{height:auto;background:none}#debtView .dtable .sm{border:1px solid var(--line,#D6E3F8);background:#fff;border-radius:8px;padding:6px 12px;font:600 13px inherit;font-family:inherit;color:var(--blue);cursor:pointer}
 .dtable td{padding:9px 8px;border-bottom:1px solid #EEF2FA;font-variant-numeric:tabular-nums;vertical-align:top}.dtable td small{display:block;color:#51638f;font-size:12px}
 .dtable tr.on td{background:#EEF4FF;font-weight:700}.dtable td.neg{color:#B42318;font-weight:700}.dtable td.act{text-align:right}
-.dh3{margin:20px 0 6px;font-size:16px}.dlegend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:#51638f;margin-bottom:4px}
+.dh3{margin:20px 0 6px;font-size:16px}.dnote{margin:-2px 0 8px;font-size:13px}.dlegend-debts{gap:8px 16px}.dlegend-debts i{height:4px;width:16px}.hb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;position:relative;top:-1px}.dlegend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:#51638f;margin-bottom:4px}
 .dlegend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}.dlegend i.dash{height:0;border-top:3px dashed}
 .chart{position:relative;width:100%}.chart svg{display:block;font-family:inherit}.chart .tip{position:absolute;min-width:180px;background:#fff;border:1px solid var(--line,#D6E3F8);border-radius:10px;box-shadow:0 8px 24px rgba(11,31,77,.15);padding:8px 10px;font-size:13px;pointer-events:none}
 .chart .tip b{display:block;margin-bottom:4px}.chart .tip div{display:flex;align-items:center;gap:6px;padding:1px 0}.chart .tip div span{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600}.chart .tip i{width:10px;height:10px;border-radius:3px;display:inline-block}
@@ -1896,7 +1896,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (plan === "avalanche") order.sort(function (a, b) { return b.apr - a.apr || a.b - b.b; });
     if (plan === "snowball") order.sort(function (a, b) { return a.b - b.b || b.apr - a.apr; });
     var budget = ds.reduce(function (a, d) { return a + d.m; }, 0) + (plan === "min" ? 0 : Math.max(0, +extra || 0));
-    var totals = [ds.reduce(function (a, d) { return a + d.b; }, 0)], interest = 0, paidOff = {}, MAX = 600;
+    var totals = [ds.reduce(function (a, d) { return a + d.b; }, 0)], interest = 0, paidOff = {}, MAX = 600, per = {};
+    ds.forEach(function (d) { per[d.id] = [d.b]; });
     for (var mo = 1; mo <= MAX; mo++) {
       var live = ds.filter(function (d) { return d.b > 0.005; }); if (!live.length) break;
       live.forEach(function (d) { var it = d.b * d.r; d.b += it; interest += it; });
@@ -1908,9 +1909,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       }
       ds.forEach(function (d) { if (d.b <= 0.005 && !paidOff[d.id]) { d.b = 0; paidOff[d.id] = mo; } });
       totals.push(ds.reduce(function (a, d) { return a + d.b; }, 0));
+      ds.forEach(function (d) { per[d.id].push(d.b); });
     }
     var done = ds.every(function (d) { return d.b <= 0.005; });
-    return { totals: totals, months: done ? totals.length - 1 : null, interest: interest, paidOff: paidOff, order: order.map(function (d) { return d.id; }), monthly: budget };
+    return { totals: totals, months: done ? totals.length - 1 : null, interest: interest, paidOff: paidOff, order: order.map(function (d) { return d.id; }), monthly: budget, per: per };
   }
   function addMonths(n) { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + n); return d; }
   function monYr(n) { return addMonths(n).toLocaleDateString("en-US", { month: "short", year: "numeric" }); }
@@ -1918,6 +1920,18 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 
   /* ---------- charts (plain SVG, no libraries) ---------- */
   var CH = { a: "#2a78d6", m: "#eb6834", s: "#1baf7a", ink: "#0B1F4D", sub: "#51638f", grid: "#E3EAF7" };
+  var PLAN_INK = { on: "#0B1F4D", off: "#7C8DB5", min: "#A9B4CC" };   // combined chart: your plan dark, the other plan lighter, minimums dashed
+  // one color per debt, in the order debts were added (a debt keeps its color when others are paid off or removed)
+  var DEBT_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"], OTHER_COLOR = "#8a94a6";
+  function debtColor(id) { var i = debtState.debts.map(function (d) { return d.id; }).indexOf(id); return i >= 0 && i < DEBT_COLORS.length ? DEBT_COLORS[i] : OTHER_COLOR; }
+  // x-axis for monthly charts: whole years once the span is long, so "Nov 26" never reads like a day
+  function monthTicks(n) {
+    if (n <= 30) { var st = n > 12 ? 6 : 3, a = []; for (var i = 0; i < n; i += st) a.push(i); return a; }
+    var yrs = (n - 1) / 12, ys = yrs > 20 ? 5 : yrs > 9 ? 2 : 1, out = [];
+    for (var j = 0; j < n; j++) { var d = addMonths(j); if (d.getMonth() === 0 && d.getFullYear() % ys === 0) out.push(j); }
+    return out;
+  }
+  function monthLabel(n) { return function (i, long) { var d = addMonths(i); return long ? monYr(i) : n > 30 ? String(d.getFullYear()) : d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }).replace(" ", " ’"); }; }
   function niceMax(v) { if (v <= 0) return 1; var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
   function kfmt(v) { return v >= 1000 ? "$" + (v / 1000).toFixed(v % 1000 === 0 || v >= 10000 ? 0 : 1) + "k" : "$" + Math.round(v); }
   function lineChart(el, series, opts) {
@@ -1927,20 +1941,23 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var x = function (i) { return L + (n <= 1 ? 0 : i / (n - 1) * pw); }, y = function (v) { return T + ph - v / maxV * ph; };
     var h = '<svg width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(opts.label) + '">';
     for (var g = 0; g <= ticks; g++) { var gv = stepV * g; h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(gv) + '" y2="' + y(gv) + '" stroke="' + CH.grid + '"/><text x="' + (L - 8) + '" y="' + (y(gv) + 4) + '" text-anchor="end" font-size="11" fill="' + CH.sub + '">' + kfmt(gv) + "</text>"; }
-    var step = n > 72 ? 24 : n > 30 ? 12 : n > 12 ? 6 : 3;
-    for (var t = 0; t < n; t += step) h += '<text x="' + x(t) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + CH.sub + '">' + (opts.xLabel ? opts.xLabel(t) : t) + "</text>";
+    var step = n > 72 ? 24 : n > 30 ? 12 : n > 12 ? 6 : 3, tks = opts.ticks ? opts.ticks(n) : null;
+    if (!tks) { tks = []; for (var t0 = 0; t0 < n; t0 += step) tks.push(t0); }
+    tks.forEach(function (t) { h += '<text x="' + x(t) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + CH.sub + '">' + (opts.xLabel ? opts.xLabel(t) : t) + "</text>"; });
     series.forEach(function (s) {
       var pts = s.values.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
       h += '<polyline points="' + pts + '" fill="none" stroke="' + s.color + '" stroke-width="' + (s.bold ? 2.5 : 2) + '" stroke-linejoin="round" stroke-linecap="round"' + (s.dash ? ' stroke-dasharray="6 5"' : "") + "/>";
     });
     // direct labels where each line reaches zero (or its last point)
     var used = [];
-    series.forEach(function (s) {
+    if (opts.noLabels) series.forEach(function (s) { var i = s.values.length - 1; h += '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="#fff" stroke-width="2"/>'; });
+    else series.forEach(function (s) {
+      if (s.tag === "") return;
       var i = s.values.length - 1, lx = Math.min(x(i), W - R - 4), ly = y(s.values[i]) - 8, lab = W < 520 && s.short ? s.short : (s.tag || s.name);
       while (used.some(function (u) { return Math.abs(u - ly) < 14; })) ly -= 14;
       used.push(ly);
       h += '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="#fff" stroke-width="2"/>' +
-        '<text x="' + lx + '" y="' + ly + '" text-anchor="end" font-size="12" font-weight="700" fill="' + CH.ink + '">' + esc(lab) + "</text>";
+        '<text x="' + lx + '" y="' + ly + '" text-anchor="end" font-size="12" font-weight="700" fill="' + CH.ink + '" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">' + esc(lab) + "</text>";
     });
     h += '<line class="xh" x1="0" x2="0" y1="' + T + '" y2="' + (T + ph) + '" stroke="' + CH.ink + '" stroke-width="1" opacity="0"/>';
     h += '<rect x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '" fill="transparent" class="hit"/></svg><div class="tip" hidden></div>';
@@ -1949,7 +1966,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     function move(cx) {
       var r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(n - 1, Math.round((cx - r.left - L) / pw * (n - 1))));
       xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("opacity", ".35");
-      tip.innerHTML = "<b>" + esc(opts.xLabel ? opts.xLabel(i, true) : i) + "</b>" + series.map(function (s) {
+      tip.innerHTML = "<b>" + esc(opts.xLabel ? opts.xLabel(i, true) : i) + "</b>" + series.filter(function (s) { return !opts.hideZero || s.values[Math.min(i, s.values.length - 1)] > 0.005; }).map(function (s) {
         var v = s.values[Math.min(i, s.values.length - 1)];
         return '<div><i style="background:' + s.color + '"></i>' + esc(s.name) + "<span>" + money.format(v) + "</span></div>"; }).join("");
       tip.hidden = false; var tx = x(i) + 12; if (tx + 190 > W) tx = x(i) - 200; tip.style.left = tx + "px"; tip.style.top = (T + 6) + "px";
@@ -1961,7 +1978,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function barList(el, rows, opts) {   // horizontal bars, one hue, value labels
     var max = Math.max.apply(null, rows.map(function (r) { return r.v; })) || 1;
     el.innerHTML = rows.map(function (r) {
-      return '<div class="hb" title="' + esc(r.tip || "") + '"><span class="hb-l">' + esc(r.label) + '</span><span class="hb-t"><i style="width:' + Math.max(1, r.v / max * 100).toFixed(1) + "%;" + (r.from !== undefined ? "margin-left:" + (r.from / max * 100).toFixed(1) + "%;" : "") + "background:" + (r.color || CH.a) + '"></i></span><span class="hb-v">' + esc(r.text) + "</span></div>";
+      return '<div class="hb" title="' + esc(r.tip || "") + '"><span class="hb-l">' + (r.color ? '<b class="hb-dot" style="background:' + r.color + '"></b>' : "") + esc(r.label) + '</span><span class="hb-t"><i style="width:' + Math.max(1, r.v / max * 100).toFixed(1) + "%;" + (r.from !== undefined ? "margin-left:" + (r.from / max * 100).toFixed(1) + "%;" : "") + "background:" + (r.color || CH.a) + '"></i></span><span class="hb-v">' + esc(r.text) + "</span></div>";
     }).join("") + (opts && opts.foot ? '<p class="sub" style="margin-top:6px">' + opts.foot + "</p>" : "");
   }
 
@@ -2040,7 +2057,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var row = function (nm, s, k) { var save = sims.min.months === null ? null : sims.min.interest - s.interest; return '<tr class="' + (k === debtState.plan ? "on" : "") + '"><td>' + nm + "</td><td>" + (s.months === null ? "Never at this rate" : monYr(s.months)) + "</td><td>" + (s.months === null ? "—" : money.format(s.interest)) + "</td><td>" + (k === "min" ? "—" : save === null ? "Pays it off" : money.format(Math.max(0, save))) + "</td></tr>"; };
     h += '<div class="dscroll"><table class="dtable cmp"><thead><tr><th>Plan</th><th>Debt-free by</th><th>Total interest</th><th>Interest saved</th></tr></thead><tbody>' +
       row("Minimums only", sims.min, "min") + row("Snowball", sims.snowball, "snowball") + row("Avalanche", sims.avalanche, "avalanche") + "</tbody></table></div>";
-    h += '<h3 class="dh3">Your total debt over time</h3><div class="dlegend"><span><i style="background:' + CH.a + '"></i>Avalanche</span><span><i style="background:' + CH.s + '"></i>Snowball</span><span><i class="dash" style="border-color:' + CH.m + '"></i>Minimums only</span></div><div id="dLine"></div>';
+    var same = sims.avalanche.totals.length === sims.snowball.totals.length && sims.avalanche.totals.every(function (v, i) { return Math.abs(v - sims.snowball.totals[i]) < 1; });
+    var planName = debtState.plan === "avalanche" ? "Avalanche" : "Snowball";
+    h += '<h3 class="dh3">All your debts combined</h3><p class="sub dnote">One line per payoff plan, so you can compare them. Each debt has its own line in the next chart.</p><div class="dlegend">' +
+      (same ? '<span><i style="background:' + PLAN_INK.on + '"></i>Avalanche &amp; Snowball (same result for your debts)</span>' : '<span><i style="background:' + (debtState.plan === "avalanche" ? PLAN_INK.on : PLAN_INK.off) + '"></i>Avalanche' + (debtState.plan === "avalanche" ? " (your plan)" : "") + '</span><span><i style="background:' + (debtState.plan === "snowball" ? PLAN_INK.on : PLAN_INK.off) + '"></i>Snowball' + (debtState.plan === "snowball" ? " (your plan)" : "") + "</span>") +
+      '<span><i class="dash" style="border-color:' + PLAN_INK.min + '"></i>Minimums only</span></div><div id="dLine"></div>';
+    h += '<h3 class="dh3">Each debt over time</h3><p class="sub dnote">Your ' + planName + ' plan. Hover or drag across to see every balance that month.</p><div class="dlegend dlegend-debts" id="dEachLeg"></div><div id="dEach"></div>';
     h += '<h3 class="dh3">When each debt is paid off</h3><div id="dOrder"></div></div>';
     // advice
     var adv = debtAdvice(ds, sims);
@@ -2059,18 +2081,33 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     v.innerHTML = h;
     // charts
     var len = Math.max(sims.avalanche.totals.length, sims.snowball.totals.length, Math.min(sims.min.totals.length, Math.max(sims.avalanche.totals.length, sims.snowball.totals.length) * 2, 241));
-    var xl = function (i, long) { return long ? monYr(i) : addMonths(i).toLocaleDateString("en-US", { month: "short", year: "2-digit" }); };
+    var xl = monthLabel(len);
     var minVals = sims.min.totals.slice(0, len);
     lineChart($("dLine"), [
-      { name: "Minimums only", short: "Minimums", color: CH.m, dash: true, values: minVals, tag: sims.min.months === null || sims.min.months > len - 1 ? "Minimums: still owing" : "Minimums · " + monYr(sims.min.months) },
-      { name: "Snowball", short: "Snowball", color: CH.s, values: sims.snowball.totals, tag: "Snowball · " + (sims.snowball.months === null ? "—" : monYr(sims.snowball.months)) },
-      { name: "Avalanche", short: "Avalanche", color: CH.a, bold: true, values: sims.avalanche.totals, tag: "Avalanche · " + (sims.avalanche.months === null ? "—" : monYr(sims.avalanche.months)) }
-    ], { label: "Total debt over time for each payoff plan", xLabel: xl, h: 270 });
+      { name: "Minimums only", short: "Minimums", color: PLAN_INK.min, dash: true, values: minVals, tag: sims.min.months === null || sims.min.months > len - 1 ? "Minimums: still owing" : "Minimums · " + monYr(sims.min.months) },
+    ].concat(same ? [
+      { name: "Avalanche & Snowball", short: "Both plans", color: PLAN_INK.on, bold: true, values: sims.avalanche.totals, tag: "Both plans · " + (sims.avalanche.months === null ? "—" : monYr(sims.avalanche.months)) }
+    ] : (function () {
+      var sameEnd = sims.avalanche.months !== null && sims.avalanche.months === sims.snowball.months;
+      var sn = { name: "Snowball", short: "Snowball", color: debtState.plan === "snowball" ? PLAN_INK.on : PLAN_INK.off, bold: debtState.plan === "snowball", values: sims.snowball.totals, tag: sameEnd ? "" : "Snowball · " + (sims.snowball.months === null ? "—" : monYr(sims.snowball.months)) };
+      var av = { name: "Avalanche", short: sameEnd ? "Both plans" : "Avalanche", color: debtState.plan === "avalanche" ? PLAN_INK.on : PLAN_INK.off, bold: debtState.plan === "avalanche", values: sims.avalanche.totals, tag: (sameEnd ? "Both plans · " : "Avalanche · ") + (sims.avalanche.months === null ? "—" : monYr(sims.avalanche.months)) };
+      return debtState.plan === "avalanche" ? [sn, av] : [av, sn];   // your plan drawn on top
+    })()), { label: "Total debt over time for each payoff plan", xLabel: xl, ticks: monthTicks, h: 270 });
+    // each debt on the chosen plan; debts past the 8th share one gray "Other debts" line
+    var eachLen = sim.totals.length, own = [], otherVals = null, otherN = 0;
+    ds.forEach(function (d) {
+      var po = sim.paidOff[d.id], vals = (sim.per[d.id] || []).slice(0, po ? po + 1 : eachLen), c = debtColor(d.id);
+      if (c === OTHER_COLOR) { var full = (sim.per[d.id] || []).slice(0, eachLen); otherN++; otherVals = otherVals ? otherVals.map(function (v, i) { return v + (full[i] || 0); }) : full.slice(); }
+      else own.push({ name: d.name, color: c, values: vals });
+    });
+    if (otherVals) own.push({ name: otherN + " other debt" + (otherN === 1 ? "" : "s"), color: OTHER_COLOR, values: otherVals });
+    $("dEachLeg").innerHTML = own.map(function (s) { return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + "</span>"; }).join("");
+    lineChart($("dEach"), own, { label: "Each debt's balance over time on your " + planName + " plan", xLabel: monthLabel(eachLen), ticks: monthTicks, h: 270, noLabels: true, hideZero: true });
     var byId = {}; ds.forEach(function (d) { byId[d.id] = d; });
     var maxM = Math.max.apply(null, sim.order.map(function (id) { return sim.paidOff[id] || 0; }).concat([1]));
-    barList($("dOrder"), sim.order.slice().sort(function (a, b) { return (sim.paidOff[a] || 1e9) - (sim.paidOff[b] || 1e9); }).map(function (id) { var m = sim.paidOff[id]; return { label: byId[id].name, v: m || maxM, text: m ? monYr(m) : "Not yet", tip: m ? "Paid off in " + durTxt(m) : "" }; }),
+    barList($("dOrder"), sim.order.slice().sort(function (a, b) { return (sim.paidOff[a] || 1e9) - (sim.paidOff[b] || 1e9); }).map(function (id) { var m = sim.paidOff[id]; return { label: byId[id].name, v: m || maxM, text: m ? monYr(m) : "Not yet", tip: m ? "Paid off in " + durTxt(m) : "", color: debtColor(id) }; }),
       { foot: "Bar length is how long until each debt is gone. Extra money goes to " + (debtState.plan === "avalanche" ? "the highest rate" : "the smallest balance") + " first: " + sim.order.filter(function (id) { return (+byId[id].min || 0) > 0; }).map(function (id) { return esc(byId[id].name); }).join(" → ") + "." });
-    barList($("dBal"), all.filter(function (d) { return +d.balance > 0; }).slice().sort(function (a, b) { return b.balance - a.balance; }).map(function (d) { return { label: d.name, v: +d.balance, text: money.format(+d.balance) + " · " + (+d.apr || 0) + "%", tip: money.format(monthInterest(d)) + " interest a month" }; }));
+    barList($("dBal"), all.filter(function (d) { return +d.balance > 0; }).slice().sort(function (a, b) { return b.balance - a.balance; }).map(function (d) { return { label: d.name, v: +d.balance, text: money.format(+d.balance) + " · " + (+d.apr || 0) + "%", tip: money.format(monthInterest(d)) + " interest a month", color: debtColor(d.id) }; }));
     if (debtState.hist.length >= 2) {
       var hs = debtState.hist.slice(-60);
       var top0 = Math.max.apply(null, debtState.hist.map(function (x) { return x.t; }));
