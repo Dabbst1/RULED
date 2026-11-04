@@ -858,8 +858,21 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }
     $("pickList").innerHTML = h || '<p class="sub">Nothing matches. Type your own name below.</p>';
   }
+  // Rows the sheet works out itself (Tithe = 10% of income). A category with the same name always means that row.
+  function calcRowFor(name, L, m) {
+    L = L || layout; m = m || meta; var k = String(name || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase(), hit = null;
+    L.rows.forEach(function (r) { if (r.toggle && ((m.labels && m.labels[r.row]) || r.label).replace(/[^a-zA-Z0-9]/g, "").toLowerCase() === k) hit = r.row; });
+    return hit;
+  }
   function addNamed(name) {
     name = String(name).trim().slice(0, 40); if (!name) return;
+    var cr = calcRowFor(name);
+    if (cr !== null && !(pick.mode === "swap" && pick.row === cr)) {
+      meta.hidden = meta.hidden.filter(function (x) { return x !== cr; });
+      if (meta.removed.indexOf(cr) >= 0) restoreRow(cr); else { $("pickMsg").textContent = builtinName(cr) + " is already on your budget. It’s worked out for you: 10% of your income."; }
+      if (pick.mode === "swap") $("pickDlg").close();
+      return;
+    }
     if (pick.mode === "swap") {
       var def = (layout.rows.filter(function (x) { return x.type === "data" && x.row === pick.row; })[0] || {}).label;
       addGone(meta, meta.labels[pick.row] || def); unGone(meta, name);
@@ -1528,6 +1541,18 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     meta.gone = Array.isArray(m.gone) ? m.gone : [];
     pruneMeta();
     Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
+    // A typed-in category named like a worked-out row (e.g. an extra "Tithe") is folded back into the real row
+    var fixed = false;
+    meta.custom.slice().forEach(function (slotRow) {
+      var cr = calcRowFor(meta.labels[slotRow]); if (cr === null) return;
+      var sl = null; layout.rows.forEach(function (r) { if (r.type === "custom") r.slots.forEach(function (x) { if (x.row === slotRow) sl = x; }); });
+      if (sl) Object.keys(sl.cells).forEach(function (c) { if (sl.cells[c].k === "input") { inputs[sl.cells[c].a] = 0; delete actual[sl.cells[c].a]; } });
+      meta.custom = meta.custom.filter(function (x) { return x !== slotRow; }); delete meta.labels[slotRow];
+      meta.removed = meta.removed.filter(function (x) { return x !== cr; }); meta.hidden = meta.hidden.filter(function (x) { return x !== cr; });
+      var ro = rowObj(cr); if (ro && ro.toggle) inputs[ro.toggle] = 1;
+      unGone(meta, ro && ro.label); fixed = true;
+    });
+    if (fixed) setTimeout(scheduleSave, 0);
   }
   function fillInputs() {
     Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) {
