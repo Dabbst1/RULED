@@ -957,7 +957,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave(); setStatus("Filled from your plan.");
   });
   $("fillAllPlan").addEventListener("click", function () {
-    var n = 0; Array.prototype.forEach.call(document.querySelectorAll("#sheet input.in"), function (el) { var a = el.getAttribute("data-a"); if (!actual[a] && inputs[a]) { actual[a] = inputs[a]; n++; } });
+    var n = 0; Array.prototype.forEach.call(document.querySelectorAll("#sheet input.in"), function (el) {
+      var as = boxAddrs(el), emptyActual = as.every(function (a) { return !actual[a]; }), hasPlan = as.some(function (a) { return inputs[a]; });
+      if (emptyActual && hasPlan) { as.forEach(function (a) { actual[a] = inputs[a] || 0; }); n++; }
+    });
     fillInputs(); schedule(); scheduleSave(); setStatus(n ? "Filled every empty row from your plan." : "Nothing to fill.");
   });
   $("viewSeg").addEventListener("click", function (e) { var v = e.target.getAttribute && e.target.getAttribute("data-view"); if (v && v !== view) setView(v); });
@@ -1015,6 +1018,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   }
 
   /* ---------- full-month boxes: one amount, split between the two paychecks ---------- */
+  function boxAddrs(el) {   // the amount cells one box stands for: its own, or both paychecks in Full month view
+    if (el.classList.contains("fullin")) return [el.getAttribute("data-fb"), el.getAttribute("data-fc")];
+    var a = el.getAttribute("data-a"); return a ? [a] : [];
+  }
   function fullSum(el) { var v = vals(); return Math.round(((+v[el.getAttribute("data-fb")] || 0) + (+v[el.getAttribute("data-fc")] || 0)) * 100) / 100; }
   function fullRatio(el) {   // keep the row's own split; a new row follows how your income is split; nothing yet = all on Paycheck 1
     var v = vals(), b = +v[el.getAttribute("data-fb")] || 0, c = +v[el.getAttribute("data-fc")] || 0;
@@ -1078,10 +1085,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var ea = Array.prototype.slice.call(tr.querySelectorAll("input.in")), eb = Array.prototype.slice.call(nb.querySelectorAll("input.in"));
     ea.forEach(function (el, i) {
       var o = eb[i]; if (!o) return;
-      var xa = el.getAttribute("data-a"), xb = o.getAttribute("data-a"), t = inputs[xa];
-      inputs[xa] = inputs[xb]; inputs[xb] = t;
-      var ta = actual[xa]; actual[xa] = actual[xb]; actual[xb] = ta;
-      el.value = fmt(vals()[xa]); o.value = fmt(vals()[xb]);
+      var pa = boxAddrs(el), pb = boxAddrs(o);
+      pa.forEach(function (xa, j) { var xb = pb[j]; if (!xb) return; var t = inputs[xa]; inputs[xa] = inputs[xb]; inputs[xb] = t; var ta = actual[xa]; actual[xa] = actual[xb]; actual[xb] = ta; });
+      el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(vals()[pa[0]]); o.value = o.classList.contains("fullin") ? fmt(fullSum(o)) : fmt(vals()[pb[0]]);
     });
     schedule(); scheduleSave(); buildRowsPanel();
     return b;
@@ -1394,7 +1400,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   }
   function calcInputs() {
     var o = Object.assign({}, inputs);
-    if (view === "actual") Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) { var a = el.getAttribute("data-a"); if (a) o[a] = actual[a] || 0; });
+    if (view === "actual") Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) { boxAddrs(el).forEach(function (a) { o[a] = actual[a] || 0; }); });
     // hidden rows are left out of every total until they're shown again (their amounts stay saved)
     (meta.hidden || []).forEach(function (rn) { rowAddrsAll(rn).forEach(function (a) { o[a] = 0; }); });
     return o;
