@@ -231,6 +231,7 @@ td.lab .mv{flex-direction:row}
 .actl{display:block;margin-top:6px;font-size:13px;color:#0F766E;font-weight:600}.actl i{font-style:normal;font-weight:700}.cmpna{color:#6B7BA6;font-size:13px;white-space:nowrap;margin-left:auto}
 .cmph{margin:12px 0 4px;font-size:14px;color:var(--muted,#47598A)}.cmpbad{color:#B91C1C}.cmpgood{color:#15803D}.step b.cmpbad,.step b.cmpgood{margin-left:auto;white-space:nowrap}
 .actnote .linkbtn{background:none;border:0;color:#1D4ED8;font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
+#planTip.side::before{content:"";position:absolute;left:-8px;top:var(--arrow,22px);width:14px;height:14px;background:#fff;border-left:1px solid #99E6D4;border-bottom:1px solid #99E6D4;transform:rotate(45deg)}
 #planTip{position:fixed;z-index:70;background:#fff;border:1px solid #99E6D4;border-radius:14px;box-shadow:0 14px 34px rgba(15,60,50,.22);padding:12px 14px;font-size:13px;min-width:220px;max-width:300px}
 #planTip[hidden]{display:none}#planTip h4{margin:0 0 6px;font-size:13px;color:#115E59}#planTip div{display:flex;justify-content:space-between;gap:14px;padding:2px 0}#planTip .tot{border-top:1px solid #E1EEF0;margin-top:4px;padding-top:5px;font-weight:700}
 #planTip button{margin-top:8px;width:100%;border:0;border-radius:10px;padding:8px 10px;background:linear-gradient(135deg,#0F766E,#14917F);color:#fff;font-weight:600;cursor:pointer;font-family:inherit}
@@ -938,8 +939,21 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + '<div class="tot"><span>Total plan</span><b>' + money.format(tot) + "</b></div>" +
       (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>');
     var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
-    tip.hidden = false; tip.style.left = Math.max(8, Math.min(r.left + 24, window.innerWidth - tip.offsetWidth - 8)) + "px";
-    var top = r.bottom - 10; if (top + tip.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - tip.offsetHeight + 4); tip.style.top = top + "px";
+    tip.hidden = false;
+    // Put it in the empty space to the right of the budget, level with the row, so it never covers a category.
+    // Only when there isn't room (phones, narrow windows) does it fall back to just below the row.
+    var tbl = (tr.closest(".scroller") || tr.closest("table") || tr).getBoundingClientRect(), rr = tr.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+    if (window.innerWidth - tbl.right >= tw + 24) {
+      tip.classList.add("side");
+      tip.style.left = (tbl.right + 14) + "px";
+      var tTop = Math.max(8, Math.min(rr.top + rr.height / 2 - 28, window.innerHeight - th - 8));
+      tip.style.top = tTop + "px";
+      tip.style.setProperty("--arrow", Math.max(10, Math.min(th - 24, rr.top + rr.height / 2 - tTop - 7)) + "px");   // pointer lines up with the row
+    } else {
+      tip.classList.remove("side");
+      tip.style.left = Math.max(8, Math.min(r.left + 24, window.innerWidth - tw - 8)) + "px";
+      var top = r.bottom - 10; if (top + th > window.innerHeight - 8) top = Math.max(8, r.top - th + 4); tip.style.top = top + "px";
+    }
   }
   $("sheet").addEventListener("mouseover", function (e) {
     if (view !== "actual") return;
