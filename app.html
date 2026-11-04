@@ -436,7 +436,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="projectYear" title="Use this month's plan for the rest of the year">Project my year</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
-  <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
+  <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><div class="seg" id="paySeg" hidden role="group" aria-label="How to show paychecks"><button type="button" data-pay="split" title="Show Paycheck 1 and Paycheck 2 side by side">Split checks</button><button type="button" data-pay="full" title="Show one amount per category for the whole month">Full month</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
   <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time. Hover over a category to see its plan. <button type="button" class="linkbtn" id="fillAllPlan">No changes? Fill every empty row from my plan</button></p>
   <div id="planTip" hidden></div>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
@@ -574,9 +574,17 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 
   /* ---------- build the table (labels only, no formulas) ---------- */
   var needFit = false, fitMode = false, phoneOn = false, phoneMonth = new Date().getMonth();
+  // Monthly budget: show both paychecks, or one full-month amount per category (remembered on this device)
+  var payPref = "split";
+  try { payPref = localStorage.getItem("monerem-payview") === "full" ? "full" : "split"; } catch (e) {}
+  function payFull() { return !!layout && layout.id === "monthly-budget" && payPref === "full"; }
+  function visKeys() { return layout.cols.map(function (c) { return c.key; }).filter(function (k) { return !payFull() || (k !== "B" && k !== "C"); }); }
+  function paintPaySeg() { Array.prototype.forEach.call(document.querySelectorAll("#paySeg button"), function (b) { var on = b.getAttribute("data-pay") === payPref; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
   function build() {
-    var cols = layout.cols, keys = cols.map(function (c) { return c.key; });
+    var fullPay = payFull(), allKeys = layout.cols.map(function (c) { return c.key; });
+    var cols = fullPay ? layout.cols.filter(function (c) { return c.key !== "B" && c.key !== "C"; }).map(function (c) { return c.key === "D" ? { key: "D", w: 350 } : c; }) : layout.cols, keys = cols.map(function (c) { return c.key; });
     var phone = window.innerWidth < 600 && cols.length <= 4, fc = phone ? 112 : layout.firstColWidth;
+    if (fullPay && !phone) fc += 120;   // same page width as the split view, so nothing else on the page moves
     var cw = cols.map(function (c) { return phone ? Math.round(c.w * 0.58) : c.w; });
     // Phone + wide table: size the month columns so exactly two fit, and let swiping snap two months at a time.
     var snapMode = window.innerWidth < 700 && cols.length > 4;
@@ -597,7 +605,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     $("sheet").className = fitMode ? "fit" : ""; needFit = fitMode;
     $("sheet").parentNode.className = "scroller" + (autoMode ? " snap" : "");
     document.documentElement.style.setProperty("--a", fc + "px");
-    $("title").textContent = layout.name; $("hint").textContent = layout.hint;
+    $("title").textContent = layout.name; $("hint").textContent = layout.hint + (fullPay ? " Showing the full month for each category. Choose Split checks to see Paycheck 1 and Paycheck 2." : "");
     $("mstep").hidden = !snapMode; phoneOn = snapMode;
     inputs = {};
     var html = "", open = false, blkIdx = 0, clearable = {};
@@ -617,9 +625,14 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     }
     function cellsHtml(rowNo, label, cells) {
       var h = "";
+      allKeys.forEach(function (c) { var cell = cells[c]; if (cell && cell.k === "input") inputs[cell.a] = cell.v; });   // hidden paycheck columns still keep their amounts
       keys.concat(layout.cols.some(function (c) { return c.key === "O"; }) ? [] : []).forEach(function (c) {
         var cell = cells[c];
         if (!cell) { h += "<td></td>"; return; }
+        if (fullPay && c === "D" && cell.k === "calc" && cells.B && cells.B.k === "input" && cells.C && cells.C.k === "input") {
+          h += '<td><input class="in fullin" type="text" inputmode="decimal" autocomplete="off" data-fb="' + cells.B.a + '" data-fc="' + cells.C.a + '" aria-label="' + esc(label + " full month") + '" placeholder="$0.00"></td>';
+          return;
+        }
         if (cell.k === "input") {
           inputs[cell.a] = cell.v;
           h += '<td><input class="in" type="text" inputmode="decimal" autocomplete="off" data-a="' + cell.a + '" aria-label="' + esc(label + " " + c) + '" placeholder="$0.00"></td>';
@@ -641,7 +654,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       if (row.type === "header") {
         if (open) html += "</tbody></table>";
         html += tstart + '<thead><tr><th class="lab">Category</th>';
-        keys.forEach(function (k, j) { html += "<th>" + (clearable[k] ? '<button type="button" class="clr" data-clr="' + k + '" title="Clear every amount in this column" aria-label="Clear column ' + esc(row.labels[j] || k) + '">&times;</button>' : "") + esc(row.labels[j] || "") + "</th>"; });
+        keys.forEach(function (k) { var lab = fullPay && k === "D" ? "Full month" : row.labels[allKeys.indexOf(k)] || ""; html += "<th>" + (clearable[k] ? '<button type="button" class="clr" data-clr="' + k + '" title="Clear every amount in this column" aria-label="Clear column ' + esc(lab || k) + '">&times;</button>' : "") + esc(lab) + "</th>"; });
         html += "</tr></thead><tbody>"; open = true; return;
       }
       if (!open) { html += tstart + "<tbody>"; open = true; }
@@ -993,6 +1006,28 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     setStatus("Cleared " + nm + ". Press Undo to bring it back.");
   }
 
+  /* ---------- full-month boxes: one amount, split between the two paychecks ---------- */
+  function fullSum(el) { var v = vals(); return Math.round(((+v[el.getAttribute("data-fb")] || 0) + (+v[el.getAttribute("data-fc")] || 0)) * 100) / 100; }
+  function fullRatio(el) {   // keep the row's own split; a new row follows how your income is split; nothing yet = all on Paycheck 1
+    var v = vals(), b = +v[el.getAttribute("data-fb")] || 0, c = +v[el.getAttribute("data-fc")] || 0;
+    if (b + c > 0) return b / (b + c);
+    var ib = +(lastValues && lastValues.B7) || 0, ic = +(lastValues && lastValues.C7) || 0;
+    return ib + ic > 0 ? ib / (ib + ic) : 1;
+  }
+  $("sheet").addEventListener("focusin", function (e) { var t = e.target; if (t.classList && t.classList.contains("fullin")) { t._ratio = fullRatio(t); var s0 = fullSum(t); t.value = s0 ? String(s0) : ""; } });
+  $("sheet").addEventListener("focusout", function (e) { var t = e.target; if (t.classList && t.classList.contains("fullin")) t.value = fmt(fullSum(t)); });
+  $("sheet").addEventListener("input", function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains("fullin")) return;
+    var x = parseMoney(t.value), r = typeof t._ratio === "number" ? t._ratio : fullRatio(t), b = Math.round(x * r * 100) / 100;
+    vals()[t.getAttribute("data-fb")] = b; vals()[t.getAttribute("data-fc")] = Math.round((x - b) * 100) / 100;
+    schedule(); scheduleSave();
+  });
+  $("paySeg").addEventListener("click", function (e) {
+    var p = e.target.getAttribute && e.target.getAttribute("data-pay"); if (!p || p === payPref) return;
+    payPref = p; try { localStorage.setItem("monerem-payview", p); } catch (er) {}
+    paintPaySeg(); build(); fillInputs(); buildRowsPanel(); run();
+  });
+  paintPaySeg();
   /* ---------- events ---------- */
   $("sheet").addEventListener("input", function (e) {
     var t = e.target, a = t.getAttribute("data-a"), nm = t.getAttribute("data-nm");
@@ -1186,7 +1221,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function sectionize() {
     if (!layout || !SPLIT[layout.id]) return;
     var rows = expenseRows(); if (!rows.length) return;
-    var tbody = rows[0].parentNode, keys = layout.cols.map(function (c) { return c.key; });
+    var tbody = rows[0].parentNode, keys = visKeys();
     Array.prototype.forEach.call(tbody.querySelectorAll("tr.grp, tr.savehint"), function (g) { g.remove(); });
     var anchor = tbody.querySelector("tr.addrow") || tbody.querySelector("tr.total") || null;
     var buckets = {}; SECTIONS.forEach(function (s) { buckets[s.k] = []; });
@@ -1222,6 +1257,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var el = null, tds = tr.children;
     for (var i = 1; i < tds.length; i++) {
       var c = tds[i], i2 = c.querySelector("input.in");
+      if (i2 && i2.classList.contains("fullin")) { if (key === "D") return fullSum(i2); continue; }
       var a = i2 ? i2.getAttribute("data-a") : c.getAttribute("data-c");
       if (a && a.replace(/[0-9]/g, "") === key) { el = i2 ? { a: a, input: true } : { a: a }; break; }
     }
@@ -1271,7 +1307,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   }
   function updateSections() {
     var cfg = layout && SPLIT[layout.id]; if (!cfg) return;
-    var keys = layout.cols.map(function (c) { return c.key; }), haveCalc = Object.keys(lastValues).length > 0;
+    var keys = visKeys(), haveCalc = Object.keys(lastValues).length > 0;
     var byTag = { need: 0, want: 0, save: 0 };
     Array.prototype.forEach.call(document.querySelectorAll("#sheet tr.grp"), function (g) {
       var k = g.getAttribute("data-grp");
@@ -1393,6 +1429,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       }
     });
     lastValues = values || {}; updateSections();
+    Array.prototype.forEach.call(document.querySelectorAll("input.fullin"), function (el) { if (el !== document.activeElement) el.value = fmt(fullSum(el)); });
     if (needFit) { needFit = false; fitFont(); }
   }
 
@@ -1433,7 +1470,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   }
   function fillInputs() {
     Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) {
-      el.value = fmt(vals()[el.getAttribute("data-a")]);
+      el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(vals()[el.getAttribute("data-a")]);
     });
   }
 
@@ -1458,7 +1495,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     $("picker").hidden = true;
     fetch(tool.id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (l) {
       if (mine !== loadSeq) return;
-      layout = l; $("picker").hidden = !l.months; $("viewSeg").hidden = !l.months; if (!l.months && view !== "plan") setView("plan", true); if (l.months && wantActual) { setView("actual", true); } else if (l.months) { setView(view, true); } wantActual = false; loadData(mine);
+      layout = l; $("picker").hidden = !l.months; $("viewSeg").hidden = !l.months; $("paySeg").hidden = l.id !== "monthly-budget"; if (!l.months && view !== "plan") setView("plan", true); if (l.months && wantActual) { setView("actual", true); } else if (l.months) { setView(view, true); } wantActual = false; loadData(mine);
     });
   }
   function loadData(mine) {
