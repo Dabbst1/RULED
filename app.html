@@ -2276,11 +2276,17 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var g = rcGuessCat(t.description, merchantKey(t.description), cats);
     return g ? "ex:" + g : "";
   }
-  function bankLoad(doSync) {
-    bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">Loading…</p>';
-    return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list")]).then(function (a) {
+  var bankPoll = 0;
+  function bankLoad(doSync, force) {
+    bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
+    return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[2]; return syncCardsToDebt(bankData.accounts);
-    }).then(renderBank).catch(function (e) {
+    }).then(function () {
+      renderBank();
+      // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
+      clearTimeout(bankPoll);
+      if (bankData && bankData.refreshing) { var tries = 0; (function again() { bankPoll = setTimeout(function () { if ($("bankView").hidden) return; bankCall("sync").then(function (d) { bankData = d; syncCardsToDebt(d.accounts); renderBank(); if (d.refreshing && ++tries < 4) again(); }).catch(function () {}); }, 7000); })(); }
+    }).catch(function (e) {
       $("bankView").innerHTML = '<h1>Bank accounts</h1><div class="panel"><p>' + (e.status === 404 ? "Bank linking isn’t set up yet. Deploy the <b>bank</b> function in Supabase to turn it on." : "Couldn’t load your bank accounts (" + esc(e.message) + "). Try again in a moment.") + "</p></div>";
     });
   }
@@ -2318,7 +2324,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         var b = a.balance || {}, bal = b.kind === "credit" ? (b.owed !== null && b.owed !== undefined ? money.format(b.owed) + " owed" : "—") : (b.current !== null && b.current !== undefined ? money.format(b.current) : "—");
         var sub = b.kind === "cash" && b.available !== null && b.available !== undefined && b.available !== b.current ? money.format(b.available) + " available" : "";
         return '<div class="bacct"><div><b>' + esc(a.name || "Account") + (a.last4 ? " ••" + esc(a.last4) : "") + "</b><small>" + esc(a.institution || "") + (a.subcategory ? " · " + esc(String(a.subcategory).replace(/_/g, " ")) : "") + (a.category === "credit" ? " · on your Debt tab" : "") + (a.status && a.status !== "active" ? " · " + esc(a.status) : "") + "</small></div>" +
-          '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (a.balance_at ? "updated " + new Date(a.balance_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "") + "</small></div>" +
+          '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (bankData && bankData.refreshing ? "getting the latest…" : a.balance_at ? "as of " + new Date(a.balance_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + "</small></div>" +
           '<button type="button" class="sm" data-bank="unlink" data-id="' + esc(a.id) + '" data-name="' + esc((a.name || "this account") + (a.last4 ? " ••" + a.last4 : "")) + '">Unlink</button></div>';
       }).join("") + "</div>";
       // review
@@ -2429,7 +2435,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var b = e.target.closest && e.target.closest("[data-bank]"); if (!b) return;
     var a = b.getAttribute("data-bank");
     if (a === "link") bankLink();
-    else if (a === "sync") bankLoad(true);
+    else if (a === "sync") bankLoad(true, true);
     else if (a === "import") bankImport();
     else if (a === "skip") { var ids = bankSelected(); if (!ids.length) return; bankCall("mark", { ids: ids, state: "skipped" }).then(function () { bankData.review = bankData.review.filter(function (t) { return ids.indexOf(t.id) < 0; }); bankMsg = "Skipped " + ids.length + "."; renderBank(); }); }
     else if (a === "unlink") {
