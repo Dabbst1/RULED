@@ -321,6 +321,20 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .dadv li::before{position:absolute;left:12px;top:10px;font-weight:800}.dadv li.warn{background:#FEF3F2}.dadv li.warn::before{content:"!";color:#B42318}
 .dadv li.info{background:#F3F7FE}.dadv li.info::before{content:"i";color:var(--blue);font-style:italic;font-family:serif}.dadv li.good{background:#F0FAF3}.dadv li.good::before{content:"\2713";color:#15803D}
 .dsteps{margin:0;padding-left:20px}.dsteps li{padding:4px 0}.dform h2{font-size:18px}
+.dform{padding:18px 20px}.dform.editing{border:2px solid var(--blue,#2a78d6);box-shadow:0 0 0 4px rgba(42,120,214,.12)}
+.dform-head h2{margin:0;font-size:18px}.dform-head .sub{margin:4px 0 0;font-size:13px}
+.dfields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;margin-top:14px}
+.dfld{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0}.dfld[hidden]{display:none}
+.dfld>span{font-size:13px;font-weight:600;color:var(--ink,#0b1f4d)}
+.dfld input,.dfld select{width:100%;height:44px;margin:0;padding:0 12px;font:inherit;font-size:15px;border:1px solid var(--line,#D6E3F8);border-radius:10px;background:#fff;color:var(--ink,#0b1f4d);box-shadow:inset 0 1px 2px rgba(11,31,77,.05);box-sizing:border-box}
+.dfld input:focus,.dfld select:focus{outline:none;border-color:var(--blue,#2a78d6);box-shadow:0 0 0 3px rgba(42,120,214,.18)}
+.dfld small{font-size:12px;color:#51638f}
+.dform-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#D6E3F8)}
+.dform-actions>div{display:flex;gap:8px;flex-wrap:wrap}.dform-actions .btn{margin:0;height:42px;padding:0 18px}
+.dform-actions .btn.danger{color:#b42318;border-color:#f3c3be}
+#debtView .dtable tr.dediting td{background:#EEF4FF}
+@media (max-width:820px){.dfields{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.dform{padding:16px}.dfields{grid-template-columns:1fr}.dform-actions,.dform-actions>div{flex-direction:column;align-items:stretch;width:100%}.dform-actions .btn{width:100%}}
 .dscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}#debtView .dplan .seg{border:0;padding:0;background:none;box-shadow:none;border-radius:0}
 @media (max-width:700px){#debtView .cards{grid-template-columns:1fr 1fr}#debtView .cards .stat:last-child{grid-column:auto}#debtView .stat b{font-size:22px}
 .hb{grid-template-columns:1fr auto;row-gap:4px}.hb-t{grid-column:1/-1;grid-row:2}.dtable{min-width:520px}.dtable.cmp{min-width:0}.dtable.cmp th:nth-child(4),.dtable.cmp td:nth-child(4){display:none}.dtable th:nth-child(5),.dtable td:nth-child(5){display:none}.dplan input{width:100%}.dplan label{width:100%}}
@@ -2034,12 +2048,13 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     // debts list
     h += '<div class="panel"><h2>Your debts</h2><div id="dBal"></div><div class="dscroll"><table class="dtable"><thead><tr><th>Debt</th><th>Balance</th><th>Rate</th><th>Minimum</th><th>Interest / mo</th><th>Paid off</th><th></th></tr></thead><tbody>' +
       all.map(function (d) {
-        if (d.id === debtEditing) return '<tr><td colspan="7">' + debtFormHtml(d) + "</td></tr>";
         var po = sim.paidOff[d.id], it = monthInterest(d), inc = !debtComplete(d), bad = !inc && +d.balance > 0 && +d.min <= it + 0.005;
-        return "<tr" + (inc ? ' class="dinc"' : "") + "><td><b>" + esc(d.name) + "</b>" + (d.goalId ? ' <span class="dgoal">Goal</span>' : "") + (d.bankId ? ' <span class="dgoal dbank">Linked bank</span>' : "") + '<small>' + esc(DEBT_TYPES[d.type] || "Other") + (inc ? " · needs rate &amp; minimum" : "") + "</small></td><td>" + money.format(+d.balance || 0) + "</td><td>" + (+d.apr || 0) + "%</td><td>" + money.format(+d.min || 0) + "</td><td" + (bad ? ' class="neg"' : "") + ">" + money.format(it) + "</td><td>" + (+d.balance <= 0 ? "Paid off" : po ? monYr(po) : "—") +
+        return "<tr" + (d.id === debtEditing ? ' class="dediting"' : inc ? ' class="dinc"' : "") + "><td><b>" + esc(d.name) + "</b>" + (d.goalId ? ' <span class="dgoal">Goal</span>' : "") + (d.bankId ? ' <span class="dgoal dbank">Linked bank</span>' : "") + '<small>' + esc(DEBT_TYPES[d.type] || "Other") + (inc ? " · needs rate &amp; minimum" : "") + "</small></td><td>" + money.format(+d.balance || 0) + "</td><td>" + (+d.apr || 0) + "%</td><td>" + money.format(+d.min || 0) + "</td><td" + (bad ? ' class="neg"' : "") + ">" + money.format(it) + "</td><td>" + (+d.balance <= 0 ? "Paid off" : po ? monYr(po) : "—") +
           '</td><td class="act"><button type="button" class="sm" data-debt="edit" data-id="' + d.id + '">Update</button></td></tr>';
       }).join("") + "</tbody></table></div></div>";
-    if (!debtEditing) h += debtFormHtml(null);
+    var editing = debtEditing ? all.filter(function (x) { return x.id === debtEditing; })[0] : null;
+    if (debtEditing && !editing) debtEditing = null;
+    h += debtFormHtml(editing || null);
     if (debtState.hist.length >= 2) h += '<div class="panel"><h2>Your progress</h2><div id="dHist"></div></div>';
     v.innerHTML = h;
     // charts
@@ -2065,15 +2080,19 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   }
   function debtFormHtml(d) {
     var e = d || {}, t = '<option value="">Choose a type</option>' + Object.keys(DEBT_TYPES).map(function (k) { return '<option value="' + k + '"' + (e.type === k ? " selected" : "") + ">" + DEBT_TYPES[k] + "</option>"; }).join("");
-    return '<form class="panel billform dform" data-dform="' + (d ? d.id : "new") + '"><h2 style="grid-column:1/-1;margin:0">' + (d ? "Update " + esc(d.name) : "Add a debt") + "</h2>" +
-      '<label>Name<input name="name" maxlength="40" required placeholder="Visa, car loan…" value="' + esc(e.name || "") + '"></label>' +
-      '<label>Type<select name="type">' + t + "</select></label>" +
-      '<label>Balance owed<input name="balance" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.balance || 0) : "") + '">' + (e.bankId ? '<small class="sub">Updates from your linked bank</small>' : "") + "</label>" +
-      '<label>Interest rate (APR %)<input name="apr" inputmode="decimal" placeholder="24.99" value="' + (d ? (+e.apr || 0) : "") + '"></label>' +
-      '<label>Minimum payment<input name="min" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.min || 0) : "") + '"></label>' +
-      '<label class="dlimit"' + (e.type === "card" ? "" : " hidden") + '>Credit limit (optional)<input name="limit" inputmode="decimal" placeholder="$0.00" value="' + (+e.limit ? money.format(+e.limit) : "") + '"></label>' +
-      '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><button class="btn" type="submit">' + (d ? "Save" : "Add debt") + "</button>" +
-      (d ? '<button class="btn ghost" type="button" data-debt="cancel">Cancel</button><button class="btn ghost" type="button" data-debt="paid" data-id="' + d.id + '">Mark paid off</button><button class="btn ghost" type="button" data-debt="del" data-id="' + d.id + '">Delete</button>' : "") + "</div></form>";
+    var fld = function (label, input, extra, cls) { return '<label class="dfld' + (cls ? " " + cls : "") + '"' + (extra || "") + "><span>" + label + "</span>" + input + "</label>"; };
+    return '<form class="panel dform' + (d ? " editing" : "") + '" data-dform="' + (d ? d.id : "new") + '">' +
+      '<div class="dform-head"><h2>' + (d ? "Update " + esc(d.name) : "Add a debt") + "</h2>" + (d ? '<p class="sub">Change any box, then press Save.</p>' : '<p class="sub">Credit cards, loans, medical bills — anything you owe.</p>') + "</div>" +
+      '<div class="dfields">' +
+      fld("Name", '<input name="name" maxlength="40" required placeholder="Visa, car loan…" value="' + esc(e.name || "") + '">') +
+      fld("Type", '<select name="type">' + t + "</select>") +
+      fld("Balance owed", '<input name="balance" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.balance || 0) : "") + '">' + (e.bankId ? '<small>Updates from your linked bank</small>' : "")) +
+      fld("Interest rate (APR %)", '<input name="apr" inputmode="decimal" placeholder="24.99" value="' + (d ? (+e.apr || 0) : "") + '">') +
+      fld("Minimum payment", '<input name="min" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.min || 0) : "") + '">') +
+      fld("Credit limit (optional)", '<input name="limit" inputmode="decimal" placeholder="$0.00" value="' + (+e.limit ? money.format(+e.limit) : "") + '">', e.type === "card" ? "" : " hidden", "dlimit") +
+      "</div>" +
+      '<div class="dform-actions"><div><button class="btn" type="submit">' + (d ? "Save" : "Add debt") + "</button>" + (d ? '<button class="btn ghost" type="button" data-debt="cancel">Cancel</button>' : "") + "</div>" +
+      (d ? '<div><button class="btn ghost" type="button" data-debt="paid" data-id="' + d.id + '">Mark paid off</button><button class="btn ghost danger" type="button" data-debt="del" data-id="' + d.id + '">Delete</button></div>' : "") + "</div></form>";
   }
   $("debtView").addEventListener("change", function (e) {
     if (e.target.name === "type") { var f = e.target.closest("form"), l = f && f.querySelector(".dlimit"); if (l) l.hidden = e.target.value !== "card"; }
@@ -2091,7 +2110,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var b = e.target.closest && e.target.closest("[data-debt],[data-plan]"); if (!b) return;
     var p = b.getAttribute("data-plan"); if (p && b.closest("#debtView")) { debtState.plan = p; saveDebts(); renderDebt(); return; }
     var a = b.getAttribute("data-debt"), id = b.getAttribute("data-id");
-    if (a === "edit") { debtEditing = id; renderDebt(); var f = document.querySelector('form[data-dform="' + id + '"] input[name=balance]'); if (f) { f.focus(); f.select(); } }
+    if (a === "edit") { debtEditing = id; renderDebt(); var fm = document.querySelector('form[data-dform="' + id + '"]'), f = fm && fm.querySelector("input[name=balance]"); if (fm) fm.scrollIntoView({ behavior: "smooth", block: "center" }); if (f) { f.focus({ preventScroll: true }); f.select(); } }
     else if (a === "cancel") { debtEditing = null; renderDebt(); }
     else if (a === "del") { if (window.confirm("Delete this debt?")) { debtState.debts.forEach(function (x) { if (x.id === id) pushDebtToGoal(x, true); }); debtState.debts = debtState.debts.filter(function (x) { return x.id !== id; }); debtEditing = null; saveDebts(); renderDebt(); } }
     else if (a === "paid") { var d = debtState.debts.filter(function (x) { return x.id === id; })[0]; if (d) { d.balance = 0; pushDebtToGoal(d); debtEditing = null; saveDebts(); renderDebt(); } }
