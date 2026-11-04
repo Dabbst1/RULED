@@ -315,7 +315,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 #debtView .dtable td{height:auto;background:none}#debtView .dtable .sm{border:1px solid var(--line,#D6E3F8);background:#fff;border-radius:8px;padding:6px 12px;font:600 13px inherit;font-family:inherit;color:var(--blue);cursor:pointer}
 .dtable td{padding:9px 8px;border-bottom:1px solid #EEF2FA;font-variant-numeric:tabular-nums;vertical-align:top}.dtable td small{display:block;color:#51638f;font-size:12px}
 .dtable tr.on td{background:#EEF4FF;font-weight:700}.dtable td.neg{color:#B42318;font-weight:700}.dtable td.act{text-align:right}
-.dh3{margin:20px 0 6px;font-size:16px}.dnote{margin:-2px 0 8px;font-size:13px}.dlegend-debts{gap:8px 16px}.dlegend-debts i{height:4px;width:16px}.hb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;position:relative;top:-1px}.dlegend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:#51638f;margin-bottom:4px}
+.dh3{margin:20px 0 6px;font-size:16px}.paysofar{margin:10px 0 14px;padding:12px 14px;background:#F3F7FE;border:1px solid #D6E3F8;border-radius:12px;font-size:13px}.paysofar .psrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.paysofar .psrow span{color:#51638f;font-variant-numeric:tabular-nums}
+.paysofar .psbar{height:8px;background:#E3EAF7;border-radius:99px;margin:8px 0;overflow:hidden}.paysofar .psbar i{display:block;height:100%;background:#2a78d6;border-radius:99px}.paysofar p{margin:0;color:#51638f;line-height:1.45}
+.dnote{margin:-2px 0 8px;font-size:13px}.dlegend-debts{gap:8px 16px}.dlegend-debts i{height:4px;width:16px}.hb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;position:relative;top:-1px}.dlegend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:#51638f;margin-bottom:4px}
 .dlegend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}.dlegend i.dash{height:0;border-top:3px dashed}
 .chart{position:relative;width:100%}.chart svg{display:block;font-family:inherit}.chart .tip{position:absolute;min-width:180px;background:#fff;border:1px solid var(--line,#D6E3F8);border-radius:10px;box-shadow:0 8px 24px rgba(11,31,77,.15);padding:8px 10px;font-size:13px;pointer-events:none}
 .chart .tip b{display:block;margin-bottom:4px}.chart .tip div{display:flex;align-items:center;gap:6px;padding:1px 0}.chart .tip div span{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600}.chart .tip i{width:10px;height:10px;border-radius:3px;display:inline-block}
@@ -1346,7 +1348,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       g.querySelector(".gtags").innerHTML = tagKeys.map(function (t) { return '<span class="tag tag-' + t + '">' + TAGS[t].n + "</span>"; }).join("");
     });
     var box = $("split"); if (!box) return;
-    var inc = lastValues[cfg.inc] || 0;
+    var inc = lastValues[cfg.inc] || 0, soFar = null;
+    // Actual view, month still going: pay that hasn't arrived yet would make every % look huge, so measure against the planned income
+    if (view === "actual" && layout.id === "monthly-budget" && !monthOver()) { var pi = plannedIncome(); if (pi > inc + 0.004) { soFar = inc; inc = pi; } }
     if ((!haveCalc || inc <= 0) && $("saveHint")) $("saveHint").parentNode.parentNode.hidden = true;
     if (!haveCalc || inc <= 0) {
       box.innerHTML = '<div class="splithead"><b>50/30/20 check</b><span class="sub">Add your income to see how your spending splits into needs, wants, and savings.</span></div>';
@@ -1370,6 +1374,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       { t: "save", v: byTag.save, note: "" }
     ];
     var h = '<div class="splithead"><b>50/30/20 check</b><span class="sub">Based on ' + money.format(inc) + " income per " + cfg.per + (view === "actual" ? ", using what you actually spent" : "") + "</span></div>";
+    if (soFar !== null) {
+      var got = Math.max(0, Math.min(100, soFar / inc * 100));
+      h += '<div class="paysofar"><div class="psrow"><b>Pay received so far</b><span>' + money.format(soFar) + " of " + money.format(inc) + " planned · " + Math.round(got) + '%</span></div>' +
+        '<div class="psbar"><i style="width:' + got.toFixed(1) + '%"></i></div>' +
+        '<p>The month isn’t over, so these percentages use your <b>planned</b> income for the whole month. As the rest of your pay comes in, they’ll stay put; they only change if your pay or spending is different from the plan.</p></div>';
+    }
     parts.forEach(function (p) {
       var T = TAGS[p.t], pct = inc ? p.v / inc * 100 : 0, target = inc * T.pct / 100;
       var ok = p.t === "save" ? pct >= T.pct - 0.5 : pct <= T.pct + 0.5;
@@ -1383,7 +1393,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var tipHtml = budgetTips(inc, byTag, cfg);
     if (tipsOff) h += '<p class="tipsoff"><button type="button" class="linkbtn" data-tips="on">Show suggestions</button></p>';
     else h += tipHtml;
-    if (left > 0.5 && !tipsOff) h += '<p class="leftline"><b>' + money.format(left) + "</b> isn&rsquo;t assigned to anything yet." +
+    if (left > 0.5 && !tipsOff) h += '<p class="leftline"><b>' + money.format(left) + (view === "actual" ? "</b> of your income isn&rsquo;t spent yet." : "</b> isn&rsquo;t assigned to anything yet.") +
       (byTag.save < inc * 0.2 ? " Add it to <b>Savings</b> to reach your 20%." : "") + "</p>";
     if (left < 0) h += '<p class="warnline">You&rsquo;re spending ' + money.format(-left) + " more than you bring in this " + cfg.per + ".</p>";
     box.innerHTML = h;
@@ -1434,6 +1444,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     sh.style.setProperty("--fs", "12px");
   }
   // Monthly net: green when positive; negative stays a soft "pending" red until the month is over, then turns red
+  function plannedIncome() {   // Monthly plan's Total Income, leaving out hidden rows
+    var rows = [3], hid = meta.hidden || [], t = 0, n;
+    for (n = 50; n <= 59; n++) rows.push(n); for (n = 150; n <= 169; n++) rows.push(n);
+    rows.forEach(function (r) { if (hid.indexOf(r) < 0) t += (+inputs["B" + r] || 0) + (+inputs["C" + r] || 0); });
+    return Math.round(t * 100) / 100;
+  }
   function monthOver() {
     if (!layout || !layout.months) return true;
     var y = Number($("selYear").value), m = Number($("selMonth").value) - 1, now = new Date();
