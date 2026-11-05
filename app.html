@@ -2220,7 +2220,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   });
   $("dueBanner").addEventListener("click", function (e) {
     if (e.target.getAttribute("data-t") !== "bills") return;
-    tool = TOOLS.filter(function (x) { return x.id === "bills"; })[0]; history.replaceState(null, "", "#bills"); makeTabs(); openTool();
+    tool = TOOLS.filter(function (x) { return x.id === "bills"; })[0]; navPush("bills"); makeTabs(); openTool();
   });
 
   /* ---------- keep Savings lines and savings goals in step ---------- */
@@ -3272,7 +3272,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
   }
   $("who").addEventListener("click", function () {
-    tool = TOOLS.filter(function (t) { return t.id === "account"; })[0]; history.replaceState(null, "", "#account"); makeTabs(); openTool();
+    tool = TOOLS.filter(function (t) { return t.id === "account"; })[0]; navPush("account"); makeTabs(); openTool();
   });
   $("profForm").addEventListener("submit", function (e) {
     e.preventDefault(); var u = currentUser(), name = $("acName").value.trim().slice(0, 60), email = $("acEmail").value.trim();
@@ -3370,7 +3370,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     else if (w === "skip") { setup = { skipped: true }; doSave("setup", { __setup: setup }); goHome(); }
     else if (w === "build") buildFromWizard();
   });
-  function goHome() { tool = TOOLS[0]; history.replaceState(null, "", "#home"); makeTabs(); openTool(); }
+  function goHome() { tool = TOOLS[0]; navPush("home"); makeTabs(); openTool(); }
 
   // Turn a member's picks into table settings for one tool's layout.
   function metaFromSetup(L, su) {
@@ -3670,7 +3670,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
     $("wizard").innerHTML = '<h2>Building your tables…</h2>';
     Promise.all(jobs).then(function () {
-      tool = TOOLS.filter(function (t) { return t.id === "monthly-budget"; })[0]; history.replaceState(null, "", "#monthly-budget"); makeTabs(); openTool();
+      tool = TOOLS.filter(function (t) { return t.id === "monthly-budget"; })[0]; navPush("monthly-budget"); makeTabs(); openTool();
     });
   }
 
@@ -3775,8 +3775,22 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   function prevYM(y, mi) { return mi === 0 ? [y - 1, 11] : [y, mi - 1]; }
   function pct(x) { return Math.round(x * 100) + "%"; }
   function num(v) { var x = parseFloat(String(v == null ? "" : v).replace(/[^0-9.\-]/g, "")); return isFinite(x) ? x : 0; }
-  function goTool(id, sub, act) { if (sub) moneySub = sub; wantActual = !!act; tool = TOOLS.filter(function (x) { return x.id === id; })[0]; history.replaceState(null, "", "#" + id); makeTabs(); openTool(); window.scrollTo(0, 0); }
+  function goTool(id, sub, act) { if (sub) moneySub = sub; wantActual = !!act; tool = TOOLS.filter(function (x) { return x.id === id; })[0]; navPush(id); makeTabs(); openTool(); window.scrollTo(0, 0); }
 
+  /* ---------- Back button: every tab and Tools page is its own step in history ---------- */
+  function navState() { return { t: tool.id, sub: tool.type === "money" ? moneySub : null }; }
+  function navPush(id) {
+    var cur = history.state || {}, sub = id === "money" ? moneySub : null;
+    if (cur.t === id && (cur.sub || null) === sub && location.hash === "#" + id) return;
+    history.pushState({ t: id, sub: sub }, "", "#" + id);
+  }
+  window.addEventListener("popstate", function (e) {
+    if ($("app").hidden) return;
+    var st = e.state || {}, id = st.t || location.hash.slice(1) || "home";
+    var t = TOOLS.filter(function (x) { return x.id === id; })[0]; if (!t) return;
+    hideTerm(); if (st.sub) moneySub = st.sub;
+    tool = t; wantActual = false; makeTabs(); openTool(); window.scrollTo(0, 0);
+  });
   /* ---------- the Tools tab ---------- */
   var moneySub = "paycheck";
   var MSUBS = [["paycheck", "Paycheck"], ["afford", "Can I afford it?"], ["subs", "Subscriptions"], ["networth", "Net worth"], ["reports", "Reports"], ["learn", "Learn"], ["receipts", "Receipts"]];
@@ -3796,7 +3810,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     var c = e.target.closest && e.target.closest("[data-msub]"); if (!c) return;
     var s = c.getAttribute("data-msub");
     if (s === "receipts") { goTool("receipts"); return; }
-    if (s === moneySub) return; moneySub = s; renderMoney(loadSeq);
+    if (s === moneySub) return; moneySub = s; history.pushState({ t: "money", sub: s }, "", "#money"); renderMoney(loadSeq);
   });
   function mBody(h) { $("mBody").innerHTML = h; $("mBody").classList.remove("view-in"); void $("mBody").offsetWidth; $("mBody").classList.add("view-in"); }
   function fld(label, input, help) { return '<label class="dfld"><span>' + label + "</span>" + input + (help ? "<small>" + help + "</small>" : "") + "</label>"; }
@@ -4323,7 +4337,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   $("homeBody").addEventListener("click", function (e) {
     var id = e.target.getAttribute && e.target.getAttribute("data-go"); if (!id) return;
     wantActual = !!e.target.getAttribute("data-act");
-    tool = TOOLS.filter(function (x) { return x.id === id; })[0]; history.replaceState(null, "", "#" + id); makeTabs(); openTool();
+    tool = TOOLS.filter(function (x) { return x.id === id; })[0]; navPush(id); makeTabs(); openTool();
   });
 
   /* ---------- copy last month ---------- */
@@ -4423,7 +4437,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   }
   $("tabs").addEventListener("click", function (e) {
     var btn = e.target.closest && e.target.closest("[data-t]"); var id = btn && btn.getAttribute("data-t"); if (!id || id === tool.id) return;
-    tool = TOOLS.filter(function (t) { return t.id === id; })[0]; history.replaceState(null, "", "#" + id);
+    tool = TOOLS.filter(function (t) { return t.id === id; })[0]; navPush(id);
     makeTabs(); openTool(); window.scrollTo(0, 0);
   });
   $("sheet").addEventListener("focusout", function () { needFit = true; setTimeout(function () { var ae = document.activeElement; if (!ae || ae.tagName !== "INPUT") { fitFont(); needFit = false; } }, 400); });
@@ -4480,6 +4494,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
       afterLogin();
     });
   }
+  function seedNav() { try { history.replaceState(navState(), "", location.pathname + location.search + "#" + tool.id); } catch (e) {} }
   function afterLogin() {
     $("who").textContent = displayName(session.user) || session.user.email; $("signout").hidden = false;
     var paid = /[?&]paid=1/.test(location.search), tries = 0;
@@ -4530,7 +4545,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   function start(h) {
     loadBills(); Promise.all([loadSetup(), loadPlaced()]).then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
-      makeTabs(); openTool();
+      seedNav(); makeTabs(); openTool();
     });
   }
 
