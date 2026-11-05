@@ -3,10 +3,12 @@
    - Layouts, icons, the Supabase library: show the saved copy instantly, refresh it quietly in the background.
    - NEVER touches Supabase data, login, server math, or Stripe. Those always go straight to the network.
    After you change any file, bump VERSION below so phones pick up the new copy. */
-const VERSION = "monerem-v1";
+const VERSION = "monerem-v2";
 const SHELL = [
   "app.html",
+  "paycheck.js",
   "index.html",
+  "paycheck-calculator.html",
   "monthly-budget.layout.json",
   "yearly-projection.layout.json",
   "manifest.webmanifest",

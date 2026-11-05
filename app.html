@@ -37,6 +37,7 @@ window.RULED_CONFIG = {
 
 /* ---------- PHONE SPEED ---------- */
 (function () {
+  try { var th = localStorage.getItem("monerem-theme"); if (th === "dark" || th === "light") document.documentElement.setAttribute("data-theme", th); } catch (e) {}
   // 1) Table layouts never change while the app is open: download each once, then reuse it instantly on every tab switch.
   var nativeFetch = window.fetch.bind(window), layoutText = {};
   window.fetch = function (input, init) {
@@ -64,6 +65,7 @@ window.RULED_CONFIG = {
 })();
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="paycheck.js"></script>
 
 <style>
 :root{
@@ -445,6 +447,177 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   .btn:active,.tab:active,.mstep button:active{transform:scale(.97)}
   dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 }
+
+/* ==== GROW tools ==== */
+.term{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:help;border-bottom:1px dotted currentColor;display:inline;text-align:inherit}
+.term i{font:700 10px/1 system-ui,sans-serif;font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:3px;border-radius:50%;background:#DCE8FF;color:var(--blue);vertical-align:2px}
+#termPop{position:fixed;z-index:90;width:320px;max-width:calc(100vw - 24px);background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(11,31,77,.22);padding:14px 16px}
+#termPop p{margin:6px 0 8px;font-size:15px;line-height:1.5;color:var(--muted)}
+#termPop[hidden]{display:none}
+@media (max-width:700px){#termPop{left:12px!important;right:12px;width:auto;top:auto!important;bottom:calc(80px + env(safe-area-inset-bottom))}}
+.mchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:4px 0 16px;padding:2px}
+.mchips::-webkit-scrollbar{display:none}
+.mchips button{flex:0 0 auto;font:600 14px/1 inherit;padding:10px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;white-space:nowrap}
+.mchips button[aria-selected="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.dfields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 14px;margin-top:10px}
+.dfld small{font-size:12.5px;color:var(--muted)}
+.dfld[hidden]{display:none}
+.payres small{display:block;color:var(--muted);font-weight:600;font-size:13px}
+.big{display:block;font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.big.neg,b.neg{color:var(--bad)}
+.paybar{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:12px 0 10px;gap:2px}
+.paybar i{display:block;min-width:3px}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:15px}
+.kv:first-of-type{border-top:0}
+.kv span{display:flex;align-items:center;gap:8px;min-width:0}
+.kv span>i{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.kv b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.kv.tot{font-weight:700;border-top:2px solid var(--ink)}
+.kv .x,.subr .x{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.tagb{font:600 11px/1 inherit;color:var(--blue);background:#EAF1FF;border-radius:99px;padding:3px 7px;margin-left:4px}
+.fine{font-size:12.5px;margin-top:10px}
+.verdict{border-left:6px solid}
+.verdict.good{border-left-color:#15803D;background:#F0FBF3}
+.verdict.warn{border-left-color:#D97706;background:#FFF8EB}
+.verdict.bad{border-left-color:#DC2626;background:#FFF1F1}
+.verdict b{font-size:18px}.verdict p{margin-top:6px}
+.afseg button{min-height:40px}
+.subrow{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.subrow small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.subrow>div:first-child{min-width:0;word-break:break-word}
+.subr{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.subr b small{font-weight:500;color:var(--muted)}
+.subr span{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.subr .sm,.panel .sm{font:600 13px/1 inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--blue);cursor:pointer}
+.tips{margin:6px 0 0 18px;display:grid;gap:8px}
+.tips li{line-height:1.5}
+details.panel summary{cursor:pointer;list-style-position:outside}
+.gloss details{border-top:1px solid var(--line);padding:10px 0}
+.gloss details:first-child{border-top:0}
+.gloss summary{cursor:pointer;font-weight:600}
+.gloss p{margin-top:6px;color:var(--muted)}
+.nwtop small{display:block;color:var(--muted);font-weight:600}
+.spark{width:100%;height:64px;margin-top:8px;display:block}
+.spark polyline{fill:none;stroke:var(--blue);stroke-width:2.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.spark .zero{stroke:var(--line);stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+.hbars{display:grid;gap:8px;margin-top:8px}
+.hb{display:grid;grid-template-columns:minmax(90px,30%) 1fr auto;gap:10px;align-items:center;font-size:14px}
+.hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb div{height:12px;background:#EEF2FA;border-radius:99px;overflow:hidden}
+.hb i{display:block;height:100%;background:var(--blue);border-radius:99px}
+.hb b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.hb small{display:block;font-size:11px;font-weight:600}
+.hb .up{color:#C2410C}.hb .dn{color:#15803D}
+.vbars{display:flex;align-items:flex-end;gap:8px;height:170px;margin:10px 0 6px}
+.vb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:12px}
+.vb i{display:block;width:100%;max-width:46px;background:#BFD3F6;border-radius:6px 6px 2px 2px}
+.vb i.now{background:var(--blue)}
+.vb b{font-size:11px;color:var(--muted);font-weight:600}
+.checkin h2 small,.road h2 small{font-size:13px;color:var(--muted);font-weight:600;margin-left:6px}
+.checkin.done{display:flex;align-items:center;background:#F0FBF3}
+.checkin.done b{display:block;color:#15803D}.checkin.done span{color:var(--muted);font-size:14px}
+.ck{margin:8px 0 4px 20px;display:grid;gap:8px;line-height:1.5}
+.checkin .btn{margin-top:10px}
+.rstep{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.rstep:first-of-type{border-top:0}
+.rstep .tick{width:28px;height:28px;flex:0 0 28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 13px/1 inherit;background:#EEF4FF;color:var(--muted);border:1px solid var(--line)}
+.rstep.done .tick{background:#15803D;color:#fff;border-color:#15803D}
+.rstep.cur .tick{background:var(--blue);color:#fff;border-color:var(--blue)}
+.rstep .st{flex:1;min-width:180px;font-weight:600;padding-top:3px}
+.rstep .st span{display:block;font-weight:400;color:var(--muted);font-size:14px;margin-top:2px}
+.rstep.done .st{color:var(--muted);font-weight:500}
+.rstep.cur{background:linear-gradient(90deg,#F2F7FF,transparent);border-radius:12px;padding:12px 8px;margin:0 -8px}
+.rstep .ra{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:40px}
+.rstep .ra button{font:600 14px/1 inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--blue);cursor:pointer}
+.rstep .ra button:first-child{background:var(--blue);color:#fff;border-color:var(--blue)}
+.rstep .undo{border:0;background:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer}
+.rollnote{margin:0 0 10px;padding:10px 14px;background:#F0FBF3;border:1px solid #BFE6CB;border-radius:12px;font-size:14px;line-height:1.6}
+.rollnote .linkbtn{border:0;background:none;padding:0;font:600 14px/1.6 inherit;color:var(--blue);text-decoration:underline;cursor:pointer}
+.rchip{display:inline-block;background:#fff;border:1px solid #BFE6CB;border-radius:99px;padding:1px 8px;margin:2px 0;font-weight:600;white-space:nowrap}
+#calPanel .btn{margin-top:8px}
+@media (max-width:700px){.big{font-size:34px}.dfields{grid-template-columns:1fr 1fr}.dfields .dfld:has(select[name="state"]){grid-column:1/-1}.hb{grid-template-columns:minmax(80px,34%) 1fr auto}.rstep .ra{padding-left:0}}
+
+/* ==== DARK MODE ==== */
+:root[data-theme="dark"]{color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark}}
+
+:root[data-theme="dark"]{--paper:#0B1220;--ink:#E6EDFB;--muted:#9AABCF;--rule:#26334F;--line:#26334F;--blue:#6E9BFF;--blue-dark:#8FB2FF;--sheet:#121B2E;--hl:#1C2B4A;
+--good-bg:#12351F;--good:#6EE7A0;--bad-bg:#3D1620;--bad:#FF8A9A;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);--shadow-lg:0 2px 4px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}
+:root[data-theme="dark"] body{background:#0B1220!important;color:var(--ink)}
+:root[data-theme="dark"] .panel,:root[data-theme="dark"] .card,:root[data-theme="dark"] .stat,:root[data-theme="dark"] .goalcard,:root[data-theme="dark"] .bill,:root[data-theme="dark"] .billform,:root[data-theme="dark"] .split,:root[data-theme="dark"] .mstep,:root[data-theme="dark"] .dform,:root[data-theme="dark"] #termPop,:root[data-theme="dark"] .scroller,:root[data-theme="dark"] dialog,:root[data-theme="dark"] .bacct{background:#121B2E!important;color:var(--ink);border-color:var(--line)!important}
+:root[data-theme="dark"] .stat.good,:root[data-theme="dark"] .checkin.done,:root[data-theme="dark"] .verdict.good{background:#0F2A1C!important}
+:root[data-theme="dark"] .verdict.warn{background:#2E2210!important}
+:root[data-theme="dark"] .verdict.bad{background:#2E1218!important}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea,:root[data-theme="dark"] .dfld input,:root[data-theme="dark"] .dfld select,:root[data-theme="dark"] .brow select,:root[data-theme="dark"] .billform input,:root[data-theme="dark"] .billform select{background:#0E1626!important;color:var(--ink)!important;border-color:#2B3A5A!important}
+:root[data-theme="dark"] input::placeholder{color:#6F80A6}
+:root[data-theme="dark"] table,:root[data-theme="dark"] td,:root[data-theme="dark"] th{border-color:var(--line)!important}
+:root[data-theme="dark"] td{background:#121B2E;color:var(--ink)}
+:root[data-theme="dark"] th{background:#1A2744!important;color:#E6EDFB}
+:root[data-theme="dark"] td.lab,:root[data-theme="dark"] th.lab{background:#121B2E!important}
+:root[data-theme="dark"] input.in{background:transparent!important;color:var(--ink)!important}
+:root[data-theme="dark"] tr.tot td,:root[data-theme="dark"] tr.total td,:root[data-theme="dark"] .tot td{background:#1A2744!important}
+:root[data-theme="dark"] .tab,:root[data-theme="dark"] .btn.ghost,:root[data-theme="dark"] .step button,:root[data-theme="dark"] .panel .linkbtn,:root[data-theme="dark"] .bill .ba button,:root[data-theme="dark"] .goalcard button.sm,:root[data-theme="dark"] .mchips button,:root[data-theme="dark"] .subr .sm,:root[data-theme="dark"] .panel .sm,:root[data-theme="dark"] .rstep .ra button,:root[data-theme="dark"] .picker .tab,:root[data-theme="dark"] .toolrow .tab,:root[data-theme="dark"] .seg,:root[data-theme="dark"] .seg button{background:#16213A!important;color:var(--ink)!important;border-color:#2B3A5A!important}
+:root[data-theme="dark"] .seg button.on,:root[data-theme="dark"] .mchips button[aria-selected="true"],:root[data-theme="dark"] .rstep .ra button:first-child{background:var(--blue)!important;color:#0B1220!important}
+:root[data-theme="dark"] .btn{color:#fff}
+:root[data-theme="dark"] header.top{background:rgba(11,18,32,.88)!important;border-color:var(--line)!important}
+:root[data-theme="dark"] .top-right button,:root[data-theme="dark"] #who{background:#16213A!important;color:var(--ink)!important;border-color:var(--line)!important}
+:root[data-theme="dark"] main#app #tabs,:root[data-theme="dark"] .tabs,:root[data-theme="dark"] #tabs{background:rgba(14,22,38,.97)!important;border-color:var(--line)!important}
+:root[data-theme="dark"] main#app #tabs .tab{background:transparent!important;color:#7D8FB8!important}
+:root[data-theme="dark"] main#app #tabs .tab[aria-selected="true"]{color:var(--blue)!important}
+:root[data-theme="dark"] .hb div{background:#1C2843}
+:root[data-theme="dark"] .vb i{background:#2E4675}
+:root[data-theme="dark"] .vb i.now{background:var(--blue)}
+:root[data-theme="dark"] .rollnote{background:#0F2A1C;border-color:#1F4A30}
+:root[data-theme="dark"] .rchip{background:#121B2E;border-color:#1F4A30}
+:root[data-theme="dark"] .rstep .tick{background:#16213A;border-color:var(--line)}
+:root[data-theme="dark"] .rstep.cur{background:linear-gradient(90deg,#16213A,transparent)}
+:root[data-theme="dark"] .term i,:root[data-theme="dark"] .tagb{background:#1C2B4A;color:var(--blue)}
+:root[data-theme="dark"] .due,:root[data-theme="dark"] .status{color:var(--muted)}
+:root[data-theme="dark"] .due{background:#2E2210!important;border-color:#5B4316!important;color:#FBD38D!important}
+:root[data-theme="dark"] .logo{color:var(--ink)}
+:root[data-theme="dark"] .actnote,:root[data-theme="dark"] #planTip,:root[data-theme="dark"] .note2,:root[data-theme="dark"] .savehint,:root[data-theme="dark"] .savehint-in{background:#121B2E!important;color:var(--ink)!important;border-color:var(--line)!important}
+:root[data-theme="dark"] .sheet,:root[data-theme="dark"] .grid label{color:var(--ink)}
+:root[data-theme="dark"] img{opacity:.92}
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]){--paper:#0B1220;--ink:#E6EDFB;--muted:#9AABCF;--rule:#26334F;--line:#26334F;--blue:#6E9BFF;--blue-dark:#8FB2FF;--sheet:#121B2E;--hl:#1C2B4A;
+--good-bg:#12351F;--good:#6EE7A0;--bad-bg:#3D1620;--bad:#FF8A9A;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);--shadow-lg:0 2px 4px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}
+:root:not([data-theme="light"]) body{background:#0B1220!important;color:var(--ink)}
+:root:not([data-theme="light"]) .panel,:root:not([data-theme="light"]) .card,:root:not([data-theme="light"]) .stat,:root:not([data-theme="light"]) .goalcard,:root:not([data-theme="light"]) .bill,:root:not([data-theme="light"]) .billform,:root:not([data-theme="light"]) .split,:root:not([data-theme="light"]) .mstep,:root:not([data-theme="light"]) .dform,:root:not([data-theme="light"]) #termPop,:root:not([data-theme="light"]) .scroller,:root:not([data-theme="light"]) dialog,:root:not([data-theme="light"]) .bacct{background:#121B2E!important;color:var(--ink);border-color:var(--line)!important}
+:root:not([data-theme="light"]) .stat.good,:root:not([data-theme="light"]) .checkin.done,:root:not([data-theme="light"]) .verdict.good{background:#0F2A1C!important}
+:root:not([data-theme="light"]) .verdict.warn{background:#2E2210!important}
+:root:not([data-theme="light"]) .verdict.bad{background:#2E1218!important}
+:root:not([data-theme="light"]) input,:root:not([data-theme="light"]) select,:root:not([data-theme="light"]) textarea,:root:not([data-theme="light"]) .dfld input,:root:not([data-theme="light"]) .dfld select,:root:not([data-theme="light"]) .brow select,:root:not([data-theme="light"]) .billform input,:root:not([data-theme="light"]) .billform select{background:#0E1626!important;color:var(--ink)!important;border-color:#2B3A5A!important}
+:root:not([data-theme="light"]) input::placeholder{color:#6F80A6}
+:root:not([data-theme="light"]) table,:root:not([data-theme="light"]) td,:root:not([data-theme="light"]) th{border-color:var(--line)!important}
+:root:not([data-theme="light"]) td{background:#121B2E;color:var(--ink)}
+:root:not([data-theme="light"]) th{background:#1A2744!important;color:#E6EDFB}
+:root:not([data-theme="light"]) td.lab,:root:not([data-theme="light"]) th.lab{background:#121B2E!important}
+:root:not([data-theme="light"]) input.in{background:transparent!important;color:var(--ink)!important}
+:root:not([data-theme="light"]) tr.tot td,:root:not([data-theme="light"]) tr.total td,:root:not([data-theme="light"]) .tot td{background:#1A2744!important}
+:root:not([data-theme="light"]) .tab,:root:not([data-theme="light"]) .btn.ghost,:root:not([data-theme="light"]) .step button,:root:not([data-theme="light"]) .panel .linkbtn,:root:not([data-theme="light"]) .bill .ba button,:root:not([data-theme="light"]) .goalcard button.sm,:root:not([data-theme="light"]) .mchips button,:root:not([data-theme="light"]) .subr .sm,:root:not([data-theme="light"]) .panel .sm,:root:not([data-theme="light"]) .rstep .ra button,:root:not([data-theme="light"]) .picker .tab,:root:not([data-theme="light"]) .toolrow .tab,:root:not([data-theme="light"]) .seg,:root:not([data-theme="light"]) .seg button{background:#16213A!important;color:var(--ink)!important;border-color:#2B3A5A!important}
+:root:not([data-theme="light"]) .seg button.on,:root:not([data-theme="light"]) .mchips button[aria-selected="true"],:root:not([data-theme="light"]) .rstep .ra button:first-child{background:var(--blue)!important;color:#0B1220!important}
+:root:not([data-theme="light"]) .btn{color:#fff}
+:root:not([data-theme="light"]) header.top{background:rgba(11,18,32,.88)!important;border-color:var(--line)!important}
+:root:not([data-theme="light"]) .top-right button,:root:not([data-theme="light"]) #who{background:#16213A!important;color:var(--ink)!important;border-color:var(--line)!important}
+:root:not([data-theme="light"]) main#app #tabs,:root:not([data-theme="light"]) .tabs,:root:not([data-theme="light"]) #tabs{background:rgba(14,22,38,.97)!important;border-color:var(--line)!important}
+:root:not([data-theme="light"]) main#app #tabs .tab{background:transparent!important;color:#7D8FB8!important}
+:root:not([data-theme="light"]) main#app #tabs .tab[aria-selected="true"]{color:var(--blue)!important}
+:root:not([data-theme="light"]) .hb div{background:#1C2843}
+:root:not([data-theme="light"]) .vb i{background:#2E4675}
+:root:not([data-theme="light"]) .vb i.now{background:var(--blue)}
+:root:not([data-theme="light"]) .rollnote{background:#0F2A1C;border-color:#1F4A30}
+:root:not([data-theme="light"]) .rchip{background:#121B2E;border-color:#1F4A30}
+:root:not([data-theme="light"]) .rstep .tick{background:#16213A;border-color:var(--line)}
+:root:not([data-theme="light"]) .rstep.cur{background:linear-gradient(90deg,#16213A,transparent)}
+:root:not([data-theme="light"]) .term i,:root:not([data-theme="light"]) .tagb{background:#1C2B4A;color:var(--blue)}
+:root:not([data-theme="light"]) .due,:root:not([data-theme="light"]) .status{color:var(--muted)}
+:root:not([data-theme="light"]) .due{background:#2E2210!important;border-color:#5B4316!important;color:#FBD38D!important}
+:root:not([data-theme="light"]) .logo{color:var(--ink)}
+:root:not([data-theme="light"]) .actnote,:root:not([data-theme="light"]) #planTip,:root:not([data-theme="light"]) .note2,:root:not([data-theme="light"]) .savehint,:root:not([data-theme="light"]) .savehint-in{background:#121B2E!important;color:var(--ink)!important;border-color:var(--line)!important}
+:root:not([data-theme="light"]) .sheet,:root:not([data-theme="light"]) .grid label{color:var(--ink)}
+:root:not([data-theme="light"]) img{opacity:.92}
+}
+
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 </style>
@@ -514,6 +687,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><div class="seg" id="paySeg" hidden role="group" aria-label="How to show paychecks"><button type="button" data-pay="split" title="Show Paycheck 1 and Paycheck 2 side by side">Split checks</button><button type="button" data-pay="full" title="Show one amount per category for the whole month">Full month</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
   <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time. Hover over a category to see its plan. <button type="button" class="linkbtn" id="fillAllPlan">No changes? Fill every empty row from my plan</button></p>
   <div id="planTip" hidden></div>
+  <p class="rollnote" id="rollPanel" hidden></p>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
   <div class="status" id="status" role="status" aria-live="polite"></div>
   <div class="mstep" id="mstep" hidden><button type="button" id="mPrev" aria-label="Previous month">&#8249;</button><b id="mName"></b><button type="button" id="mNext" aria-label="Next month">&#8250;</button></div>
@@ -530,6 +704,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
         <p class="pickmsg" id="acMsg" role="status"></p>
       </form></div>
     <div class="panel"><h2>Membership</h2><div id="acMember" class="sub">Loading…</div></div>
+    <div id="themeBox"></div>
     <div class="panel acform"><h2>Password</h2>
       <form id="pwForm">
         <label for="acPw">New password</label><input id="acPw" type="password" minlength="8" autocomplete="new-password" required>
@@ -592,6 +767,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   </section>
   <section id="debtView" hidden></section>
   <section id="bankView" hidden></section>
+  <section id="moneyView" hidden></section>
   <section id="receiptsView" hidden>
     <h1>Receipts</h1>
     <p class="sub">Take a photo or choose a receipt. Monerem reads it on your device, you check the details, and the amount is added to that month&rsquo;s Actual spending. Photos are not saved, only the details.</p>
@@ -612,6 +788,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
       <div><button class="btn" type="submit" id="bSave">Add bill</button> <button type="button" class="tab" id="bCancel" hidden>Cancel</button></div>
     </form>
     <div id="billList"></div>
+    <div class="panel" id="calPanel" hidden></div>
   </section>
 </main>
 
@@ -623,10 +800,11 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     { id: "monthly-budget", name: "Monthly budget" },
     { id: "yearly-projection", name: "Annual budget" },
     { id: "bills", name: "Bills", type: "bills" },
-    { id: "receipts", name: "Receipts", type: "receipts" },
+    { id: "receipts", name: "Receipts", type: "receipts", hidden: true },
     { id: "goals", name: "Goals", type: "goals" },
     { id: "debt", name: "Debt", type: "debt" },
     { id: "bank", name: "Bank", type: "bank" },
+    { id: "money", name: "Tools", type: "money" },
     { id: "setup", name: "My categories", type: "setup", hidden: true },
     { id: "account", name: "Account", type: "account", hidden: true }
   ];
@@ -996,6 +1174,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     $("projectYear").disabled = v === "actual"; $("projectYear").title = v === "actual" ? "Switch to Plan to use this" : "Use this month's plan for the rest of the year";
     ["copyPrev"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
     $("sheet").classList.toggle("actualview", v === "actual");
+    drawRollPanel();
     if (!quiet) { fillInputs(); run(); }
   }
   /* ---------- Actual view: hover a category to see its plan and fill it in ---------- */
@@ -1647,16 +1826,17 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     show("app");
     scrollTab();
     var tp = tool.type;
-    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank";
+    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("moneyView").hidden = tp !== "money"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank";
     renderBanner();
     var vEl = $(tp ? tp + "View" : "sheetView"); if (vEl) { vEl.classList.remove("view-in"); void vEl.offsetWidth; vEl.classList.add("view-in"); }
-    if (tp === "account") { renderAccount(); return; }
+    if (tp === "account") { renderAccount(); $("themeBox").innerHTML = themePanel(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
     if (tp === "bank") { bankLoad(true, true); return; }   // opening the tab asks the bank for anything new
     if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(syncDebtGoals).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
     if (tp === "goals") { loadGoals().then(syncDebtGoals).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
+    if (tp === "money") { renderMoney(mine); return; }
     var isBills = tp === "bills";
     if (isBills) { loadBills().then(function () { if (mine === loadSeq) renderBills(); }); return; }
     setStatus("Loading…");
@@ -1990,7 +2170,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   });
   if (CFG.devMode) window.__rc = { parse: rcParse, date: rcDate };
 
-  function renderBills() {
+  function renderBills() { var r = renderBills0.apply(this, arguments); drawCalPanel(); return r; }
+  function renderBills0() {
     var items = bills.map(function (b) { return { b: b, d: nextDue(b) }; });
     var active = items.filter(function (x) { return x.d; }).sort(function (x, y) { return x.d - y.d; });
     var done = items.filter(function (x) { return !x.d; });
@@ -2235,7 +2416,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     if (!hasEF) out.push({ k: "info", t: "Keep a small emergency fund (even $500–$1,000) so a surprise bill doesn’t go back on a card. You can add one from Savings in your Monthly budget." });
     return out;
   }
-  function renderDebt() {
+  function renderDebt() { var r = renderDebt0.apply(this, arguments); studentPanel(); return r; }
+  function renderDebt0() {
     var v = $("debtView"), ds = debtState.debts, tot = totalDebt();
     if (!ds.length) {
       v.innerHTML = '<h1>Debt</h1><p class="sub">Track what you owe, choose a payoff plan, and see the date you’ll be debt-free.</p>' + debtFormHtml(null) +
@@ -2329,8 +2511,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
       fld("Name", '<input name="name" maxlength="40" required placeholder="Visa, car loan…" value="' + esc(e.name || "") + '">') +
       fld("Type", '<select name="type">' + t + "</select>") +
       fld("Balance owed", '<input name="balance" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.balance || 0) : "") + '">' + (e.bankId ? '<small>Updates from your linked bank</small>' : "")) +
-      fld("Interest rate (APR %)", '<input name="apr" inputmode="decimal" placeholder="24.99" value="' + (d ? (+e.apr || 0) : "") + '">') +
-      fld("Minimum payment", '<input name="min" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.min || 0) : "") + '">') +
+      fld(term("apr", "Interest rate (APR %)"), '<input name="apr" inputmode="decimal" placeholder="24.99" value="' + (d ? (+e.apr || 0) : "") + '">') +
+      fld(term("minpay", "Minimum payment"), '<input name="min" inputmode="decimal" required placeholder="$0.00" value="' + (d ? money.format(+e.min || 0) : "") + '">') +
       fld("Credit limit (optional)", '<input name="limit" inputmode="decimal" placeholder="$0.00" value="' + (+e.limit ? money.format(+e.limit) : "") + '">', e.type === "card" ? "" : " hidden", "dlimit") +
       "</div>" +
       '<div class="dform-actions"><div><button class="btn" type="submit">' + (d ? "Save" : "Add debt") + "</button>" + (d ? '<button class="btn ghost" type="button" data-debt="cancel">Cancel</button>' : "") + "</div>" +
@@ -2380,6 +2562,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   function bankGuess(t, cats, incs) {
     if (t.amount > 0) return PAYCHECK.test(t.description) && incs[0] ? "in:" + incs[0].name : "skip";
     if (NOT_SPENDING.test(t.description)) return "skip";
+    if (rcRules[nk(merchantKey(t.description))] === "__skip") return "skip";
     var g = rcGuessCat(t.description, merchantKey(t.description), cats);
     return g ? "ex:" + g : "";
   }
@@ -2387,7 +2570,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   function bankLoad(doSync, force) {
     bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
     return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
-      bankData = a[2]; return syncCardsToDebt(bankData.accounts);
+      bankData = a[2]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
@@ -2459,6 +2642,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
         h += '<div class="admrow" style="margin-top:12px"><button type="button" class="btn" data-bank="import">Add selected to my budget</button><button type="button" class="btn ghost" data-bank="skip">Skip selected</button></div>';
       }
       h += "</div>";
+      h += rulesPanel();
       v.innerHTML = h;
     });
   }
@@ -2487,7 +2671,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     ids.forEach(function (id) { var sel = document.querySelector('#bankView .bcat[data-id="' + id + '"]'); pick[id] = sel ? sel.value : ""; if (!pick[id]) missing++; });
     if (missing) { bankMsg = "Choose a category for " + missing + (missing === 1 ? " transaction" : " transactions") + " (or “Don’t add”) first."; renderBank(); return; }
     // learn from changes, so next time the guess is right
-    ids.forEach(function (id) { var t = byId[id], p = pick[id]; if (bankChoice[id] && p.indexOf("ex:") === 0) { var k = merchantKey(t.description); if (k) rcRules[nk(k)] = p.slice(3); } });
+    ids.forEach(function (id) { var t = byId[id], p = pick[id], k = merchantKey(t.description); if (!k || t.amount > 0) return; if (p.indexOf("ex:") === 0) rcRules[nk(k)] = p.slice(3); else if (p === "skip" && bankChoice[id]) rcRules[nk(k)] = "__skip"; });
     var months = {};
     ids.forEach(function (id) { if (pick[id] === "skip") return; var d = new Date(byId[id].date); var k = d.getFullYear() + "-" + d.getMonth(); (months[k] = months[k] || []).push(id); });
     var added = [], notFound = [];
@@ -3490,6 +3674,551 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     });
   }
 
+  /* =====================================================================
+     GROW: tools for people who were never taught to budget
+     Paycheck · Can I afford it? · Subscriptions · Net worth · Reports · Learn
+     plus: explainers, money roadmap, weekly check-in, rollover, sorting rules,
+     calendar reminders, dark mode.  Everything saves through doSave/loadSaved.
+     ===================================================================== */
+
+  /* ---------- plain-English explainers ("?" next to a term) ---------- */
+  var GLOSS = {
+    takehome: ["Take-home pay", "What actually lands in your bank account after taxes, retirement and insurance come out. Budget with this number, not your salary."],
+    gross: ["Gross pay", "Your pay before anything is taken out. A $52,000 salary is gross pay. Your take-home pay is less."],
+    k401: ["401(k)", "A retirement account through your job. Money goes in before income tax, so it lowers your tax bill now. Many employers add free money (a “match”) when you put some in."],
+    match: ["Employer match", "Free money your employer adds to your 401(k) when you put money in. Example: “50% match up to 6%” means if you save 6% of your pay, they add 3%. Not taking it is like turning down a raise."],
+    fica: ["Social Security & Medicare (FICA)", "Taxes everyone with a paycheck pays: 6.2% for Social Security and 1.45% for Medicare. They fund your future retirement and health benefits."],
+    bracket: ["Tax bracket", "The rate on your LAST dollars earned, not all of them. Your first dollars are taxed at 10%, the next at 12%, and so on. A raise never makes you take home less."],
+    stddeduction: ["Standard deduction", "An amount of income the government doesn’t tax at all. For 2026 it’s $16,100 if you’re single."],
+    efund: ["Emergency fund", "Cash set aside only for surprises: a car repair, a vet bill, losing your job. It keeps a bad week from turning into credit card debt. Start with $1,000, then build to 3–6 months of expenses."],
+    apr: ["APR (interest rate)", "What borrowing costs you per year. A $1,000 balance on a 24% APR card costs about $240 a year if you don’t pay it down. Higher APR = pay it off first."],
+    minpay: ["Minimum payment", "The least you can pay without a late fee. Paying only the minimum keeps you in debt for years, because most of it goes to interest."],
+    sinking: ["Sinking fund", "Saving a little each month for a cost you know is coming, like car insurance twice a year or holiday gifts, so it never surprises you."],
+    networth: ["Net worth", "Everything you own (cash, savings, investments, your car’s value) minus everything you owe (loans, cards). It’s normal for it to be negative right after college. What matters is that it goes up."],
+    rollover: ["Rollover", "If you planned $200 for groceries and spent $160, the $40 left “rolls over” to next month’s groceries instead of disappearing."],
+    subscription: ["Subscription", "A charge that repeats automatically: streaming, apps, gyms. Small ones add up. $15 a month is $180 a year."],
+    rule503020: ["50/30/20 rule", "A starting point: about 50% of take-home pay for needs (rent, food, bills), 30% for wants, 20% for savings and extra debt payments."],
+    credit: ["Credit score", "A number (300–850) lenders use to decide whether to lend to you and at what rate. Paying on time and keeping card balances low are what raise it most."],
+    grace: ["Grace period", "Time after you graduate before student loan payments start. For most federal loans it’s 6 months. Interest on unsubsidized loans still adds up during it."],
+    idr: ["Income-driven repayment", "Federal student loan plans that set your payment by your income instead of your balance, so payments stay affordable on an entry-level salary."],
+    w4: ["W-4 form", "The form you fill out at a new job that tells your employer how much federal tax to take from each paycheck."]
+  };
+  function term(k, label) { var g = GLOSS[k]; if (!g) return esc(label || k); return '<button type="button" class="term" data-term="' + k + '">' + esc(label || g[0]) + '<i aria-hidden="true">?</i></button>'; }
+  function hideTerm() { var p = $("termPop"); if (p) p.hidden = true; }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-term]");
+    if (!b) { if (!(e.target.closest && e.target.closest("#termPop"))) hideTerm(); return; }
+    e.preventDefault(); e.stopPropagation();
+    var g = GLOSS[b.getAttribute("data-term")]; if (!g) return;
+    var p = $("termPop");
+    if (!p) { p = document.createElement("div"); p.id = "termPop"; p.setAttribute("role", "dialog"); document.body.appendChild(p); }
+    p.innerHTML = '<b>' + esc(g[0]) + '</b><p>' + esc(g[1]) + '</p><button type="button" class="linkbtn" onclick="this.parentNode.hidden=true">Got it</button>';
+    p.hidden = false;
+    if (window.innerWidth > 700) { var r = b.getBoundingClientRect(); p.style.left = Math.max(12, Math.min(window.innerWidth - 332, r.left)) + "px"; p.style.top = (r.bottom + 8) + "px"; }
+    else { p.style.left = ""; p.style.top = ""; }
+  }, true);
+
+  /* ---------- saved data for these tools ---------- */
+  var grow = { pay: {}, path: {}, checks: [], nw: [], nwHist: [], subs: { no: [] }, roll: true }, growLoaded = false, growTimer = null;
+  function loadGrowth() {
+    if (growLoaded) return Promise.resolve();
+    return loadSaved("growth").then(function (s) {
+      s = s || {};
+      grow = { pay: s.__pay || {}, path: s.__path || {}, checks: Array.isArray(s.__checks) ? s.__checks : [], nw: Array.isArray(s.__nw) ? s.__nw : [],
+        nwHist: Array.isArray(s.__nwHist) ? s.__nwHist : [], subs: s.__subs && Array.isArray(s.__subs.no) ? s.__subs : { no: [] }, roll: s.__roll !== false };
+      growLoaded = true;
+    }).catch(function () { growLoaded = true; });
+  }
+  function saveGrowth(now) {
+    clearTimeout(growTimer);
+    var go = function () { return doSave("growth", { __pay: grow.pay, __path: grow.path, __checks: grow.checks.slice(-60), __nw: grow.nw, __nwHist: grow.nwHist.slice(-400), __subs: grow.subs, __roll: grow.roll }); };
+    if (now) return go();
+    growTimer = setTimeout(go, 500); return Promise.resolve();
+  }
+  // every bank transaction we've seen, so subscriptions and spending patterns can be found later
+  var txh = [], txhLoaded = false;
+  function loadTx() {
+    if (txhLoaded) return Promise.resolve();
+    return loadSaved("txhist").then(function (s) { txh = s && Array.isArray(s.__tx) ? s.__tx : []; txhLoaded = true; }).catch(function () { txhLoaded = true; });
+  }
+  function recordTx(list) {
+    return loadTx().then(function () {
+      var seen = {}, added = 0; txh.forEach(function (t) { seen[t.id] = 1; });
+      (list || []).forEach(function (t) { if (!t || !t.id || seen[t.id] || typeof t.amount !== "number") return; var dd = new Date(typeof t.date === "number" && t.date < 1e11 ? t.date * 1000 : t.date); if (isNaN(dd)) return; txh.push({ id: t.id, d: iso(dd), s: String(t.description || "").slice(0, 80), a: t.amount }); seen[t.id] = 1; added++; });
+      if (!added) return;
+      txh.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+      if (txh.length > 1500) txh.splice(0, txh.length - 1500);
+      return doSave("txhist", { __tx: txh });
+    });
+  }
+  // one month's budget as saved (null if the member never touched that month)
+  function monthDoc(y, mi) {
+    var key = "monthly-budget:" + y + "-" + pad(mi + 1);
+    return Promise.all([fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }), loadSaved(key)]).then(function (a) {
+      var Lm = a[0], doc = a[1]; if (isBlank(doc)) return null;
+      var dm = doc.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] }, ent = activeEntries(Lm, st);
+      return { key: key, Lm: Lm, doc: doc, cats: ent.expense, inc: ent.income, y: y, m: mi };
+    });
+  }
+  function catSum(doc, e, pre) { return e.addrs.reduce(function (t, a) { var x = doc[pre + a]; return t + (typeof x === "number" ? x : 0); }, 0); }
+  function hasActual(doc, e) { return e.addrs.some(function (a) { return typeof doc["a:" + a] === "number" && doc["a:" + a] !== 0; }); }
+  // this month's planned take-home pay, expenses and what's left (from the server math)
+  var budgetNow = null;
+  function loadBudgetNow() {
+    var n = new Date();
+    return monthDoc(n.getFullYear(), n.getMonth()).then(function (s) {
+      if (!s) return null;
+      return calcMonthly(stripA(numericOf(s.doc))).then(function (v) { budgetNow = { take: +v.D7 || 0, exp: +v.D34 || 0, left: +v.D35 || 0 }; return budgetNow; });
+    }).catch(function (e) { if (e && e.message === "stop") throw e; return null; });
+  }
+  function ym(y, mi) { return MONTHS[mi] + (y !== new Date().getFullYear() ? " " + y : ""); }
+  function prevYM(y, mi) { return mi === 0 ? [y - 1, 11] : [y, mi - 1]; }
+  function pct(x) { return Math.round(x * 100) + "%"; }
+  function num(v) { var x = parseFloat(String(v == null ? "" : v).replace(/[^0-9.\-]/g, "")); return isFinite(x) ? x : 0; }
+  function goTool(id, sub, act) { if (sub) moneySub = sub; wantActual = !!act; tool = TOOLS.filter(function (x) { return x.id === id; })[0]; history.replaceState(null, "", "#" + id); makeTabs(); openTool(); window.scrollTo(0, 0); }
+
+  /* ---------- the Tools tab ---------- */
+  var moneySub = "paycheck";
+  var MSUBS = [["paycheck", "Paycheck"], ["afford", "Can I afford it?"], ["subs", "Subscriptions"], ["networth", "Net worth"], ["reports", "Reports"], ["learn", "Learn"], ["receipts", "Receipts"]];
+  function renderMoney(mine) {
+    var v = $("moneyView");
+    v.innerHTML = '<h1>Money tools</h1><p class="sub">Quick answers to the money questions nobody explains.</p>' +
+      '<div class="mchips" role="tablist">' + MSUBS.map(function (s) { return '<button type="button" role="tab" data-msub="' + s[0] + '" aria-selected="' + (s[0] === moneySub) + '">' + s[1] + "</button>"; }).join("") + "</div>" +
+      '<div id="mBody"><p class="sub">Loading…</p></div>';
+    var sel = v.querySelector('[aria-selected="true"]'); if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
+    loadGrowth().then(function () {
+      if (mine !== loadSeq) return;
+      var f = { paycheck: drawPay, afford: drawAfford, subs: drawSubs, networth: drawNetWorth, reports: drawReports, learn: drawLearn }[moneySub] || drawPay;
+      return f(mine);
+    }).catch(function (e) { if (e && e.message === "stop") return; $("mBody").innerHTML = '<div class="panel"><p>Couldn’t load this right now. Try again in a moment.</p></div>'; });
+  }
+  $("moneyView").addEventListener("click", function (e) {
+    var c = e.target.closest && e.target.closest("[data-msub]"); if (!c) return;
+    var s = c.getAttribute("data-msub");
+    if (s === "receipts") { goTool("receipts"); return; }
+    if (s === moneySub) return; moneySub = s; renderMoney(loadSeq);
+  });
+  function mBody(h) { $("mBody").innerHTML = h; $("mBody").classList.remove("view-in"); void $("mBody").offsetWidth; $("mBody").classList.add("view-in"); }
+  function fld(label, input, help) { return '<label class="dfld"><span>' + label + "</span>" + input + (help ? "<small>" + help + "</small>" : "") + "</label>"; }
+
+  /* ---------- 1. Paycheck: salary -> take-home pay ---------- */
+  function payDefaults() { var p = grow.pay; return { gross: p.gross || "", hourly: p.hourly || "", hours: p.hours || 40, mode: p.mode || "salary", status: p.status || "single", freq: p.freq || "biweekly", k401: p.k401 === undefined ? 0 : p.k401, ins: p.ins || 0, state: p.state || "none", rate: p.rate === undefined ? 4 : p.rate }; }
+  function drawPay() {
+    var p = payDefaults(), MP = window.MoneremPay;
+    var opt = function (v, t, cur) { return '<option value="' + v + '"' + (String(cur) === v ? " selected" : "") + ">" + t + "</option>"; };
+    mBody('<div class="panel"><h2>What will my paycheck actually be?</h2><p class="sub">Enter your offer or current pay. You’ll see your ' + term("takehome") + ", where the rest goes, and you can drop it straight into your budget.</p>" +
+      '<form id="payForm" class="dfields">' +
+      fld("I’m paid", '<select name="mode">' + opt("salary", "A yearly salary", p.mode) + opt("hourly", "By the hour", p.mode) + "</select>") +
+      fld("Yearly salary", '<input name="gross" inputmode="decimal" placeholder="$52,000" value="' + (p.gross ? money.format(p.gross).replace(".00", "") : "") + '">', "", "") +
+      fld("Hourly pay", '<input name="hourly" inputmode="decimal" placeholder="$20.00" value="' + (p.hourly ? money.format(p.hourly) : "") + '">') +
+      fld("Hours a week", '<input name="hours" inputmode="decimal" value="' + p.hours + '">') +
+      fld("How often you’re paid", '<select name="freq">' + opt("weekly", "Every week", p.freq) + opt("biweekly", "Every 2 weeks", p.freq) + opt("semimonthly", "Twice a month", p.freq) + opt("monthly", "Once a month", p.freq) + "</select>") +
+      fld("Filing as", '<select name="status">' + opt("single", "Single", p.status) + opt("married", "Married, filing together", p.status) + "</select>") +
+      fld(term("k401", "401(k)") + " % of pay", '<input name="k401" inputmode="decimal" placeholder="0" value="' + (p.k401 || "") + '">', "Tip: put in at least enough to get your " + term("match", "employer match") + ".") +
+      fld("Health, dental, vision per paycheck", '<input name="ins" inputmode="decimal" placeholder="$0.00" value="' + (p.ins ? money.format(p.ins) : "") + '">', "On your benefits sheet. Skip if you don’t know yet.") +
+      fld("State", '<select name="state">' + opt("none", "No state income tax (" + MP.NO_TAX_STATES.join(", ").replace(/, ([^,]*)$/, " or $1") + ")", p.state) + opt("other", "A state with income tax", p.state) + "</select>") +
+      fld("State tax rate %", '<input name="rate" inputmode="decimal" value="' + p.rate + '">', "Look up your state’s rate. 3–5% is common.") +
+      "</form></div><div id=\"payOut\"></div>");
+    var f = $("payForm");
+    function sync() {
+      var mode = f.mode.value, st = f.state.value;
+      f.gross.closest("label").hidden = mode !== "salary"; f.hourly.closest("label").hidden = mode !== "hourly"; f.hours.closest("label").hidden = mode !== "hourly";
+      f.rate.closest("label").hidden = st !== "other";
+      grow.pay = { mode: mode, gross: num(f.gross.value), hourly: num(f.hourly.value), hours: num(f.hours.value) || 40, status: f.status.value, freq: f.freq.value, k401: num(f.k401.value), ins: num(f.ins.value), state: st, rate: num(f.rate.value) };
+      var gross = mode === "hourly" ? grow.pay.hourly * grow.pay.hours * 52 : grow.pay.gross;
+      if (!(gross > 0)) { $("payOut").innerHTML = '<div class="panel"><p class="sub">Type your pay above to see your paycheck.</p></div>'; return; }
+      var r = MP.calc({ gross: gross, status: grow.pay.status, freq: grow.pay.freq, k401Pct: grow.pay.k401, insPerCheck: grow.pay.ins, stateRate: st === "other" ? grow.pay.rate : 0 });
+      grow.pay.monthly = r.month.take; grow.pay.yearGross = gross; saveGrowth();
+      var C = r.check, rows = [["Federal income tax", C.fed, "#E34948"], [term("fica", "Social Security & Medicare"), C.ss + C.med, "#EB6834"], ["State income tax", C.state, "#EDA100"], [term("k401", "401(k)") + " (yours to keep)", C.k401, "#1BAF7A"], ["Health insurance", C.ins, "#6250D6"]].filter(function (x) { return x[1] > 0.004; });
+      var freqTxt = { weekly: "each week", biweekly: "every 2 weeks", semimonthly: "twice a month", monthly: "each month" }[grow.pay.freq];
+      var bar = '<div class="paybar" aria-hidden="true"><i style="flex:' + C.take + ';background:#1D4ED8"></i>' + rows.map(function (x) { return '<i style="flex:' + x[1] + ";background:" + x[2] + '"></i>'; }).join("") + "</div>";
+      $("payOut").innerHTML = '<div class="panel payres"><small>Your take-home pay ' + freqTxt + "</small><b class=\"big\">" + money.format(C.take) + "</b>" +
+        '<p class="sub">That’s about <b>' + money.format(r.month.take) + "</b> a month to budget with, out of " + money.format(C.gross) + " " + term("gross", "gross pay") + " per check.</p>" + bar +
+        '<div class="kv"><span><i style="background:#1D4ED8"></i>Take-home pay</span><b>' + money.format(C.take) + "</b></div>" +
+        rows.map(function (x) { return '<div class="kv"><span><i style="background:' + x[2] + '"></i>' + x[0] + "</span><b>" + money.format(x[1]) + "</b></div>"; }).join("") +
+        '<p class="sub" style="margin-top:10px">Your ' + term("bracket", "tax bracket") + " is " + pct(r.bracket) + ", but only " + pct(r.effective) + " of your pay goes to taxes overall. The first " + money.format(r.taxYear === 2026 ? (grow.pay.status === "married" ? 32200 : 16100) : 0).replace(".00", "") + " isn’t taxed at all (the " + term("stddeduction", "standard deduction") + ").</p>" +
+        '<div class="admrow" style="margin-top:12px"><button type="button" class="btn" id="payUse">Use this in my ' + MONTHS[new Date().getMonth()] + ' budget</button></div><p class="pickmsg" id="payMsg" role="status"></p>' +
+        '<p class="sub fine">An estimate for ' + r.taxYear + ', not tax advice. Your real paycheck can differ by a little because of your W-4 choices, local taxes and other benefits.</p></div>' +
+        rule503020(r.month.take);
+    }
+    f.addEventListener("input", sync); f.addEventListener("change", sync); sync();
+    $("payOut").addEventListener("click", function (e) { if (e.target.id === "payUse") usePay(); });
+  }
+  function rule503020(m) {
+    return '<div class="panel"><h2>A starting budget for ' + money.format(m).replace(".00", "") + " a month</h2><p class=\"sub\">The " + term("rule503020") + " splits it like this:</p>" +
+      '<div class="kv"><span><i style="background:#2a78d6"></i>Needs: rent, food, bills (50%)</span><b>' + money.format(m * 0.5) + "</b></div>" +
+      '<div class="kv"><span><i style="background:#eb6834"></i>Wants: fun, eating out (30%)</span><b>' + money.format(m * 0.3) + "</b></div>" +
+      '<div class="kv"><span><i style="background:#1baf7a"></i>Savings & extra debt payments (20%)</span><b>' + money.format(m * 0.2) + "</b></div>" +
+      '<p class="sub" style="margin-top:8px">So rent around <b>' + money.format(m * 0.3).replace(".00", "") + "</b> or less keeps you comfortable.</p></div>";
+  }
+  function usePay() {
+    var m = grow.pay.monthly; if (!(m > 0)) return;
+    $("payMsg").textContent = "Adding…";
+    var n = new Date();
+    rcMonthState(n.getFullYear(), n.getMonth()).then(function (s) {
+      var inc = activeEntries(s.Lm, s.st).income; if (!inc.length) throw new Error("noinc");
+      var e = inc[0], k = e.addrs.length, per = Math.round(m / k * 100) / 100;
+      e.addrs.forEach(function (a, i) { s.doc[a] = i === k - 1 ? Math.round((m - per * (k - 1)) * 100) / 100 : per; });
+      return doSave(s.key, s.doc).then(function () { return e.name; });
+    }).then(function (name) {
+      $("payMsg").innerHTML = "Done. <b>" + esc(name) + "</b> in your " + MONTHS[n.getMonth()] + " budget is now " + money.format(m) + ' a month. <button type="button" class="linkbtn" data-gotool="monthly-budget">Open Monthly budget</button>';
+    }).catch(function (e) { $("payMsg").textContent = e.message === "noinc" ? "Add an income line in Monthly budget first, then try again." : "Couldn’t add it right now. Try again."; });
+  }
+  document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-gotool]"); if (b) goTool(b.getAttribute("data-gotool"), b.getAttribute("data-sub"), b.getAttribute("data-act")); });
+
+  /* ---------- 2. Can I afford it? ---------- */
+  var affordKind = "rent";
+  function drawAfford(mine) {
+    mBody('<div class="panel"><p class="sub">Loading your budget…</p></div>');
+    return Promise.all([loadBudgetNow(), loadGoals(), loadDebts()]).then(function () {
+      if (mine !== loadSeq) return;
+      var take = budgetNow && budgetNow.take > 0 ? budgetNow.take : (grow.pay.monthly || 0), left = budgetNow ? budgetNow.left : null;
+      var seg = [["rent", "Rent"], ["car", "A car"], ["buy", "A big purchase"]].map(function (k) { return '<button type="button" data-afk="' + k[0] + '" class="' + (k[0] === affordKind ? "on" : "") + '">' + k[1] + "</button>"; }).join("");
+      var f = affordKind === "rent" ? fld("Monthly rent", '<input name="a" inputmode="decimal" placeholder="$1,200">') + fld("Utilities, internet, renter’s insurance", '<input name="b" inputmode="decimal" placeholder="$150">', "A guess is fine.")
+        : affordKind === "car" ? fld("Car price", '<input name="a" inputmode="decimal" placeholder="$18,000">') + fld("Down payment", '<input name="b" inputmode="decimal" placeholder="$2,000">') + fld("Loan " + term("apr", "APR") + " %", '<input name="c" inputmode="decimal" value="7.5">') + fld("Loan length", '<select name="d"><option value="36">3 years</option><option value="48" selected>4 years</option><option value="60">5 years</option><option value="72">6 years</option></select>') + fld("Insurance + gas a month", '<input name="e" inputmode="decimal" placeholder="$250">', "New drivers often pay $150–$250 for insurance.")
+        : fld("What it costs", '<input name="a" inputmode="decimal" placeholder="$1,500">') + fld("How you’d pay", '<select name="b"><option value="cash">Cash I have saved</option><option value="save">Save up for it</option><option value="card">Credit card</option></select>');
+      mBody('<div class="panel"><h2>Can I afford it?</h2><p class="sub">Check before you sign. We compare it with your take-home pay and budget.</p><div class="seg afseg">' + seg + "</div>" +
+        '<form id="afForm" class="dfields" style="margin-top:12px">' + fld(term("takehome") + " a month", '<input name="take" inputmode="decimal" value="' + (take ? money.format(take) : "") + '" placeholder="$3,400">', take ? "From your " + (budgetNow && budgetNow.take > 0 ? "Monthly budget" : "Paycheck tool") + ". Change it if it’s off." : "Not sure? Use the Paycheck tool first.") + f + "</form></div><div id=\"afOut\"></div>");
+      var form = $("afForm");
+      function run() {
+        var T = num(form.take.value), a = num(form.a.value), out = "";
+        if (!(T > 0) || !(a > 0)) { $("afOut").innerHTML = ""; return; }
+        if (affordKind === "rent") {
+          var b = num(form.b.value), tot = a + b, sh = tot / T, g = sh <= 0.3 ? "good" : sh <= 0.4 ? "warn" : "bad";
+          out = verdict(g, g === "good" ? "Yes, this fits." : g === "warn" ? "Tight, but doable." : "This would stretch you too thin.",
+            "Housing would take <b>" + pct(sh) + "</b> of your take-home pay. Aim for 30% or less, which for you is <b>" + money.format(T * 0.3).replace(".00", "") + "</b> a month including utilities." +
+            (g !== "good" ? " Ideas: a roommate, a place a little farther out, or waiting until a raise." : "")) +
+            moveIn(a);
+        } else if (affordKind === "car") {
+          var price = a, down = num(form.b.value), apr = num(form.c.value), n = +form.d.value, run2 = num(form.e.value), loan = Math.max(0, price - down), r = apr / 1200;
+          var pay = loan <= 0 ? 0 : r ? loan * r / (1 - Math.pow(1 + r, -n)) : loan / n, interest = pay * n - loan, all = pay + run2, sh2 = all / T, g2 = sh2 <= 0.1 ? "good" : sh2 <= 0.15 ? "warn" : "bad";
+          out = verdict(g2, g2 === "good" ? "Yes, this fits." : g2 === "warn" ? "Possible, but it will squeeze other goals." : "Too much car for your pay right now.",
+            "Payment of <b>" + money.format(pay) + "</b> plus " + money.format(run2) + " to run it is <b>" + pct(sh2) + "</b> of your take-home pay. Keep all car costs around 10–15% (" + money.format(T * 0.15).replace(".00", "") + " a month for you). " +
+            "Over " + n / 12 + " years you’d pay <b>" + money.format(interest) + "</b> in interest." + (down < price * 0.2 ? " A down payment of 20% (" + money.format(price * 0.2).replace(".00", "") + ") keeps you from owing more than the car is worth." : "") +
+            (n > 48 ? " Loans longer than 4 years cost more and outlast many warranties." : ""));
+        } else {
+          var how = form.b.value, ef = goals.filter(function (g0) { return g0.kind === "save" && /emergenc/i.test(g0.name); })[0], efAmt = ef ? +ef.current || 0 : null;
+          if (how === "card") {
+            var mo = 0, bal = a, pm = Math.max(25, a * 0.03), rr = 0.24 / 12, paid = 0; while (bal > 0.01 && mo < 600) { var it = bal * rr, p0 = Math.min(bal + it, pm); bal = bal + it - p0; paid += p0; mo++; }
+            out = verdict("bad", "Avoid putting this on a card unless you can pay it off this month.", "Paying the minimum on a typical 24% " + term("apr", "APR") + " card, this " + money.format(a) + " purchase would take <b>" + Math.ceil(mo / 12) + " years</b> and cost <b>" + money.format(paid - a) + "</b> in interest.");
+          } else if (how === "cash") {
+            var after = efAmt === null ? null : efAmt - a, g3 = efAmt === null ? "warn" : after >= 1000 ? "good" : "bad";
+            out = verdict(g3, g3 === "good" ? "Yes, and your safety net stays in place." : g3 === "bad" ? "This would drain your safety net." : "Maybe. Check your savings first.",
+              efAmt === null ? "Monerem doesn’t know your savings yet. Rule of thumb: after buying it you should still have at least $1,000 in your " + term("efund", "emergency fund") + ". <button type=\"button\" class=\"linkbtn\" data-gotool=\"goals\">Add an emergency fund goal</button>"
+                : "Your emergency fund has " + money.format(efAmt) + ". After this you’d have " + money.format(after) + ". Keep at least $1,000 for surprises.");
+          } else {
+            var lf = num(left), sv = lf > 0 ? Math.ceil(a / (lf * 0.5)) : 0;
+            out = verdict(lf > 0 ? "good" : "bad", lf > 0 ? "Yes, if you save for it." : "Not yet. Your budget has nothing left over each month.",
+              lf > 0 ? "Your budget has " + money.format(lf) + " left each month. Setting aside half of that (" + money.format(lf * 0.5) + "), you’d have it in about <b>" + sv + (sv === 1 ? " month" : " months") + "</b>. Saving for it first is a " + term("sinking", "sinking fund") + "."
+                : "Trim a category or raise your income first, then save up for it. <button type=\"button\" class=\"linkbtn\" data-gotool=\"monthly-budget\">Open Monthly budget</button>");
+          }
+        }
+        if (left !== null && affordKind !== "buy") out += '<p class="sub" style="margin-top:8px">Right now your ' + MONTHS[new Date().getMonth()] + " budget has <b>" + money.format(left) + "</b> left over after planned expenses.</p>";
+        $("afOut").innerHTML = out;
+      }
+      form.addEventListener("input", run); form.addEventListener("change", run);
+      $("mBody").querySelector(".afseg").addEventListener("click", function (e) { var k = e.target.getAttribute && e.target.getAttribute("data-afk"); if (k && k !== affordKind) { affordKind = k; drawAfford(loadSeq); } });
+    });
+  }
+  function verdict(g, head, body) { return '<div class="panel verdict ' + g + '"><b>' + (g === "good" ? "✓ " : g === "warn" ? "! " : "✕ ") + head + "</b><p>" + body + "</p></div>"; }
+  function moveIn(rent) { return '<div class="panel"><h2>Cash you’ll need to move in</h2><div class="kv"><span>First month’s rent</span><b>' + money.format(rent) + '</b></div><div class="kv"><span>Security deposit (often one month)</span><b>' + money.format(rent) + '</b></div><div class="kv"><span>Application fees, moving, basics</span><b>' + money.format(500) + '</b></div><div class="kv tot"><span>Have saved before signing</span><b>' + money.format(rent * 2 + 500) + "</b></div></div>"; }
+
+  /* ---------- 3. Subscriptions (from bank transactions) ---------- */
+  var SUB_NAMES = /netflix|spotify|hulu|disney|hbo|\bmax\b|paramount|peacock|youtube|apple\.com|icloud|google one|google storage|amazon prime|prime video|audible|kindle|xbox|playstation|nintendo|adobe|microsoft 365|office 365|dropbox|chatgpt|openai|anthropic|claude\.ai|patreon|planet fitness|la fitness|crunch fitness|anytime fitness|peloton|duolingo|headspace|calm\.com|new york times|nytimes|wsj|siriusxm|pandora|tidal|crunchyroll|dashpass|uber one|instacart|walmart\+|grubhub|linkedin|canva|tinder|bumble|hinge|match\.com/i;
+  function findSubs() {
+    var groups = {};
+    txh.forEach(function (t) {
+      if (t.a >= 0 || NOT_SPENDING.test(t.s)) return;
+      var k = merchantKey(t.s); if (!k) return; (groups[k] = groups[k] || []).push(t);
+    });
+    var out = [];
+    Object.keys(groups).forEach(function (k) {
+      if (grow.subs.no.indexOf(k) >= 0) return;
+      var g = groups[k].slice().sort(function (a, b) { return a.d < b.d ? -1 : 1; }), amts = g.map(function (t) { return -t.a; }), last = g[g.length - 1], named = SUB_NAMES.test(last.s);
+      var gaps = []; for (var i = 1; i < g.length; i++) gaps.push(Math.round((parseD(g[i].d) - parseD(g[i - 1].d)) / 86400000));
+      gaps.sort(function (a, b) { return a - b; });
+      var med = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0, amtMed = amts.slice().sort(function (a, b) { return a - b; })[Math.floor(amts.length / 2)];
+      var steady = amts.every(function (x) { return Math.abs(x - amtMed) <= Math.max(1, amtMed * 0.2); });
+      var freq = med >= 26 && med <= 35 ? "monthly" : med >= 350 && med <= 380 ? "yearly" : med >= 6 && med <= 8 ? "weekly" : med >= 85 && med <= 95 ? "quarterly" : "";
+      if (!(steady && freq && g.length >= 2) && !named) return;
+      if (!freq) freq = "monthly";
+      var yearly = -last.a * { monthly: 12, yearly: 1, weekly: 52, quarterly: 4 }[freq];
+      out.push({ k: k, name: last.s, amt: -last.a, freq: freq, yearly: yearly, last: last.d, n: g.length, sure: steady && g.length >= 2, gap: med || 30 });
+    });
+    return out.sort(function (a, b) { return b.yearly - a.yearly; });
+  }
+  function drawSubs(mine) {
+    return Promise.all([loadTx(), loadBills(), bankCall("list").then(function (d) { return d; }).catch(function () { return null; })]).then(function (a) {
+      return (a[2] && a[2].review ? recordTx(a[2].review).catch(function () {}) : Promise.resolve()).then(function () { return a; });
+    }).then(function (a) {
+      if (mine !== loadSeq) return;
+      var linked = a[2] && (a[2].accounts || []).length, list = findSubs(), tot = list.reduce(function (t, s) { return t + s.yearly; }, 0);
+      var h = '<div class="panel"><h2>Your ' + term("subscription", "subscriptions") + "</h2>";
+      if (!list.length) {
+        h += linked ? '<p class="sub">Nothing repeating found yet. Monerem looks at your bank transactions as they come in, so it gets better after a month or two.</p>'
+          : '<p class="sub">Link your bank and Monerem will spot charges that repeat, like streaming, apps and gyms, and add up what they cost you each year.</p><button type="button" class="btn" data-gotool="bank">Link a bank</button>';
+      } else {
+        h += '<p class="sub">We found <b>' + list.length + "</b> charges that repeat. Together they cost about <b>" + money.format(tot).replace(".00", "") + " a year</b>. Cancel anything you don’t use and that money goes back into your budget.</p>";
+        h += list.map(function (s) {
+          var isBill = bills.some(function (b) { return nk(b.name) === nk(s.name) || merchantKey(b.name) === s.k; });
+          return '<div class="subrow"><div><b>' + esc(s.name) + "</b><small>" + money.format(s.amt) + " " + { monthly: "a month", yearly: "a year", weekly: "a week", quarterly: "every 3 months" }[s.freq] + " · last charged " + parseD(s.last).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + (s.sure ? "" : " · possible") + '</small></div><div class="subr"><b>' + money.format(s.yearly).replace(".00", "") + "<small>/yr</small></b>" +
+            '<span>' + (isBill ? '<em class="okay">In Bills</em>' : '<button type="button" class="sm" data-sub="bill" data-k="' + esc(s.k) + '">Add to Bills</button>') + '<button type="button" class="sm" data-sub="no" data-k="' + esc(s.k) + '">Not a subscription</button></span></div></div>';
+        }).join("");
+      }
+      h += "</div>";
+      h += '<details class="panel"><summary><b>How to cancel a subscription</b></summary><ul class="tips"><li><b>iPhone:</b> Settings → tap your name → Subscriptions.</li><li><b>Android:</b> Play Store → your picture → Payments & subscriptions → Subscriptions.</li><li><b>Everything else:</b> log in to the company’s website → Account or Billing → Cancel. Deleting the app does <i>not</i> cancel it.</li><li>Take a screenshot of the cancellation, and check your next statement to be sure the charge stopped.</li><li>Free trials turn into paid plans. Add the end date to Bills so you get a reminder.</li></ul></details>';
+      mBody(h);
+      $("mBody").onclick = function (e) {
+        var b = e.target.closest && e.target.closest("[data-sub]"); if (!b) return;
+        var s = findSubs().filter(function (x) { return x.k === b.getAttribute("data-k"); })[0]; if (!s) return;
+        if (b.getAttribute("data-sub") === "no") { grow.subs.no.push(s.k); saveGrowth(); drawSubs(loadSeq); return; }
+        var next = parseD(s.last); next.setDate(next.getDate() + (s.freq === "yearly" ? 365 : s.freq === "monthly" ? 0 : s.gap));
+        if (s.freq === "monthly") next.setMonth(next.getMonth() + 1);
+        bills.push({ id: newId(), name: s.name.slice(0, 40), amount: Math.round(s.amt * 100) / 100, date: iso(next), freq: s.freq === "yearly" ? "yearly" : "monthly", remind: 3 });
+        saveBills(); drawSubs(loadSeq);
+      };
+    });
+  }
+
+  /* ---------- 4. Net worth ---------- */
+  function drawNetWorth(mine) {
+    return Promise.all([loadDebts(), bankCall("list").catch(function () { return null; })]).then(function (a) {
+      if (mine !== loadSeq) return;
+      var bank = a[1], accts = bank && bank.accounts ? bank.accounts.filter(function (x) { return x.category !== "credit" && x.status !== "disconnected" && x.balance && typeof x.balance.current === "number"; }) : [];
+      var bankAssets = accts.map(function (x) { return { name: (x.name || "Account") + (x.last4 ? " ••" + x.last4 : ""), v: +x.balance.current, src: "bank" }; });
+      var mineA = grow.nw.filter(function (x) { return x.kind === "asset"; }), mineO = grow.nw.filter(function (x) { return x.kind === "owe"; });
+      var debts = debtState.debts.filter(function (d) { return +d.balance > 0; }).map(function (d) { return { name: d.name, balance: +d.balance }; });
+      // linked cards the Debt tab hasn't picked up yet
+      (bank && bank.accounts || []).forEach(function (x) { var bo = x.balance || {}; if (x.category === "credit" && x.status !== "disconnected" && +bo.owed > 0 && !debtState.debts.some(function (d) { return d.bankId === x.id; })) debts.push({ name: (x.name || "Card") + (x.last4 ? " ••" + x.last4 : ""), balance: +bo.owed }); });
+      var A = bankAssets.reduce(function (t, x) { return t + x.v; }, 0) + mineA.reduce(function (t, x) { return t + (+x.value || 0); }, 0);
+      var O = debts.reduce(function (t, d) { return t + (+d.balance || 0); }, 0) + mineO.reduce(function (t, x) { return t + (+x.value || 0); }, 0);
+      var nw = Math.round((A - O) * 100) / 100, today = iso(new Date()), H = grow.nwHist;
+      if (A || O) { if (H.length && H[H.length - 1].d === today) H[H.length - 1].t = nw; else H.push({ d: today, t: nw }); saveGrowth(); }
+      var row = function (name, v, act) { return '<div class="kv"><span>' + esc(name) + "</span><b>" + money.format(v) + (act || "") + "</b></div>"; };
+      var rm = function (x) { return ' <button type="button" class="x" data-nwrm="' + x.id + '" aria-label="Remove ' + esc(x.name) + '">×</button>'; };
+      var h = '<div class="panel nwtop"><small>Your ' + term("networth", "net worth") + '</small><b class="big ' + (nw < 0 ? "neg" : "") + '">' + money.format(nw) + "</b>" +
+        (H.length >= 2 ? '<p class="sub">' + (nw - H[0].t >= 0 ? "Up " : "Down ") + money.format(Math.abs(nw - H[0].t)) + " since " + parseD(H[0].d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + ".</p>" + spark(H.slice(-60).map(function (x) { return x.t; })) : '<p class="sub">' + (nw < 0 ? "Negative is normal after school. Every debt payment and every dollar saved moves this up." : "Check back after you pay bills or get paid to watch it change.") + "</p>") + "</div>";
+      h += '<div class="panel"><h2>What you own · ' + money.format(A) + "</h2>" + (bankAssets.length || mineA.length ? bankAssets.map(function (x) { return row(x.name, x.v, ' <small class="tagb">bank</small>'); }).join("") + mineA.map(function (x) { return row(x.name, +x.value || 0, rm(x)); }).join("") : '<p class="sub">Add your checking, savings, retirement account, or what your car is worth.</p>') + "</div>";
+      h += '<div class="panel"><h2>What you owe · ' + money.format(O) + "</h2>" + (debts.length || mineO.length ? debts.map(function (d) { return row(d.name, +d.balance); }).join("") + mineO.map(function (x) { return row(x.name, +x.value || 0, rm(x)); }).join("") + '<p class="sub" style="margin-top:6px">Loans and cards come from your <button type="button" class="linkbtn" data-gotool="debt">Debt tab</button>.</p>' : '<p class="sub">Nothing owed. Add loans and cards on the <button type="button" class="linkbtn" data-gotool="debt">Debt tab</button>.</p>') + "</div>";
+      h += '<form class="panel" id="nwForm"><h2>Add something</h2><div class="dfields">' + fld("What it is", '<input name="name" maxlength="40" required placeholder="Savings at Ally, my car, 401(k)…">') +
+        fld("Value", '<input name="value" inputmode="decimal" required placeholder="$0.00">') + fld("Type", '<select name="kind"><option value="asset">Something I own</option><option value="owe">Something I owe (not on Debt tab)</option></select>') + "</div>" +
+        '<button class="btn" type="submit">Add</button>' + (accts.length ? "" : '<p class="sub" style="margin-top:10px">Or <button type="button" class="linkbtn" data-gotool="bank">link your bank</button> so balances update on their own.</p>') + "</form>";
+      mBody(h);
+      $("nwForm").onsubmit = function (e) { e.preventDefault(); var f = e.target; grow.nw.push({ id: newId(), name: f.name.value.trim(), value: num(f.value.value), kind: f.kind.value }); saveGrowth(); drawNetWorth(loadSeq); };
+      $("mBody").onclick = function (e) { var id = e.target.getAttribute && e.target.getAttribute("data-nwrm"); if (!id) return; grow.nw = grow.nw.filter(function (x) { return x.id !== id; }); saveGrowth(); drawNetWorth(loadSeq); };
+    });
+  }
+  function spark(vals) {
+    var W = 300, Hh = 64, mn = Math.min.apply(null, vals.concat([0])), mx = Math.max.apply(null, vals.concat([0])), sp = mx - mn || 1;
+    var y = function (v) { return 4 + (Hh - 8) * (1 - (v - mn) / sp); }, x = function (i) { return vals.length < 2 ? 0 : i / (vals.length - 1) * W; };
+    return '<svg class="spark" viewBox="0 0 ' + W + " " + Hh + '" preserveAspectRatio="none" role="img" aria-label="Net worth over time"><line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" class="zero"/><polyline points="' + vals.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ") + '"/></svg>';
+  }
+
+  /* ---------- 5. Reports: where did my money go? ---------- */
+  function drawReports(mine) {
+    var n = new Date(), months = []; for (var i = 5; i >= 0; i--) { var d = new Date(n.getFullYear(), n.getMonth() - i, 1); months.push([d.getFullYear(), d.getMonth()]); }
+    mBody('<div class="panel"><p class="sub">Adding up your months…</p></div>');
+    return Promise.all(months.map(function (m) { return monthDoc(m[0], m[1]).catch(function () { return null; }); })).then(function (S) {
+      if (mine !== loadSeq) return;
+      function spend(s) {
+        if (!s) return null; var by = {}, tot = 0, act = false;
+        s.cats.forEach(function (e) { var ha = hasActual(s.doc, e), v = ha ? catSum(s.doc, e, "a:") : catSum(s.doc, e, ""); if (ha) act = true; if (v) { by[e.name] = v; tot += v; } });
+        return { by: by, tot: tot, act: act };
+      }
+      var P = S.map(spend), cur = P[5], prev = P[4];
+      if (!cur) { mBody('<div class="panel"><h2>Where did my money go?</h2><p class="sub">Add this month’s numbers in Monthly budget and your report shows up here.</p><button type="button" class="btn" data-gotool="monthly-budget">Open Monthly budget</button></div>'); return; }
+      var cats = Object.keys(cur.by).sort(function (a, b) { return cur.by[b] - cur.by[a]; }), mx = cur.by[cats[0]] || 1;
+      var h = '<div class="panel"><h2>' + MONTHS[n.getMonth()] + ": " + money.format(cur.tot) + "</h2><p class=\"sub\">" + (cur.act ? "Real spending where you’ve entered it, your plan everywhere else." : "From your plan. Enter actual spending to see what really happened.") +
+        (prev ? " " + (cur.tot >= prev.tot ? "Up " : "Down ") + money.format(Math.abs(cur.tot - prev.tot)) + " from " + MONTHS[months[4][1]] + "." : "") + "</p>";
+      h += '<div class="hbars">' + cats.slice(0, 12).map(function (c) {
+        var v = cur.by[c], pv = prev ? prev.by[c] || 0 : null, df = pv === null ? null : v - pv;
+        return '<div class="hb"><span>' + esc(c) + '</span><div><i style="width:' + Math.max(2, v / mx * 100) + '%"></i></div><b>' + money.format(v).replace(".00", "") + (df !== null && Math.abs(df) >= 1 ? '<small class="' + (df > 0 ? "up" : "dn") + '">' + (df > 0 ? "▲" : "▼") + money.format(Math.abs(df)).replace(".00", "") + "</small>" : "") + "</b></div>";
+      }).join("") + "</div>";
+      if (cats.length > 12) h += '<p class="sub">And ' + (cats.length - 12) + " smaller categories.</p>";
+      var big = prev ? cats.map(function (c) { return [c, cur.by[c] - (prev.by[c] || 0)]; }).sort(function (a, b) { return b[1] - a[1]; })[0] : null;
+      if (big && big[1] > 25) h += '<p class="sub" style="margin-top:8px">Biggest jump: <b>' + esc(big[0]) + "</b>, " + money.format(big[1]) + " more than last month.</p>";
+      h += "</div>";
+      var tmax = Math.max.apply(null, P.map(function (p) { return p ? p.tot : 0; }).concat([1]));
+      h += '<div class="panel"><h2>Last 6 months</h2><div class="vbars">' + P.map(function (p, i) {
+        return '<div class="vb"><b>' + (p ? kfmt(p.tot) : "") + '</b><i style="height:' + (p ? Math.max(3, p.tot / tmax * 100) : 0) + '%" class="' + (i === 5 ? "now" : "") + '"></i><span>' + MONTHS[months[i][1]].slice(0, 3) + "</span></div>";
+      }).join("") + '</div><p class="sub">Months you haven’t filled in are left blank.</p></div>';
+      mBody(h);
+    });
+  }
+
+  /* ---------- 6. Learn: glossary, first job, student loans ---------- */
+  function drawLearn() {
+    var h = '<div class="panel"><h2>Starting your first job</h2><ul class="tips">' +
+      "<li><b>Fill out your " + term("w4", "W-4") + ".</b> Single with one job? The basic version is usually right.</li>" +
+      "<li><b>Sign up for the " + term("k401", "401(k)") + "</b> and put in at least enough to get the full " + term("match", "match") + ". It’s free money.</li>" +
+      "<li><b>Pick health insurance carefully.</b> You usually have only 30 days after you start. Cheaper monthly plans cost more when you actually see a doctor.</li>" +
+      "<li><b>Split your direct deposit</b> so a little goes straight to savings every payday. You won’t miss what you never see.</li>" +
+      "<li><b>Run the numbers</b> with the <button type=\"button\" class=\"linkbtn\" data-msub=\"paycheck\">Paycheck tool</button> before you sign a lease.</li></ul></div>";
+    h += studentGuide(true);
+    h += '<div class="panel"><h2>Money words, in plain English</h2><div class="gloss">' + Object.keys(GLOSS).sort(function (a, b) { return GLOSS[a][0] < GLOSS[b][0] ? -1 : 1; }).map(function (k) { return "<details><summary>" + esc(GLOSS[k][0]) + "</summary><p>" + esc(GLOSS[k][1]) + "</p></details>"; }).join("") + "</div></div>";
+    mBody(h);
+  }
+  function studentGuide(full) {
+    return '<div class="panel slguide" id="slGuide"><h2>Student loans: what to do now</h2><ul class="tips">' +
+      "<li><b>Find all your loans.</b> Log in at <a href=\"https://studentaid.gov\" target=\"_blank\" rel=\"noopener\">studentaid.gov</a> to see every federal loan and who your servicer is (the company you pay). Private loans are on your credit report.</li>" +
+      "<li><b>Know when payments start.</b> Most federal loans give you a 6-month " + term("grace", "grace period") + " after you graduate. Interest on unsubsidized loans keeps growing during it.</li>" +
+      "<li><b>Pick a plan.</b> Since July 1, 2026 the SAVE plan is gone. New federal loans get the Tiered Standard plan or the new Repayment Assistance Plan (RAP), which sets your payment by income: as low as $10 a month, up to 10% of your income. Loans from before then can still use the older Standard or IBR plans. See your options with the Loan Simulator on studentaid.gov.</li>" +
+      "<li><b>Turn on autopay.</b> Federal loans take 0.25% off your interest rate when you do, and you’ll never miss a payment.</li>" +
+      "<li><b>Can’t pay?</b> Call your servicer before you miss a payment. " + term("idr", "Income-driven plans") + " can lower it. Ignoring loans leads to default, which can take your tax refund and wreck your credit.</li>" +
+      (full ? "<li><b>Private loans</b> don’t have income-driven plans. If the rate is high, pay those down first (Debt tab, highest rate first).</li>" : "") +
+      '</ul><p class="sub fine">Rules as of 2026. Plans change. Check studentaid.gov for your loans.</p></div>';
+  }
+  // Debt tab: show the student loan guide when there's a student loan
+  function studentPanel() {
+    var v = $("debtView"); if (!v || v.hidden) return;
+    var old = v.querySelector("#slGuide"); if (old) old.remove();
+    if (!debtState.debts.some(function (d) { return d.type === "student" && +d.balance > 0; })) return;
+    var at = v.querySelector(".cards") || v.querySelector("h1"); if (!at) return;
+    at.insertAdjacentHTML("afterend", studentGuide(false).replace('class="panel slguide"', 'class="panel slguide" open'));
+  }
+
+  /* ---------- Home: money roadmap + weekly check-in + net worth ---------- */
+  function weekStart(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return iso(x); }
+  function checkStreak() {
+    var wk = {}; grow.checks.forEach(function (d) { wk[weekStart(parseD(d))] = 1; });
+    var n = 0, x = parseD(weekStart(new Date())); if (!wk[iso(x)]) x.setDate(x.getDate() - 7);
+    while (wk[iso(x)]) { n++; x.setDate(x.getDate() - 7); }
+    return n;
+  }
+  function homeCheckIn() {
+    var doneWeek = grow.checks.some(function (d) { return weekStart(parseD(d)) === weekStart(new Date()); }), st = checkStreak();
+    if (doneWeek) return '<div class="panel checkin done"><div><b>✓ Checked in this week</b><span>' + (st > 1 ? st + "-week streak. " : "") + "See you next week.</span></div></div>";
+    var soon = bills.filter(function (b) { var d = nextDue(b); return d && daysUntil(d) >= 0 && daysUntil(d) <= 7; }).length;
+    return '<div class="panel checkin"><h2>Weekly check-in <small>5 minutes</small></h2><p class="sub">This habit is what makes a budget work.' + (st ? " You’re on a " + st + "-week streak." : "") + "</p>" +
+      '<ol class="ck"><li><button type="button" class="linkbtn" data-go="monthly-budget" data-act="1">Add this week’s spending</button> to Actual (or review new transactions in Bank).</li>' +
+      "<li>Look at Plan vs. actual below. Over somewhere? Adjust next week, no guilt.</li>" +
+      "<li>" + (soon ? soon + (soon === 1 ? " bill is" : " bills are") + " due in the next 7 days. Make sure the money’s there." : "No bills due in the next 7 days.") + "</li></ol>" +
+      '<button type="button" class="btn" data-grow="checkin">Done, I checked in</button></div>';
+  }
+  function roadmap(v) {
+    var ef = goals.filter(function (g) { return g.kind === "save" && /emergenc/i.test(g.name); })[0], efAmt = ef ? +ef.current || 0 : 0, exp = v && v.D34 > 0 ? v.D34 : 0;
+    var hi = debtState.debts.filter(function (d) { return +d.balance > 0 && +d.apr >= 8; });
+    var P = grow.path, steps = [
+      { k: "pay", t: "Know your take-home pay", s: "Budget with what lands in your account, not your salary.", done: grow.pay.monthly > 0 || (v && v.D7 > 0), act: '<button type="button" data-gotool="money" data-sub="paycheck">Paycheck tool</button>' },
+      { k: "budget", t: "Give every dollar a job", s: "Plan rent, food, fun and savings for this month.", done: !!(v && v.D34 > 0), act: '<button type="button" data-gotool="monthly-budget">Monthly budget</button>' },
+      { k: "ef1", t: "Save a $1,000 starter " + term("efund", "emergency fund"), s: ef ? money.format(efAmt) + " of $1,000 saved." : "So a surprise doesn’t become credit card debt.", done: efAmt >= 1000, act: ef ? '<button type="button" data-gotool="goals">Goals</button>' : '<button type="button" data-grow="efgoal">Start this goal</button>' },
+      { k: "match", t: "Get your full 401(k) " + term("match", "match"), s: "Free money from your employer. Skip if your job doesn’t offer one.", manual: true },
+      { k: "hidebt", t: "Pay off high-interest debt", s: hi.length ? hi.length + (hi.length === 1 ? " debt" : " debts") + " over 8% " + term("apr", "APR") + ": " + money.format(totalDebt(hi)) + " left." : "Credit cards and loans over 8% APR. Student loans under that can wait.", done: debtLoaded && debtState.debts.length > 0 && !hi.length, act: '<button type="button" data-gotool="debt">Debt</button>' },
+      { k: "ef3", t: "Grow your emergency fund to 3 months", s: exp ? "About " + money.format(exp * 3).replace(".00", "") + " for you (3 × your monthly expenses)." : "3 months of expenses.", done: exp > 0 && efAmt >= exp * 3, act: '<button type="button" data-gotool="goals">Goals</button>' },
+      { k: "invest", t: "Save 15% for retirement and big goals", s: "Raise your 401(k), open a Roth IRA, save for a car or home.", manual: true }
+    ];
+    steps.forEach(function (x) { if (P[x.k]) x.done = true; });
+    var cur = steps.filter(function (x) { return !x.done; })[0], doneN = steps.filter(function (x) { return x.done; }).length;
+    var h = '<div class="panel road"><h2>Your money roadmap <small>' + doneN + " of " + steps.length + "</small></h2><p class=\"sub\">Do these in order. Each step makes the next one easier.</p>";
+    h += steps.map(function (x, i) {
+      var isCur = x === cur;
+      return '<div class="rstep' + (x.done ? " done" : "") + (isCur ? " cur" : "") + '"><div class="tick">' + (x.done ? "&#10003;" : i + 1) + '</div><div class="st">' + x.t + (isCur || !x.done ? "<span>" + x.s + "</span>" : "") + "</div>" +
+        (isCur ? '<div class="ra">' + (x.act || "") + (x.manual || !x.done ? '<button type="button" data-grow="done" data-k="' + x.k + '">' + (x.manual ? "I’ve done this" : "Mark done") + "</button>" : "") + "</div>" : x.done && P[x.k] ? '<button type="button" class="undo" data-grow="undo" data-k="' + x.k + '" aria-label="Undo">Undo</button>' : "") + "</div>";
+    }).join("") + "</div>";
+    return h;
+  }
+  function homeNetWorth() {
+    var H = grow.nwHist; if (!H.length) return "";
+    var last = H[H.length - 1];
+    return '<div class="panel"><h2>Net worth</h2><div class="kv"><span>As of ' + parseD(last.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span><b class=\"" + (last.t < 0 ? "neg" : "") + "\">" + money.format(last.t) + "</b></div>" + (H.length >= 2 ? spark(H.slice(-30).map(function (x) { return x.t; })) : "") +
+      '<p style="margin-top:8px"><button class="linkbtn" data-gotool="money" data-sub="networth">Update net worth</button></p></div>';
+  }
+  function growHome(v) { return homeCheckIn() + roadmap(v); }
+  $("homeBody").addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-grow]"); if (!b) return;
+    var a = b.getAttribute("data-grow"), k = b.getAttribute("data-k");
+    if (a === "checkin") { grow.checks.push(iso(new Date())); saveGrowth(); }
+    else if (a === "done") { grow.path[k] = true; saveGrowth(); }
+    else if (a === "undo") { delete grow.path[k]; saveGrowth(); }
+    else if (a === "efgoal") {
+      goals.unshift({ id: newId(), kind: "save", name: "Emergency Fund", start: 0, current: 0, target: 1000, due: "", base: 0, from: thisMonthKey(), fromBudget: 0, steps: STARTERS.save.map(function (t) { return { id: newId(), t: t, done: false }; }) });
+      saveGoals(); goTool("goals"); return;
+    }
+    renderHome(loadSeq);
+  });
+
+  /* ---------- rollover: unspent money from last month carries forward ---------- */
+  var rollSeq = 0;
+  function drawRollPanel() {
+    var el = $("rollPanel"); if (!el) return;
+    if (view !== "actual" || !layout || !layout.months) { el.hidden = true; return; }
+    var my = ++rollSeq, y = +$("selYear").value, mi = +$("selMonth").value - 1, pv = prevYM(y, mi);
+    loadGrowth().then(function () {
+      if (!grow.roll) { el.hidden = false; el.innerHTML = term("rollover", "Rollover") + ' is off. <button type="button" class="linkbtn" data-roll="on">Turn on</button>'; return null; }
+      return monthDoc(pv[0], pv[1]);
+    }).then(function (s) {
+      if (my !== rollSeq || !grow.roll) return;
+      var left = [];
+      if (s) s.cats.forEach(function (e) { if (!hasActual(s.doc, e)) return; var d = catSum(s.doc, e, "") - catSum(s.doc, e, "a:"); if (d > 0.5) left.push([e.name, d]); });
+      left.sort(function (a, b) { return b[1] - a[1]; });
+      el.hidden = false;
+      if (!left.length) { el.innerHTML = term("rollover", "Rollover") + ": nothing carried over from " + ym(pv[0], pv[1]) + (s ? " (enter actual spending each month to see what’s left)." : "."); return; }
+      var tot = left.reduce(function (t, x) { return t + x[1]; }, 0);
+      el.innerHTML = "<b>+" + money.format(tot) + " " + term("rollover", "rolled over") + " from " + ym(pv[0], pv[1]) + ".</b> You spent less than planned in these, so you have extra this month: " +
+        left.slice(0, 6).map(function (x) { return '<span class="rchip">' + esc(x[0]) + " +" + money.format(x[1]).replace(".00", "") + "</span>"; }).join(" ") + (left.length > 6 ? " and " + (left.length - 6) + " more" : "") +
+        '. Or move it to savings. <button type="button" class="linkbtn" data-roll="off">Turn off</button>';
+    }).catch(function () { el.hidden = true; });
+  }
+  $("rollPanel").addEventListener("click", function (e) { var r = e.target.getAttribute && e.target.getAttribute("data-roll"); if (!r) return; grow.roll = r === "on"; saveGrowth(); drawRollPanel(); });
+
+  /* ---------- sorting rules (Bank) ---------- */
+  function rulesPanel() {
+    var ks = Object.keys(rcRules); if (!ks.length) return "";
+    return '<details class="panel"><summary><b>Sorting rules (' + ks.length + ")</b></summary><p class=\"sub\">When you pick a category for a store, Monerem remembers it and sorts that store the same way next time. Remove a rule to stop.</p>" +
+      ks.sort().map(function (k) { return '<div class="kv"><span>' + esc(k) + " → " + (rcRules[k] === "__skip" ? "<i>Don’t add</i>" : esc(rcRules[k])) + '</span><button type="button" class="x" data-rmrule="' + esc(k) + '" aria-label="Remove rule">×</button></div>'; }).join("") + "</details>";
+  }
+  $("bankView").addEventListener("click", function (e) {
+    var k = e.target.getAttribute && e.target.getAttribute("data-rmrule"); if (!k) return;
+    delete rcRules[k]; rcSave(); renderBank();
+  });
+
+  /* ---------- reminders on your phone: bills -> calendar file ---------- */
+  function billsIcs() {
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Monerem//Bills//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Monerem bills"];
+    var stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    bills.forEach(function (b) {
+      var d = nextDue(b); if (!d) return;
+      var day = iso(d).replace(/-/g, ""), end = new Date(d); end.setDate(end.getDate() + 1);
+      var rem = Math.max(0, (b.remind || 3) * 24 - 9), txt = String(b.name).replace(/[,;\\]/g, " ");
+      L.push("BEGIN:VEVENT", "UID:" + (b.id || newId()) + "@monerem", "DTSTAMP:" + stamp, "DTSTART;VALUE=DATE:" + day, "DTEND;VALUE=DATE:" + iso(end).replace(/-/g, ""),
+        "SUMMARY:" + txt + (b.amount ? " due (" + money.format(b.amount) + ")" : " due"));
+      if (b.freq === "monthly") L.push("RRULE:FREQ=MONTHLY"); else if (b.freq === "yearly") L.push("RRULE:FREQ=YEARLY");
+      L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + txt + " is due soon", "TRIGGER:-PT" + rem + "H", "END:VALARM", "END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n");
+  }
+  function drawCalPanel() {
+    var el = $("calPanel"); if (!el) return;
+    el.hidden = !bills.length;
+    if (bills.length) el.innerHTML = "<h2>Get reminders on your phone</h2><p class=\"sub\">Add your bills to your phone’s calendar. You’ll get an alert before each one is due, even when Monerem is closed.</p>" +
+      '<button type="button" class="btn" id="icsBtn">Add ' + (bills.length === 1 ? "1 bill" : bills.length + " bills") + ' to my calendar</button><p class="sub fine">Changed a bill later? Tap this again and replace the old events.</p>';
+  }
+  $("calPanel").addEventListener("click", function (e) {
+    if (e.target.id !== "icsBtn") return;
+    var blob = new Blob([billsIcs()], { type: "text/calendar;charset=utf-8" }), url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = "monerem-bills.ics"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  });
+
+  /* ---------- dark mode ---------- */
+  function applyTheme(t) {
+    var r = document.documentElement; if (t === "light" || t === "dark") r.setAttribute("data-theme", t); else r.removeAttribute("data-theme");
+    var dark = t === "dark" || (t !== "light" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute("content", dark ? "#0B1220" : "#EAF2FF");
+  }
+  function getTheme() { try { return localStorage.getItem("monerem-theme") || "auto"; } catch (e) { return "auto"; } }
+  applyTheme(getTheme());
+  if (window.matchMedia) { try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { applyTheme(getTheme()); }); } catch (e) {} }
+  function themePanel() {
+    var t = getTheme();
+    return '<div class="panel"><h2>Appearance</h2><div class="seg" id="themeSeg" role="group" aria-label="Appearance">' + [["auto", "Match my phone"], ["light", "Light"], ["dark", "Dark"]].map(function (x) { return '<button type="button" data-theme-set="' + x[0] + '" class="' + (t === x[0] ? "on" : "") + '">' + x[1] + "</button>"; }).join("") + "</div></div>";
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-theme-set]"); if (!b) return;
+    var t = b.getAttribute("data-theme-set"); try { localStorage.setItem("monerem-theme", t); } catch (x) {}
+    applyTheme(t); Array.prototype.forEach.call(document.querySelectorAll("[data-theme-set]"), function (x) { x.classList.toggle("on", x.getAttribute("data-theme-set") === t); });
+  });
+
   /* ---------- home screen ---------- */
   function dueSoon() {
     var soon = [];
@@ -3512,7 +4241,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1), Lref = null, srcDoc = null;
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
-    loadBills().then(loadGoals).then(loadSetup).then(function () { return loadSaved(key); }).then(function (saved) {
+    loadBills().then(loadGoals).then(loadSetup).then(loadGrowth).then(loadDebts).then(function () { return loadSaved(key); }).then(function (saved) {
       return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (Lm) {
         Lref = Lm;
         if (!isBlank(saved)) { srcDoc = saved; return stripA(numericOf(saved)); }
@@ -3575,6 +4304,7 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
           (x.done ? "" : '<button data-go="' + x.go + '">' + x.b + "</button>") + "</div>";
       }).join("") + "</div>";
     }
+    h += growHome(v);
     if (homeCmp) h += cmpPanel(homeCmp);
     var soon = dueSoon();
     h += '<div class="panel"><h2>Bills coming up</h2>' + (soon.length ? soon.slice(0, 5).map(function (x) {
@@ -3586,7 +4316,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
         return '<div class="step"><div class="st">' + esc(g.name) + "<span>" + pc + "% there</span></div></div>";
       }).join("") + '<p style="margin-top:10px"><button class="linkbtn" data-go="goals">Open Goals</button></p></div>';
     }
-    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button><button class="linkbtn" data-go="setup">Change my categories</button></p></div>';
+    h += homeNetWorth();
+    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button><button class="linkbtn" data-gotool="money" data-sub="paycheck">Paycheck</button><button class="linkbtn" data-gotool="money" data-sub="afford">Can I afford it?</button><button class="linkbtn" data-gotool="money" data-sub="subs">Subscriptions</button><button class="linkbtn" data-gotool="money" data-sub="reports">Reports</button><button class="linkbtn" data-go="receipts">Receipts</button><button class="linkbtn" data-go="setup">Change my categories</button></p></div>';
     $("homeBody").innerHTML = h;
   }
   $("homeBody").addEventListener("click", function (e) {
@@ -3683,7 +4414,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
     "receipts": '<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="3.5"/>',
     "goals": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     "debt": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
-    "bank": '<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>'
+    "bank": '<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+    "money": '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/>'
   });
   function scrollTab() {   // keep the current tab in view on a phone
     var sel = $("tabs").querySelector('[aria-selected="true"]');
