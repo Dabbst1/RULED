@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#EAF2FF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Monerem">
+<link rel="preconnect" href="https://qytsgfjyiybxucxtbcne.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="monerem-icon.svg">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -26,6 +34,34 @@ window.RULED_CONFIG = {
   // Business numbers are protected separately on the server by the ADMIN_EMAILS secret.
   admins: ["taylordavid0911@gmail.com"]
 };
+
+/* ---------- PHONE SPEED ---------- */
+(function () {
+  // 1) Table layouts never change while the app is open: download each once, then reuse it instantly on every tab switch.
+  var nativeFetch = window.fetch.bind(window), layoutText = {};
+  window.fetch = function (input, init) {
+    var url = typeof input === "string" ? input : (input && input.url) || "";
+    if (/\.layout\.json(\?|$)/.test(url) && (!init || !init.method || init.method === "GET")) {
+      if (!layoutText[url]) {
+        layoutText[url] = nativeFetch(input, init).then(function (r) { if (!r.ok) throw new Error("layout " + r.status); return r.text(); });
+        layoutText[url].catch(function () { delete layoutText[url]; });
+      }
+      return layoutText[url].then(function (t) { return new Response(t, { status: 200, headers: { "Content-Type": "application/json" } }); });
+    }
+    // anything that runs on the server (bank sync, admin) may change saved numbers, so forget the quick copies
+    if (/\/functions\/v1\/(?!calc)/.test(url) && window.__monerem_clearSaved) window.__monerem_clearSaved();
+    return nativeFetch(input, init);
+  };
+  // 2) iPhone zooms in when you tap a small box. Stop that on iPhone only (pinch-to-zoom still works there).
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) {
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover");
+  }
+  // 3) Offline-ready app shell + "Add to Home Screen"
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+})();
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -380,6 +416,37 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .okay{color:var(--save);font-weight:600}.warn{color:#C2410C;font-weight:600}
 .warnline{margin:8px 0 0;color:#C2410C;font-weight:600;font-size:14px}
 @media (max-width:700px){tr.grp td{height:40px}.gname{font-size:12px}.gw{gap:2px 6px}.split{padding:14px}}
+
+/* ==== PHONE APP FEEL (bottom tab bar, no tap delay, no bounce, smooth view changes) ==== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ti{display:none}
+@keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.view-in{animation:viewIn .18s ease-out both}
+@media (prefers-reduced-motion:reduce){.view-in{animation:none}}
+@media (max-width:700px){
+  html,body{overscroll-behavior-y:none}
+  body{background-attachment:scroll}  /* fixed backgrounds repaint on every scroll frame on phones */
+  header.top{position:sticky;top:0;z-index:40;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(242,247,255,.88);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid rgba(214,227,248,.7)}
+  .logo{font-size:22px}
+  .mstep,.status.err{top:calc(60px + env(safe-area-inset-top))}
+  main#app{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  main#app #tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;margin:0;width:100%;max-width:none;display:flex;gap:0;justify-content:flex-start;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:0 -6px 24px rgba(11,31,77,.08);
+    background:rgba(255,255,255,.97);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);overflow-x:auto;scroll-snap-type:x proximity}
+  main#app #tabs .tab{flex:1 1 0;min-width:44px;height:54px;padding:4px 0 2px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font:600 10.5px/1.1 inherit;letter-spacing:-.01em;white-space:nowrap;color:#6B7FA8;background:transparent;box-shadow:none;scroll-snap-align:start;transition:color .12s}
+  main#app #tabs .tab .ti{display:block;width:24px;height:24px}
+  main#app #tabs .tab .ti svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  main#app #tabs .tab[aria-selected="true"]{color:var(--blue);background:transparent;box-shadow:none}
+  main#app #tabs .tab[aria-selected="true"] .ti{transform:translateY(-1px)}
+  main#app #tabs .tab:active{transform:scale(.94)}
+  .dfld input,.dfld select,.brow select,td.lab input.nm,select,textarea{font-size:16px}
+  .btn:active,.tab:active,.mstep button:active{transform:scale(.97)}
+  dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+}
+/* installed from the home screen: no browser bar, so respect the notch */
+@media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 </style>
 </head>
 <body>
@@ -1513,9 +1580,10 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   var pendingSave = null;
   function doSave(key, data) {
     if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return Promise.resolve(); }
+    var ck = session.user.id + "|" + key; savedCache[ck] = { t: Date.now(), v: cloneData(data) };
     return supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
       .then(function (r) {
-        if (r.error) { setStatus("Couldn’t save your numbers.", true); $("saved").textContent = ""; }
+        if (r.error) { delete savedCache[ck]; setStatus("Couldn’t save your numbers.", true); $("saved").textContent = ""; }
         else $("saved").textContent = "Saved " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       });
   }
@@ -1529,8 +1597,20 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
   function loadSaved(key) {
     if (CFG.devMode) { try { return Promise.resolve(JSON.parse(localStorage.getItem("moneres-dev-" + key) || "null")); } catch (e) { return Promise.resolve(null); } }
     // always ask for THIS member's row only (never rely on the database alone to filter)
-    return supa.from("member_inputs").select("inputs").eq("user_id", session.user.id).eq("sheet_id", key).maybeSingle().then(function (r) { return r.data ? r.data.inputs : null; });
+    var ck = session.user.id + "|" + key, hit = savedCache[ck];
+    if (hit && Date.now() - hit.t < SAVED_TTL) return Promise.resolve(cloneData(hit.v));   // switched back to a tab: no wait
+    return supa.from("member_inputs").select("inputs").eq("user_id", session.user.id).eq("sheet_id", key).maybeSingle().then(function (r) {
+      var v = r.data ? r.data.inputs : null;
+      if (!r.error) savedCache[ck] = { t: Date.now(), v: cloneData(v) };
+      return v;
+    });
   }
+  /* quick copies of saved numbers so tab switches are instant. Kept fresh by every save; dropped after 2 minutes,
+     when the app comes back from the background, or when the server (bank sync) may have changed them. */
+  var savedCache = {}, SAVED_TTL = 120000;
+  function cloneData(v) { return v == null ? v : JSON.parse(JSON.stringify(v)); }
+  window.__monerem_clearSaved = function () { savedCache = {}; };
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") savedCache = {}; });
   function applySaved(saved) {
     if (!saved) return;
     var m = saved.__meta || {};
@@ -1569,6 +1649,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     var tp = tool.type;
     $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank";
     renderBanner();
+    var vEl = $(tp ? tp + "View" : "sheetView"); if (vEl) { vEl.classList.remove("view-in"); void vEl.offsetWidth; vEl.classList.add("view-in"); }
     if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
@@ -3589,18 +3670,29 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 
   function makeTabs() {
     $("tabs").innerHTML = TOOLS.filter(function (t) { return !t.hidden; }).map(function (t) {
-      return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '">' + t.name + "</button>";
+      return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '"><span class="ti" aria-hidden="true">' + (TAB_ICONS[t.id] || "") + '</span><span class="tl">' + (window.innerWidth <= 700 && TAB_SHORT[t.id] || t.name) + "</span></button>";
     }).join("");
     scrollTab();
   }
+  var TAB_SHORT = { "monthly-budget": "Monthly", "yearly-projection": "Annual" };
+  var TAB_ICONS = (function (p) { var o = {}; Object.keys(p).forEach(function (k) { o[k] = '<svg viewBox="0 0 24 24">' + p[k] + "</svg>"; }); return o; })({
+    "home": '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+    "monthly-budget": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    "yearly-projection": '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    "bills": '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+    "receipts": '<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    "goals": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    "debt": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+    "bank": '<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>'
+  });
   function scrollTab() {   // keep the current tab in view on a phone
     var sel = $("tabs").querySelector('[aria-selected="true"]');
     if (sel) $("tabs").scrollLeft = Math.max(0, sel.offsetLeft - ($("tabs").clientWidth - sel.offsetWidth) / 2);
   }
   $("tabs").addEventListener("click", function (e) {
-    var id = e.target.getAttribute && e.target.getAttribute("data-t"); if (!id || id === tool.id) return;
+    var btn = e.target.closest && e.target.closest("[data-t]"); var id = btn && btn.getAttribute("data-t"); if (!id || id === tool.id) return;
     tool = TOOLS.filter(function (t) { return t.id === id; })[0]; history.replaceState(null, "", "#" + id);
-    makeTabs(); openTool();
+    makeTabs(); openTool(); window.scrollTo(0, 0);
   });
   $("sheet").addEventListener("focusout", function () { needFit = true; setTimeout(function () { var ae = document.activeElement; if (!ae || ae.tagName !== "INPUT") { fitFont(); needFit = false; } }, 400); });
   /* ---------- highlight the column under the cursor ---------- */
