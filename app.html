@@ -316,7 +316,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 #debtView .dtable td{height:auto;background:none}#debtView .dtable .sm{border:1px solid var(--line,#D6E3F8);background:#fff;border-radius:8px;padding:6px 12px;font:600 13px inherit;font-family:inherit;color:var(--blue);cursor:pointer}
 .dtable td{padding:9px 8px;border-bottom:1px solid #EEF2FA;font-variant-numeric:tabular-nums;vertical-align:top}.dtable td small{display:block;color:#51638f;font-size:12px}
 .dtable tr.on td{background:#EEF4FF;font-weight:700}.dtable td.neg{color:#B42318;font-weight:700}.dtable td.act{text-align:right}
-.dh3{margin:20px 0 6px;font-size:16px}.paysofar{margin:10px 0 14px;padding:12px 14px;background:#F3F7FE;border:1px solid #D6E3F8;border-radius:12px;font-size:13px}.paysofar .psrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.paysofar .psrow span{color:#51638f;font-variant-numeric:tabular-nums}
+.dh3{margin:20px 0 6px;font-size:16px}.btxat{font-size:12px;opacity:.85}
+.paysofar{margin:10px 0 14px;padding:12px 14px;background:#F3F7FE;border:1px solid #D6E3F8;border-radius:12px;font-size:13px}.paysofar .psrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.paysofar .psrow span{color:#51638f;font-variant-numeric:tabular-nums}
 .paysofar .psbar{height:8px;background:#E3EAF7;border-radius:99px;margin:8px 0;overflow:hidden}.paysofar .psbar i{display:block;height:100%;background:#2a78d6;border-radius:99px}.paysofar p{margin:0;color:#51638f;line-height:1.45}
 .dnote{margin:-2px 0 8px;font-size:13px}.dlegend-debts{gap:8px 16px}.dlegend-debts i{height:4px;width:16px}.hb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;position:relative;top:-1px}.dlegend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:#51638f;margin-bottom:4px}
 .dlegend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}.dlegend i.dash{height:0;border-top:3px dashed}
@@ -1571,7 +1572,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
     if (tp === "account") { renderAccount(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
-    if (tp === "bank") { bankLoad(true); return; }
+    if (tp === "bank") { bankLoad(true, true); return; }   // opening the tab asks the bank for anything new
     if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(syncDebtGoals).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
     if (tp === "goals") { loadGoals().then(syncDebtGoals).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
@@ -2310,7 +2311,8 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
       clearTimeout(bankPoll);
-      if (bankData && bankData.refreshing) { var tries = 0; (function again() { bankPoll = setTimeout(function () { if ($("bankView").hidden) return; bankCall("sync").then(function (d) { bankData = d; syncCardsToDebt(d.accounts); renderBank(); if (d.refreshing && ++tries < 4) again(); }).catch(function () {}); }, 7000); })(); }
+      if (bankData && bankData.refreshing) { var tries = 0; (function again() { bankPoll = setTimeout(function () { if ($("bankView").hidden) return; var sig = function (x) { return JSON.stringify([(x.review || []).map(function (t) { return t.id + t.status; }), (x.accounts || []).map(function (a) { return a.balance_at + (a.balance && a.balance.current); })]); }, before = sig(bankData);
+            bankCall("sync").then(function (d) { var changed = sig(d) !== before; bankData = d; if (changed) { syncCardsToDebt(d.accounts); renderBank(); } else if (!d.refreshing) renderBank(); if (d.refreshing && ++tries < 9) again(); }).catch(function () {}); }, 6000); })(); }
     }).catch(function (e) {
       $("bankView").innerHTML = '<h1>Bank accounts</h1><div class="panel"><p>' + (e.status === 404 ? "Bank linking isn’t set up yet. Deploy the <b>bank</b> function in Supabase to turn it on." : "Couldn’t load your bank accounts (" + esc(e.message) + "). Try again in a moment.") + "</p></div>";
     });
@@ -2349,7 +2351,7 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
         var b = a.balance || {}, bal = b.kind === "credit" ? (b.owed !== null && b.owed !== undefined ? money.format(b.owed) + " owed" : "—") : (b.current !== null && b.current !== undefined ? money.format(b.current) : "—");
         var sub = b.kind === "cash" && b.available !== null && b.available !== undefined && b.available !== b.current ? money.format(b.available) + " available" : "";
         return '<div class="bacct"><div><b>' + esc(a.name || "Account") + (a.last4 ? " ••" + esc(a.last4) : "") + "</b><small>" + esc(a.institution || "") + (a.subcategory ? " · " + esc(String(a.subcategory).replace(/_/g, " ")) : "") + (a.category === "credit" ? " · on your Debt tab" : "") + (a.status && a.status !== "active" ? " · " + esc(a.status) : "") + "</small></div>" +
-          '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (bankData && bankData.refreshing ? "getting the latest…" : a.balance_at ? "as of " + new Date(a.balance_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + "</small></div>" +
+          '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (bankData && bankData.refreshing ? "checking with " + esc(a.institution || "your bank") + "…" : (a.balance_at ? "as of " + new Date(a.balance_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + (a.balance && a.balance.tx_at ? '<br><span class="btxat">transactions checked ' + new Date(a.balance.tx_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "</span>" : "")) + "</small></div>" +
           '<button type="button" class="sm" data-bank="unlink" data-id="' + esc(a.id) + '" data-name="' + esc((a.name || "this account") + (a.last4 ? " ••" + a.last4 : "")) + '">Unlink</button></div>';
       }).join("") + "</div>";
       // review
