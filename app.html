@@ -637,6 +637,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" required>
     <button class="btn" type="submit" id="loginBtn">Log in</button>
+    <p id="signupTerms" hidden style="margin-top:10px;font-size:13px;line-height:1.5;color:var(--muted)">By creating an account, you agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
     <p class="msg" id="loginMsg" role="alert"></p>
     <p style="margin-top:14px;font-size:14px"><button type="button" class="linkbtn" id="toggleMode">New here? Create an account</button> &nbsp;·&nbsp; <button type="button" class="linkbtn" id="forgotPw">Forgot password?</button></p>
   </form>
@@ -647,6 +648,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   <h2>Your membership isn&rsquo;t active</h2>
   <p id="inactiveMsg">Choose a plan to get into your tools. Any numbers you’ve saved are still here.</p>
   <div class="wizbtns" style="margin-top:14px"><button class="btn" type="button" data-plan="monthly">Monthly — $9</button><button class="btn" type="button" data-plan="annual">Annual — $79</button></div>
+  <p style="margin-top:10px;font-size:13px;line-height:1.5;color:var(--muted)">Monthly starts with a 14-day free trial, then $9 a month. Annual is $79 a year. Plans renew automatically until you cancel, and you can cancel anytime from your Account page. See the <a href="terms.html" target="_blank" rel="noopener">Terms</a>.</p>
   <p class="msg" id="planMsg" role="alert"></p>
   <p style="margin-top:12px;font-size:14px"><button type="button" class="linkbtn" id="inactivePortal" hidden>Manage billing</button> <button type="button" class="linkbtn" id="inactiveOut">Log out</button></p>
 </section>
@@ -703,7 +705,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
         <button class="btn" type="submit">Save changes</button>
         <p class="pickmsg" id="acMsg" role="status"></p>
       </form></div>
-    <div class="panel"><h2>Membership</h2><div id="acMember" class="sub">Loading…</div></div>
+    <div class="panel"><h2>Membership</h2><div id="acMember" class="sub">Loading…</div><p class="sub" style="margin-top:10px;font-size:13px"><a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="mailto:monerembudgeting@gmail.com">Contact</a></p></div>
     <div id="themeBox"></div>
     <div class="panel acform"><h2>Password</h2>
       <form id="pwForm">
@@ -4532,7 +4534,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     mode = m; var su = m === "signup";
     $("loginTitle").textContent = su ? "Create your account" : "Log in"; $("loginBtn").textContent = su ? "Create account" : "Log in";
     $("toggleMode").textContent = su ? "Have an account? Log in" : "New here? Create an account";
-    $("password").autocomplete = su ? "new-password" : "current-password"; $("loginMsg").textContent = ""; $("loginMsg").style.color = "";
+    $("password").autocomplete = su ? "new-password" : "current-password"; $("signupTerms").hidden = !su; $("loginMsg").textContent = ""; $("loginMsg").style.color = "";
   }
   $("toggleMode").addEventListener("click", function () { setMode(mode === "login" ? "signup" : "login"); });
   $("forgotPw").addEventListener("click", function () {
