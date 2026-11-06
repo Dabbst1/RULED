@@ -618,6 +618,36 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root:not([data-theme="light"]) img{opacity:.92}
 }
 
+
+/* ==== DARK MODE: 50/30/20 check, tips, and budget colors ==== */
+:root[data-theme="dark"]{--need:#8AAEFF;--need-bg:#1B2A4F;--want:#6CCFF6;--want-bg:#0E3245;--save:#4ADE80;--save-bg:#103A24}
+:root[data-theme="dark"] .split .sub,:root[data-theme="dark"] .tips .tip,:root[data-theme="dark"] .paysofar p,:root[data-theme="dark"] .paysofar .psrow span{color:#AFC0E2}
+:root[data-theme="dark"] .splitbar,:root[data-theme="dark"] .paysofar .psbar{background:#26355A}
+:root[data-theme="dark"] .splitbar .mark{background:#F3F6FC}
+:root[data-theme="dark"] .warn,:root[data-theme="dark"] .warnline{color:#FDBA74}
+:root[data-theme="dark"] .tips[class*="tips-"]{background:#2A1C10;border-color:#8A4B1E}
+:root[data-theme="dark"] .tips[class*="tips-"] > b,:root[data-theme="dark"] .tipsx{color:#FDBA74}
+:root[data-theme="dark"] .tips[class*="tips-"] li{border-top-color:#4A3220;color:#E6EDFB}
+:root[data-theme="dark"] .tips[class*="tips-"] li b{color:#FFFFFF}
+:root[data-theme="dark"] .tips[class*="tips-"] .sub{color:#D9C3AE}
+:root[data-theme="dark"] .paysofar{background:#16213A;border-color:#2B3A5A}
+:root[data-theme="dark"] .dadv li.warn{background:#2E1218}
+:root[data-theme="dark"] .dadv li.warn::before{color:#FCA5A5}
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]){--need:#8AAEFF;--need-bg:#1B2A4F;--want:#6CCFF6;--want-bg:#0E3245;--save:#4ADE80;--save-bg:#103A24}
+:root:not([data-theme="light"]) .split .sub,:root:not([data-theme="light"]) .tips .tip,:root:not([data-theme="light"]) .paysofar p,:root:not([data-theme="light"]) .paysofar .psrow span{color:#AFC0E2}
+:root:not([data-theme="light"]) .splitbar,:root:not([data-theme="light"]) .paysofar .psbar{background:#26355A}
+:root:not([data-theme="light"]) .splitbar .mark{background:#F3F6FC}
+:root:not([data-theme="light"]) .warn,:root:not([data-theme="light"]) .warnline{color:#FDBA74}
+:root:not([data-theme="light"]) .tips[class*="tips-"]{background:#2A1C10;border-color:#8A4B1E}
+:root:not([data-theme="light"]) .tips[class*="tips-"] > b,:root:not([data-theme="light"]) .tipsx{color:#FDBA74}
+:root:not([data-theme="light"]) .tips[class*="tips-"] li{border-top-color:#4A3220;color:#E6EDFB}
+:root:not([data-theme="light"]) .tips[class*="tips-"] li b{color:#FFFFFF}
+:root:not([data-theme="light"]) .tips[class*="tips-"] .sub{color:#D9C3AE}
+:root:not([data-theme="light"]) .paysofar{background:#16213A;border-color:#2B3A5A}
+:root:not([data-theme="light"]) .dadv li.warn{background:#2E1218}
+:root:not([data-theme="light"]) .dadv li.warn::before{color:#FCA5A5}
+}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 </style>
