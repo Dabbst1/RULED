@@ -619,6 +619,8 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 }
 
 
+/* the cream tips box always has dark text in light mode (dark mode overrides below) */
+.tips[class*="tips-"]{color:#0B1F4D}.tips[class*="tips-"] li b{color:#0B1F4D}
 /* ==== DARK MODE: 50/30/20 check, tips, and budget colors ==== */
 :root[data-theme="dark"]{--need:#8AAEFF;--need-bg:#1B2A4F;--want:#6CCFF6;--want-bg:#0E3245;--save:#4ADE80;--save-bg:#103A24}
 :root[data-theme="dark"] .split .sub,:root[data-theme="dark"] .tips .tip,:root[data-theme="dark"] .paysofar p,:root[data-theme="dark"] .paysofar .psrow span{color:#AFC0E2}

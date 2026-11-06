@@ -3,7 +3,7 @@
    - Layouts, icons, the Supabase library: show the saved copy instantly, refresh it quietly in the background.
    - NEVER touches Supabase data, login, server math, or Stripe. Those always go straight to the network.
    After you change any file, bump VERSION below so phones pick up the new copy. */
-const VERSION = "monerem-v7";
+const VERSION = "monerem-v8";
 const SHELL = [
   "app.html",
   "paycheck.js",
@@ -33,7 +33,8 @@ self.addEventListener("activate", (e) => {
 
 function fromNetworkFirst(req, key) {
   return caches.open(VERSION).then((cache) => {
-    const net = fetch(req).then((res) => { if (res.ok) cache.put(key, res.clone()); return res; });
+    // always ask GitHub for the newest page (skip the browser's 10-minute saved copy)
+    const net = fetch(req.url, { cache: "no-cache", credentials: "same-origin" }).then((res) => { if (res.ok) cache.put(key, res.clone()); return res; });
     const slow = new Promise((resolve) => setTimeout(resolve, 2500)).then(() => cache.match(key));
     return Promise.race([net.catch(() => cache.match(key)), slow.then((r) => r || net)])
       .then((r) => r || net);
