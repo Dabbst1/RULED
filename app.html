@@ -517,8 +517,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
 .subr b small{font-weight:500;color:var(--muted)}
 .subr span{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .subr .sm,.panel .sm{font:600 13px/1 inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--blue);cursor:pointer}
-.tips{margin:6px 0 0 18px;display:grid;gap:8px}
-.tips li{line-height:1.5}
+.glist{margin:6px 0 0 18px;padding:0;display:grid;gap:8px;list-style:disc}
+.glist li{line-height:1.5;color:var(--ink)}
 details.panel summary{cursor:pointer;list-style-position:outside}
 .gloss details{border-top:1px solid var(--line);padding:10px 0}
 .gloss details:first-child{border-top:0}
@@ -668,6 +668,316 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root:not([data-theme="light"]) .dadv li.warn{background:#2E1218}
 :root:not([data-theme="light"]) .dadv li.warn::before{color:#FCA5A5}
 }
+/* ==== DARK MODE: automatic safety net ==== */
+:root[data-theme="dark"] td.calc{background:#16213A}
+:root[data-theme="dark"] td.pend{background:#16213A}
+:root[data-theme="dark"] input.in:focus{background:#121B2E}
+:root[data-theme="dark"] .tab{background:#121B2E}
+:root[data-theme="dark"] .picker select{background:#121B2E}
+:root[data-theme="dark"] td.lab input.nm:focus{background:#121B2E}
+:root[data-theme="dark"] .due{background:#16213A;color:#C3D0EA}
+:root[data-theme="dark"] .due button{color:#C3D0EA}
+:root[data-theme="dark"] .billform{background:#121B2E}
+:root[data-theme="dark"] .billform input,:root[data-theme="dark"] .billform select{background:#121B2E}
+:root[data-theme="dark"] .bill{background:#121B2E}
+:root[data-theme="dark"] .bill.soon{background:#16213A}
+:root[data-theme="dark"] .bill.late{background:#16213A}
+:root[data-theme="dark"] .bill .ba button{background:#121B2E}
+:root[data-theme="dark"] .stat{background:#121B2E}
+:root[data-theme="dark"] .panel{background:#121B2E}
+:root[data-theme="dark"] .step button,:root[data-theme="dark"] .panel .linkbtn{background:#121B2E}
+:root[data-theme="dark"] .goalcard{background:#121B2E}
+:root[data-theme="dark"] .goalcard button.sm{background:#121B2E}
+:root[data-theme="dark"] dialog{background:#121B2E}
+:root[data-theme="dark"] .chip{background:#121B2E}
+:root[data-theme="dark"] .btn.danger{background:#121B2E}
+:root[data-theme="dark"] .btn.ghost{background:#121B2E}
+:root[data-theme="dark"] .acform input{background:#121B2E}
+:root[data-theme="dark"] .add{background:#121B2E}
+:root[data-theme="dark"] .top-right button:hover,:root[data-theme="dark"] #who:hover{background:#121B2E}
+:root[data-theme="dark"] .picker .tab{background:#121B2E}
+:root[data-theme="dark"] .picker .tab:hover{background:#16213A}
+:root[data-theme="dark"] .btn.ghost{background:#121B2E}
+:root[data-theme="dark"] .btn.ghost:hover{background:#16213A}
+:root[data-theme="dark"] .btn.danger{background:#121B2E}
+:root[data-theme="dark"] .step button,:root[data-theme="dark"] .panel .linkbtn,:root[data-theme="dark"] .bill .ba button,:root[data-theme="dark"] .goalcard button.sm{background:#121B2E}
+:root[data-theme="dark"] .step button:hover,:root[data-theme="dark"] .panel .linkbtn:hover,:root[data-theme="dark"] .bill .ba button:hover,:root[data-theme="dark"] .goalcard button.sm:hover{background:#16213A}
+:root[data-theme="dark"] .add{background:#16213A}
+:root[data-theme="dark"] .add:hover{background:#1C2B4A}
+:root[data-theme="dark"] tbody tr:hover td{background:#16213A}
+:root[data-theme="dark"] tbody tr:hover td.lab{background:#16213A}
+:root[data-theme="dark"] td.calc{background:#16213A}
+:root[data-theme="dark"] input.in:hover{background:#16213A}
+:root[data-theme="dark"] input.in:focus{background:#121B2E}
+:root[data-theme="dark"] .chip{background:#121B2E}
+:root[data-theme="dark"] .chip:hover{background:#1C2B4A}
+:root[data-theme="dark"] #wizard .wizlist,:root[data-theme="dark"] #pickList{background:#16213A}
+:root[data-theme="dark"] .bar{background:#16213A}
+:root[data-theme="dark"] .kind{background:#1B2A4F}
+:root[data-theme="dark"] tr.dragging td{background:#1C2B4A}
+:root[data-theme="dark"] td.lab .mv button:hover{background:#1B2A4F}
+:root[data-theme="dark"] .seg{background:#121B2E}
+:root[data-theme="dark"] .seg button{color:#C3D0EA}
+:root[data-theme="dark"] .actl{color:#5EEAD4}
+:root[data-theme="dark"] .cmpbad{color:#FCA5A5}
+:root[data-theme="dark"] .cmpgood{color:#4ADE80}
+:root[data-theme="dark"] .actnote .linkbtn{color:#8AAEFF}
+:root[data-theme="dark"] #planTip.side::before{background:#121B2E}
+:root[data-theme="dark"] #planTip{background:#121B2E}
+:root[data-theme="dark"] #planTip h4{color:#C3D0EA}
+:root[data-theme="dark"] .actnote{background:#10291B;color:#C3D0EA}
+:root[data-theme="dark"] #sheet.actualview input.in{background:#16213A}
+:root[data-theme="dark"] .toolrow .tab{background:#121B2E;color:#8AAEFF}
+:root[data-theme="dark"] .mstep{background:#121B2E}
+:root[data-theme="dark"] .mstep button{background:#16213A}
+:root[data-theme="dark"] .mstep button:active{background:#1C2B4A}
+:root[data-theme="dark"] .dropz{background:#16213A}
+:root[data-theme="dark"] .dropz span{color:#AFC0E2}
+:root[data-theme="dark"] .dropz.over{background:#16213A}
+:root[data-theme="dark"] .rcimg{background:#16213A}
+:root[data-theme="dark"] .rcrow small{color:#AFC0E2}
+:root[data-theme="dark"] .rcrow button{background:#121B2E;color:#FCA5A5}
+:root[data-theme="dark"] tr.grp td,:root[data-theme="dark"] tr.grp td.lab{background:#16213A}
+:root[data-theme="dark"] .gadd{background:#121B2E}
+:root[data-theme="dark"] .glink{color:#AFC0E2}
+:root[data-theme="dark"] tr.savehint td{background:#10291B}
+:root[data-theme="dark"] .tips{background:#2A1C10;border-color:#8A4B1E}
+:root[data-theme="dark"] .tips > b{color:#FDBA74}
+:root[data-theme="dark"] .tips li{border-top-color:#4A3220}
+:root[data-theme="dark"] .tips .tip{color:#AFC0E2}
+:root[data-theme="dark"] .tipsx{color:#FDBA74}
+:root[data-theme="dark"] .admrow input,:root[data-theme="dark"] .admrow select{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .bstat{background:#16213A;border-color:#2B3A5A}
+:root[data-theme="dark"] .bstat span{color:#AFC0E2}
+:root[data-theme="dark"] .blist li{border-top-color:#2B3A5A}
+:root[data-theme="dark"] .bmember{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .kv span:first-child{color:#AFC0E2}
+:root[data-theme="dark"] .projkeep{border-top-color:#2B3A5A}
+:root[data-theme="dark"] .dbar{background:#26355A}
+:root[data-theme="dark"] .dplan input{border-color:#2B3A5A}
+:root[data-theme="dark"] .dplan .seg button{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .dplan .seg button small{color:#AFC0E2}
+:root[data-theme="dark"] .dplan .seg button.on{background:#16213A}
+:root[data-theme="dark"] #debtView .dtable th{color:#AFC0E2;border-bottom-color:#2B3A5A}
+:root[data-theme="dark"] #debtView .dtable .sm{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .dtable td small{color:#AFC0E2}
+:root[data-theme="dark"] .dtable tr.on td{background:#16213A}
+:root[data-theme="dark"] .dtable td.neg{color:#FCA5A5}
+:root[data-theme="dark"] .paysofar{background:#16213A;border-color:#2B3A5A}
+:root[data-theme="dark"] .paysofar .psrow span{color:#AFC0E2}
+:root[data-theme="dark"] .paysofar .psbar{background:#26355A}
+:root[data-theme="dark"] .paysofar p{color:#AFC0E2}
+:root[data-theme="dark"] .dlegend{color:#AFC0E2}
+:root[data-theme="dark"] .chart .tip{background:#121B2E;border-color:#2B3A5A}
+:root[data-theme="dark"] .hb-t{background:#16213A}
+:root[data-theme="dark"] .dadv li.warn{background:#2E1218}
+:root[data-theme="dark"] .dadv li.warn::before{color:#FCA5A5}
+:root[data-theme="dark"] .dadv li.info{background:#16213A}
+:root[data-theme="dark"] .dadv li.good{background:#10291B}
+:root[data-theme="dark"] .dadv li.good::before{color:#4ADE80}
+:root[data-theme="dark"] .dfld input,:root[data-theme="dark"] .dfld select{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .dfld small{color:#AFC0E2}
+:root[data-theme="dark"] .dform-actions{border-top-color:#2B3A5A}
+:root[data-theme="dark"] .dform-actions .btn.danger{color:#FCA5A5}
+:root[data-theme="dark"] #debtView .dtable tr.dediting td{background:#16213A}
+:root[data-theme="dark"] .admsel{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .dmiss{background:#2A1C10}
+:root[data-theme="dark"] #debtView .dtable tr.dinc td{background:#16213A}
+:root[data-theme="dark"] .dgoal{background:#1B2A4F}
+:root[data-theme="dark"] /* bank */
+.bmsg{background:#16213A;border-color:#2B3A5A}
+:root[data-theme="dark"] .bperks li::before{color:#4ADE80}
+:root[data-theme="dark"] .bacct small{color:#AFC0E2}
+:root[data-theme="dark"] #bankView .sm{border-color:#2B3A5A;background:#121B2E;color:#FCA5A5}
+:root[data-theme="dark"] .brow.bhd{color:#AFC0E2}
+:root[data-theme="dark"] .brow .in{color:#4ADE80}
+:root[data-theme="dark"] .brow .bdesc small{color:#AFC0E2}
+:root[data-theme="dark"] .brow select{border-color:#2B3A5A;background:#121B2E}
+:root[data-theme="dark"] .dgoal.dbank{background:#103A24;color:#4ADE80}
+:root[data-theme="dark"] .split{background:#121B2E;border-color:#2B3A5A}
+:root[data-theme="dark"] .split .sub{color:#AFC0E2}
+:root[data-theme="dark"] .splitrow{border-top-color:#2B3A5A}
+:root[data-theme="dark"] .splitbar{background:#26355A}
+:root[data-theme="dark"] .warn{color:#FDBA74}
+:root[data-theme="dark"] .warnline{color:#FDBA74}
+:root[data-theme="dark"] main#app #tabs .tab{color:#9FB0D6}
+:root[data-theme="dark"] .term i{background:#1C2B4A}
+:root[data-theme="dark"] #termPop{background:#121B2E}
+:root[data-theme="dark"] .mchips button{background:#121B2E}
+:root[data-theme="dark"] .tagb{background:#1C2B4A}
+:root[data-theme="dark"] .verdict.good{background:#10291B}
+:root[data-theme="dark"] .verdict.warn{background:#2A1C10}
+:root[data-theme="dark"] .verdict.bad{background:#2E1218}
+:root[data-theme="dark"] .subr .sm,:root[data-theme="dark"] .panel .sm{background:#121B2E}
+:root[data-theme="dark"] .hb div{background:#26355A}
+:root[data-theme="dark"] .hb .up{color:#FDBA74}
+:root[data-theme="dark"] .hb .dn{color:#4ADE80}
+:root[data-theme="dark"] .checkin.done{background:#10291B}
+:root[data-theme="dark"] .checkin.done b{color:#4ADE80}
+:root[data-theme="dark"] .rstep .tick{background:#16213A}
+:root[data-theme="dark"] .rstep .ra button{background:#121B2E}
+:root[data-theme="dark"] .rollnote{background:#10291B;border-color:#1F4A30}
+:root[data-theme="dark"] .rchip{background:#121B2E;border-color:#1F4A30}
+:root[data-theme="dark"] /* the cream tips box always has dark text in light mode (dark mode overrides below) */
+.tips[class*="tips-"]{color:#E6EDFB}
+:root[data-theme="dark"] .tips[class*="tips-"] li b{color:#E6EDFB}
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]) td.calc{background:#16213A}
+:root:not([data-theme="light"]) td.pend{background:#16213A}
+:root:not([data-theme="light"]) input.in:focus{background:#121B2E}
+:root:not([data-theme="light"]) .tab{background:#121B2E}
+:root:not([data-theme="light"]) .picker select{background:#121B2E}
+:root:not([data-theme="light"]) td.lab input.nm:focus{background:#121B2E}
+:root:not([data-theme="light"]) .due{background:#16213A;color:#C3D0EA}
+:root:not([data-theme="light"]) .due button{color:#C3D0EA}
+:root:not([data-theme="light"]) .billform{background:#121B2E}
+:root:not([data-theme="light"]) .billform input,:root:not([data-theme="light"]) .billform select{background:#121B2E}
+:root:not([data-theme="light"]) .bill{background:#121B2E}
+:root:not([data-theme="light"]) .bill.soon{background:#16213A}
+:root:not([data-theme="light"]) .bill.late{background:#16213A}
+:root:not([data-theme="light"]) .bill .ba button{background:#121B2E}
+:root:not([data-theme="light"]) .stat{background:#121B2E}
+:root:not([data-theme="light"]) .panel{background:#121B2E}
+:root:not([data-theme="light"]) .step button,:root:not([data-theme="light"]) .panel .linkbtn{background:#121B2E}
+:root:not([data-theme="light"]) .goalcard{background:#121B2E}
+:root:not([data-theme="light"]) .goalcard button.sm{background:#121B2E}
+:root:not([data-theme="light"]) dialog{background:#121B2E}
+:root:not([data-theme="light"]) .chip{background:#121B2E}
+:root:not([data-theme="light"]) .btn.danger{background:#121B2E}
+:root:not([data-theme="light"]) .btn.ghost{background:#121B2E}
+:root:not([data-theme="light"]) .acform input{background:#121B2E}
+:root:not([data-theme="light"]) .add{background:#121B2E}
+:root:not([data-theme="light"]) .top-right button:hover,:root:not([data-theme="light"]) #who:hover{background:#121B2E}
+:root:not([data-theme="light"]) .picker .tab{background:#121B2E}
+:root:not([data-theme="light"]) .picker .tab:hover{background:#16213A}
+:root:not([data-theme="light"]) .btn.ghost{background:#121B2E}
+:root:not([data-theme="light"]) .btn.ghost:hover{background:#16213A}
+:root:not([data-theme="light"]) .btn.danger{background:#121B2E}
+:root:not([data-theme="light"]) .step button,:root:not([data-theme="light"]) .panel .linkbtn,:root:not([data-theme="light"]) .bill .ba button,:root:not([data-theme="light"]) .goalcard button.sm{background:#121B2E}
+:root:not([data-theme="light"]) .step button:hover,:root:not([data-theme="light"]) .panel .linkbtn:hover,:root:not([data-theme="light"]) .bill .ba button:hover,:root:not([data-theme="light"]) .goalcard button.sm:hover{background:#16213A}
+:root:not([data-theme="light"]) .add{background:#16213A}
+:root:not([data-theme="light"]) .add:hover{background:#1C2B4A}
+:root:not([data-theme="light"]) tbody tr:hover td{background:#16213A}
+:root:not([data-theme="light"]) tbody tr:hover td.lab{background:#16213A}
+:root:not([data-theme="light"]) td.calc{background:#16213A}
+:root:not([data-theme="light"]) input.in:hover{background:#16213A}
+:root:not([data-theme="light"]) input.in:focus{background:#121B2E}
+:root:not([data-theme="light"]) .chip{background:#121B2E}
+:root:not([data-theme="light"]) .chip:hover{background:#1C2B4A}
+:root:not([data-theme="light"]) #wizard .wizlist,:root:not([data-theme="light"]) #pickList{background:#16213A}
+:root:not([data-theme="light"]) .bar{background:#16213A}
+:root:not([data-theme="light"]) .kind{background:#1B2A4F}
+:root:not([data-theme="light"]) tr.dragging td{background:#1C2B4A}
+:root:not([data-theme="light"]) td.lab .mv button:hover{background:#1B2A4F}
+:root:not([data-theme="light"]) .seg{background:#121B2E}
+:root:not([data-theme="light"]) .seg button{color:#C3D0EA}
+:root:not([data-theme="light"]) .actl{color:#5EEAD4}
+:root:not([data-theme="light"]) .cmpbad{color:#FCA5A5}
+:root:not([data-theme="light"]) .cmpgood{color:#4ADE80}
+:root:not([data-theme="light"]) .actnote .linkbtn{color:#8AAEFF}
+:root:not([data-theme="light"]) #planTip.side::before{background:#121B2E}
+:root:not([data-theme="light"]) #planTip{background:#121B2E}
+:root:not([data-theme="light"]) #planTip h4{color:#C3D0EA}
+:root:not([data-theme="light"]) .actnote{background:#10291B;color:#C3D0EA}
+:root:not([data-theme="light"]) #sheet.actualview input.in{background:#16213A}
+:root:not([data-theme="light"]) .toolrow .tab{background:#121B2E;color:#8AAEFF}
+:root:not([data-theme="light"]) .mstep{background:#121B2E}
+:root:not([data-theme="light"]) .mstep button{background:#16213A}
+:root:not([data-theme="light"]) .mstep button:active{background:#1C2B4A}
+:root:not([data-theme="light"]) .dropz{background:#16213A}
+:root:not([data-theme="light"]) .dropz span{color:#AFC0E2}
+:root:not([data-theme="light"]) .dropz.over{background:#16213A}
+:root:not([data-theme="light"]) .rcimg{background:#16213A}
+:root:not([data-theme="light"]) .rcrow small{color:#AFC0E2}
+:root:not([data-theme="light"]) .rcrow button{background:#121B2E;color:#FCA5A5}
+:root:not([data-theme="light"]) tr.grp td,:root:not([data-theme="light"]) tr.grp td.lab{background:#16213A}
+:root:not([data-theme="light"]) .gadd{background:#121B2E}
+:root:not([data-theme="light"]) .glink{color:#AFC0E2}
+:root:not([data-theme="light"]) tr.savehint td{background:#10291B}
+:root:not([data-theme="light"]) .tips{background:#2A1C10;border-color:#8A4B1E}
+:root:not([data-theme="light"]) .tips > b{color:#FDBA74}
+:root:not([data-theme="light"]) .tips li{border-top-color:#4A3220}
+:root:not([data-theme="light"]) .tips .tip{color:#AFC0E2}
+:root:not([data-theme="light"]) .tipsx{color:#FDBA74}
+:root:not([data-theme="light"]) .admrow input,:root:not([data-theme="light"]) .admrow select{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .bstat{background:#16213A;border-color:#2B3A5A}
+:root:not([data-theme="light"]) .bstat span{color:#AFC0E2}
+:root:not([data-theme="light"]) .blist li{border-top-color:#2B3A5A}
+:root:not([data-theme="light"]) .bmember{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .kv span:first-child{color:#AFC0E2}
+:root:not([data-theme="light"]) .projkeep{border-top-color:#2B3A5A}
+:root:not([data-theme="light"]) .dbar{background:#26355A}
+:root:not([data-theme="light"]) .dplan input{border-color:#2B3A5A}
+:root:not([data-theme="light"]) .dplan .seg button{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .dplan .seg button small{color:#AFC0E2}
+:root:not([data-theme="light"]) .dplan .seg button.on{background:#16213A}
+:root:not([data-theme="light"]) #debtView .dtable th{color:#AFC0E2;border-bottom-color:#2B3A5A}
+:root:not([data-theme="light"]) #debtView .dtable .sm{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .dtable td small{color:#AFC0E2}
+:root:not([data-theme="light"]) .dtable tr.on td{background:#16213A}
+:root:not([data-theme="light"]) .dtable td.neg{color:#FCA5A5}
+:root:not([data-theme="light"]) .paysofar{background:#16213A;border-color:#2B3A5A}
+:root:not([data-theme="light"]) .paysofar .psrow span{color:#AFC0E2}
+:root:not([data-theme="light"]) .paysofar .psbar{background:#26355A}
+:root:not([data-theme="light"]) .paysofar p{color:#AFC0E2}
+:root:not([data-theme="light"]) .dlegend{color:#AFC0E2}
+:root:not([data-theme="light"]) .chart .tip{background:#121B2E;border-color:#2B3A5A}
+:root:not([data-theme="light"]) .hb-t{background:#16213A}
+:root:not([data-theme="light"]) .dadv li.warn{background:#2E1218}
+:root:not([data-theme="light"]) .dadv li.warn::before{color:#FCA5A5}
+:root:not([data-theme="light"]) .dadv li.info{background:#16213A}
+:root:not([data-theme="light"]) .dadv li.good{background:#10291B}
+:root:not([data-theme="light"]) .dadv li.good::before{color:#4ADE80}
+:root:not([data-theme="light"]) .dfld input,:root:not([data-theme="light"]) .dfld select{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .dfld small{color:#AFC0E2}
+:root:not([data-theme="light"]) .dform-actions{border-top-color:#2B3A5A}
+:root:not([data-theme="light"]) .dform-actions .btn.danger{color:#FCA5A5}
+:root:not([data-theme="light"]) #debtView .dtable tr.dediting td{background:#16213A}
+:root:not([data-theme="light"]) .admsel{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .dmiss{background:#2A1C10}
+:root:not([data-theme="light"]) #debtView .dtable tr.dinc td{background:#16213A}
+:root:not([data-theme="light"]) .dgoal{background:#1B2A4F}
+:root:not([data-theme="light"]) /* bank */
+.bmsg{background:#16213A;border-color:#2B3A5A}
+:root:not([data-theme="light"]) .bperks li::before{color:#4ADE80}
+:root:not([data-theme="light"]) .bacct small{color:#AFC0E2}
+:root:not([data-theme="light"]) #bankView .sm{border-color:#2B3A5A;background:#121B2E;color:#FCA5A5}
+:root:not([data-theme="light"]) .brow.bhd{color:#AFC0E2}
+:root:not([data-theme="light"]) .brow .in{color:#4ADE80}
+:root:not([data-theme="light"]) .brow .bdesc small{color:#AFC0E2}
+:root:not([data-theme="light"]) .brow select{border-color:#2B3A5A;background:#121B2E}
+:root:not([data-theme="light"]) .dgoal.dbank{background:#103A24;color:#4ADE80}
+:root:not([data-theme="light"]) .split{background:#121B2E;border-color:#2B3A5A}
+:root:not([data-theme="light"]) .split .sub{color:#AFC0E2}
+:root:not([data-theme="light"]) .splitrow{border-top-color:#2B3A5A}
+:root:not([data-theme="light"]) .splitbar{background:#26355A}
+:root:not([data-theme="light"]) .warn{color:#FDBA74}
+:root:not([data-theme="light"]) .warnline{color:#FDBA74}
+:root:not([data-theme="light"]) main#app #tabs .tab{color:#9FB0D6}
+:root:not([data-theme="light"]) .term i{background:#1C2B4A}
+:root:not([data-theme="light"]) #termPop{background:#121B2E}
+:root:not([data-theme="light"]) .mchips button{background:#121B2E}
+:root:not([data-theme="light"]) .tagb{background:#1C2B4A}
+:root:not([data-theme="light"]) .verdict.good{background:#10291B}
+:root:not([data-theme="light"]) .verdict.warn{background:#2A1C10}
+:root:not([data-theme="light"]) .verdict.bad{background:#2E1218}
+:root:not([data-theme="light"]) .subr .sm,:root:not([data-theme="light"]) .panel .sm{background:#121B2E}
+:root:not([data-theme="light"]) .hb div{background:#26355A}
+:root:not([data-theme="light"]) .hb .up{color:#FDBA74}
+:root:not([data-theme="light"]) .hb .dn{color:#4ADE80}
+:root:not([data-theme="light"]) .checkin.done{background:#10291B}
+:root:not([data-theme="light"]) .checkin.done b{color:#4ADE80}
+:root:not([data-theme="light"]) .rstep .tick{background:#16213A}
+:root:not([data-theme="light"]) .rstep .ra button{background:#121B2E}
+:root:not([data-theme="light"]) .rollnote{background:#10291B;border-color:#1F4A30}
+:root:not([data-theme="light"]) .rchip{background:#121B2E;border-color:#1F4A30}
+:root:not([data-theme="light"]) /* the cream tips box always has dark text in light mode (dark mode overrides below) */
+.tips[class*="tips-"]{color:#E6EDFB}
+:root:not([data-theme="light"]) .tips[class*="tips-"] li b{color:#E6EDFB}
+}
+:root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
+/* ==== end safety net ==== */
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 </style>
@@ -2369,8 +2679,16 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   function durTxt(n) { if (n === null) return "Never at this rate"; var y = Math.floor(n / 12), m = n % 12; return (y ? y + (y === 1 ? " year" : " years") : "") + (y && m ? ", " : "") + (m || !y ? m + (m === 1 ? " month" : " months") : ""); }
 
   /* ---------- charts (plain SVG, no libraries) ---------- */
-  var CH = { a: "#2a78d6", m: "#eb6834", s: "#1baf7a", ink: "#0B1F4D", sub: "#51638f", grid: "#E3EAF7" };
-  var PLAN_INK = { on: "#0B1F4D", off: "#7C8DB5", min: "#A9B4CC" };   // combined chart: your plan dark, the other plan lighter, minimums dashed
+  // chart colors follow light/dark mode (checked each time a chart is drawn)
+  function chartDark() { var t = document.documentElement.getAttribute("data-theme"); return t === "dark" || (t !== "light" && !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches)); }
+  var CH = { a: "#2a78d6", m: "#eb6834", s: "#1baf7a" };
+  Object.defineProperties(CH, {
+    ink: { get: function () { return chartDark() ? "#E6EDFB" : "#0B1F4D"; } },
+    sub: { get: function () { return chartDark() ? "#AFC0E2" : "#51638f"; } },
+    grid: { get: function () { return chartDark() ? "#26355A" : "#E3EAF7"; } },
+    halo: { get: function () { return chartDark() ? "#121B2E" : "#fff"; } }
+  });
+  var PLAN_INK = { off: "#7C8DB5", min: "#A9B4CC" }; Object.defineProperty(PLAN_INK, "on", { get: function () { return chartDark() ? "#E6EDFB" : "#0B1F4D"; } });   // combined chart: your plan dark, the other plan lighter, minimums dashed
   // one color per debt, in the order debts were added (a debt keeps its color when others are paid off or removed)
   var DEBT_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"], OTHER_COLOR = "#8a94a6";
   function debtColor(id) { var i = debtState.debts.map(function (d) { return d.id; }).indexOf(id); return i >= 0 && i < DEBT_COLORS.length ? DEBT_COLORS[i] : OTHER_COLOR; }
@@ -2400,14 +2718,14 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
     // direct labels where each line reaches zero (or its last point)
     var used = [];
-    if (opts.noLabels) series.forEach(function (s) { var i = s.values.length - 1; h += '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="#fff" stroke-width="2"/>'; });
+    if (opts.noLabels) series.forEach(function (s) { var i = s.values.length - 1; h += '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="' + CH.halo + '" stroke-width="2"/>'; });
     else series.forEach(function (s) {
       if (s.tag === "") return;
       var i = s.values.length - 1, lx = Math.min(x(i), W - R - 4), ly = y(s.values[i]) - 8, lab = W < 520 && s.short ? s.short : (s.tag || s.name);
       while (used.some(function (u) { return Math.abs(u - ly) < 14; })) ly -= 14;
       used.push(ly);
-      h += '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="#fff" stroke-width="2"/>' +
-        '<text x="' + lx + '" y="' + ly + '" text-anchor="end" font-size="12" font-weight="700" fill="' + CH.ink + '" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">' + esc(lab) + "</text>";
+      h += '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="' + CH.halo + '" stroke-width="2"/>' +
+        '<text x="' + lx + '" y="' + ly + '" text-anchor="end" font-size="12" font-weight="700" fill="' + CH.ink + '" stroke="' + CH.halo + '" stroke-width="4" stroke-linejoin="round" paint-order="stroke">' + esc(lab) + "</text>";
     });
     h += '<line class="xh" x1="0" x2="0" y1="' + T + '" y2="' + (T + ph) + '" stroke="' + CH.ink + '" stroke-width="1" opacity="0"/>';
     h += '<rect x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '" fill="transparent" class="hit"/></svg><div class="tip" hidden></div>';
@@ -4044,7 +4362,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
         }).join("");
       }
       h += "</div>";
-      h += '<details class="panel"><summary><b>How to cancel a subscription</b></summary><ul class="tips"><li><b>iPhone:</b> Settings → tap your name → Subscriptions.</li><li><b>Android:</b> Play Store → your picture → Payments & subscriptions → Subscriptions.</li><li><b>Everything else:</b> log in to the company’s website → Account or Billing → Cancel. Deleting the app does <i>not</i> cancel it.</li><li>Take a screenshot of the cancellation, and check your next statement to be sure the charge stopped.</li><li>Free trials turn into paid plans. Add the end date to Bills so you get a reminder.</li></ul></details>';
+      h += '<details class="panel"><summary><b>How to cancel a subscription</b></summary><ul class="glist"><li><b>iPhone:</b> Settings → tap your name → Subscriptions.</li><li><b>Android:</b> Play Store → your picture → Payments & subscriptions → Subscriptions.</li><li><b>Everything else:</b> log in to the company’s website → Account or Billing → Cancel. Deleting the app does <i>not</i> cancel it.</li><li>Take a screenshot of the cancellation, and check your next statement to be sure the charge stopped.</li><li>Free trials turn into paid plans. Add the end date to Bills so you get a reminder.</li></ul></details>';
       mBody(h);
       $("mBody").onclick = function (e) {
         var b = e.target.closest && e.target.closest("[data-sub]"); if (!b) return;
@@ -4126,7 +4444,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 
   /* ---------- 6. Learn: glossary, first job, student loans ---------- */
   function drawLearn() {
-    var h = '<div class="panel"><h2>Starting your first job</h2><ul class="tips">' +
+    var h = '<div class="panel"><h2>Starting your first job</h2><ul class="glist">' +
       "<li><b>Fill out your " + term("w4", "W-4") + ".</b> Single with one job? The basic version is usually right.</li>" +
       "<li><b>Sign up for the " + term("k401", "401(k)") + "</b> and put in at least enough to get the full " + term("match", "match") + ". It’s free money.</li>" +
       "<li><b>Pick health insurance carefully.</b> You usually have only 30 days after you start. Cheaper monthly plans cost more when you actually see a doctor.</li>" +
@@ -4137,7 +4455,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     mBody(h);
   }
   function studentGuide(full) {
-    return '<div class="panel slguide" id="slGuide"><h2>Student loans: what to do now</h2><ul class="tips">' +
+    return '<div class="panel slguide" id="slGuide"><h2>Student loans: what to do now</h2><ul class="glist">' +
       "<li><b>Find all your loans.</b> Log in at <a href=\"https://studentaid.gov\" target=\"_blank\" rel=\"noopener\">studentaid.gov</a> to see every federal loan and who your servicer is (the company you pay). Private loans are on your credit report.</li>" +
       "<li><b>Know when payments start.</b> Most federal loans give you a 6-month " + term("grace", "grace period") + " after you graduate. Interest on unsubsidized loans keeps growing during it.</li>" +
       "<li><b>Pick a plan.</b> Since July 1, 2026 the SAVE plan is gone. New federal loans get the Tiered Standard plan or the new Repayment Assistance Plan (RAP), which sets your payment by income: as low as $10 a month, up to 10% of your income. Loans from before then can still use the older Standard or IBR plans. See your options with the Loan Simulator on studentaid.gov.</li>" +
