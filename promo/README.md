@@ -16,5 +16,5 @@ Add `--reuse` to skip refilming and use the screens already saved in `shots/` an
 
 **Common changes**
 - New wording or prices: edit the text in `scenes.html`.
-- New web address (custom domain): search `dabbst1.github.io/RULED` in `scenes.html`.
+- New web address (custom domain): search `monerem.com` in `scenes.html`.
 - New feature to show: add a scene to `scenes.html` and its name to `ORDER` in `render.py`.
