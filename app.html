@@ -627,11 +627,6 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root[data-theme="dark"] .splitbar,:root[data-theme="dark"] .paysofar .psbar{background:#26355A}
 :root[data-theme="dark"] .splitbar .mark{background:#F3F6FC}
 :root[data-theme="dark"] .warn,:root[data-theme="dark"] .warnline{color:#FDBA74}
-:root[data-theme="dark"] .tips[class*="tips-"]{background:#2A1C10;border-color:#8A4B1E}
-:root[data-theme="dark"] .tips[class*="tips-"] > b,:root[data-theme="dark"] .tipsx{color:#FDBA74}
-:root[data-theme="dark"] .tips[class*="tips-"] li{border-top-color:#4A3220;color:#E6EDFB}
-:root[data-theme="dark"] .tips[class*="tips-"] li b{color:#FFFFFF}
-:root[data-theme="dark"] .tips[class*="tips-"] .sub{color:#D9C3AE}
 :root[data-theme="dark"] .paysofar{background:#16213A;border-color:#2B3A5A}
 :root[data-theme="dark"] .dadv li.warn{background:#2E1218}
 :root[data-theme="dark"] .dadv li.warn::before{color:#FCA5A5}
@@ -641,11 +636,6 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root:not([data-theme="light"]) .splitbar,:root:not([data-theme="light"]) .paysofar .psbar{background:#26355A}
 :root:not([data-theme="light"]) .splitbar .mark{background:#F3F6FC}
 :root:not([data-theme="light"]) .warn,:root:not([data-theme="light"]) .warnline{color:#FDBA74}
-:root:not([data-theme="light"]) .tips[class*="tips-"]{background:#2A1C10;border-color:#8A4B1E}
-:root:not([data-theme="light"]) .tips[class*="tips-"] > b,:root:not([data-theme="light"]) .tipsx{color:#FDBA74}
-:root:not([data-theme="light"]) .tips[class*="tips-"] li{border-top-color:#4A3220;color:#E6EDFB}
-:root:not([data-theme="light"]) .tips[class*="tips-"] li b{color:#FFFFFF}
-:root:not([data-theme="light"]) .tips[class*="tips-"] .sub{color:#D9C3AE}
 :root:not([data-theme="light"]) .paysofar{background:#16213A;border-color:#2B3A5A}
 :root:not([data-theme="light"]) .dadv li.warn{background:#2E1218}
 :root:not([data-theme="light"]) .dadv li.warn::before{color:#FCA5A5}
@@ -1638,11 +1628,11 @@ details.panel summary{cursor:pointer;list-style-position:outside}
       var tipped = {}, items = rows.slice(0, 3).map(function (r) {
         var tip = tipped[r.d] ? "" : TIPS[r.d] || TIPS.other; tipped[r.d] = 1;
         var extra = r.d === "housing" && r.v > inc * 0.3 ? " Right now it&rsquo;s " + Math.round(r.v / inc * 100) + "% of your income." : "";
-        return "<li><b>" + esc(r.n) + "</b> &middot; " + money.format(r.v) + " (" + Math.round(r.v / inc * 100) + "%)" + (tip ? '<span class="tip">' + tip + extra + "</span>" : "") + "</li>";
+        return '<li style="color:#0B1F4D;border-top-color:#F5D9BC"><b style="color:#0B1F4D;font-weight:700">' + esc(r.n) + "</b> &middot; " + money.format(r.v) + " (" + Math.round(r.v / inc * 100) + "%)" + (tip ? '<span class="tip" style="color:#334A75">' + tip + extra + "</span>" : "") + "</li>";
       }).join("");
       if (!items) return;
-      out += '<div class="tips tips-' + b[0] + '"><button type="button" class="tipsx" data-tips="off" aria-label="Hide suggestions" title="Hide suggestions">&times;</button><b>Ways to bring ' + b[2] + " down by " + money.format(over) + "</b>" +
-        '<span class="sub">Your biggest ' + b[2].toLowerCase() + " this " + cfg.per + ":</span><ul>" + items + "</ul></div>";
+      out += '<div class="tips tips-' + b[0] + '" style="background:#FFF7ED;border-color:#FED7AA;color:#0B1F4D"><button type="button" class="tipsx" data-tips="off" aria-label="Hide suggestions" title="Hide suggestions" style="color:#9A3412">&times;</button><b style="color:#9A3412">Ways to bring ' + b[2] + " down by " + money.format(over) + "</b>" +
+        '<span class="sub" style="color:#334A75">Your biggest ' + b[2].toLowerCase() + " this " + cfg.per + ":</span><ul>" + items + "</ul></div>";
     });
     return out;
   }
