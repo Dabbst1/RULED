@@ -58,7 +58,35 @@ window.RULED_CONFIG = {
     var vp = document.querySelector('meta[name="viewport"]');
     if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover");
   }
-  // 3) Offline-ready app shell + "Add to Home Screen"
+  // 3) Refresh keeps your place: remember how far down each tab you were, and go back there after a reload.
+  //    (The page fills in after login, so we keep trying until it's tall enough, and stop as soon as you scroll yourself.)
+  try {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    var SK = function () { return "monerem-scroll:" + (location.hash.slice(1) || "home"); }, saveT = null;
+    window.addEventListener("scroll", function () {
+      clearTimeout(saveT);
+      saveT = setTimeout(function () { try { sessionStorage.setItem(SK(), String(Math.round(window.scrollY))); } catch (e) {} }, 150);
+    }, { passive: true });
+    window.addEventListener("pagehide", function () { try { sessionStorage.setItem(SK(), String(Math.round(window.scrollY))); } catch (e) {} });
+    var nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+    var reloaded = nav ? nav.type === "reload" : (performance.navigation && performance.navigation.type === 1);
+    var startKey = SK(), target = reloaded ? +(sessionStorage.getItem(startKey) || 0) : 0;
+    if (target > 0) {
+      var stop = false, hits = 0, t0 = Date.now();
+      var quit = function () { stop = true; };
+      ["wheel", "touchstart", "keydown", "mousedown"].forEach(function (ev) { window.addEventListener(ev, quit, { once: true, passive: true }); });
+      (function tick() {
+        if (stop || SK() !== startKey || Date.now() - t0 > 8000) return;
+        var room = document.documentElement.scrollHeight - window.innerHeight;
+        if (room >= target - 2) {
+          if (Math.abs(window.scrollY - target) > 2) { window.scrollTo(0, target); hits = 0; }
+          else if (++hits >= 4) return;          // stayed put for a moment: done
+        }
+        setTimeout(tick, 120);
+      })();
+    }
+  } catch (e) {}
+  // 4) Offline-ready app shell + "Add to Home Screen"
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
   }
