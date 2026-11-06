@@ -1323,8 +1323,20 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   $("paySeg").addEventListener("click", function (e) {
     var p = e.target.getAttribute && e.target.getAttribute("data-pay"); if (!p || p === payPref) return;
     payPref = p; try { localStorage.setItem("monerem-payview", p); } catch (er) {}
+    acctPrefs.payview = p; doSave("prefs", acctPrefs);   // remembered on the account: every device, after logging out and back in
     paintPaySeg(); build(); fillInputs(); buildRowsPanel(); run();
   });
+  /* account-wide display choices (Split checks / Full month) */
+  var acctPrefs = {};
+  function loadPrefs() {
+    return loadSaved("prefs").then(function (s) {
+      acctPrefs = s && typeof s === "object" ? s : {};
+      if (acctPrefs.payview === "full" || acctPrefs.payview === "split") {
+        payPref = acctPrefs.payview; try { localStorage.setItem("monerem-payview", payPref); } catch (e) {}
+        paintPaySeg();
+      } else if (payPref === "full") { acctPrefs.payview = "full"; doSave("prefs", acctPrefs); }  // carry over a choice made before this was saved to the account
+    }).catch(function () {});
+  }
   paintPaySeg();
   /* ---------- events ---------- */
   $("sheet").addEventListener("input", function (e) {
@@ -4545,7 +4557,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
   });
   function start(h) {
-    loadBills(); Promise.all([loadSetup(), loadPlaced()]).then(function () {
+    loadBills(); Promise.all([loadSetup(), loadPlaced(), loadPrefs()]).then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
       seedNav(); makeTabs(); openTool();
     });
