@@ -37,6 +37,7 @@ window.RULED_CONFIG = {
 
 /* ---------- PHONE SPEED ---------- */
 (function () {
+  document.addEventListener("animationend", function (e) { if (e.animationName === "viewIn" && e.target.classList) e.target.classList.remove("view-in"); }, true);
   try { var th = localStorage.getItem("monerem-theme"); if (th === "dark" || th === "light") document.documentElement.setAttribute("data-theme", th); } catch (e) {}
   // 1) Table layouts never change while the app is open: download each once, then reuse it instantly on every tab switch.
   var nativeFetch = window.fetch.bind(window), layoutText = {};
@@ -452,7 +453,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .ti{display:none}
 @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.view-in{animation:viewIn .18s ease-out both}
+.view-in{animation:viewIn .18s ease-out}
 @media (prefers-reduced-motion:reduce){.view-in{animation:none}}
 @media (max-width:700px){
   html,body{overscroll-behavior-y:none}
