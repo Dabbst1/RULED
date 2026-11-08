@@ -1633,14 +1633,13 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
     Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) {
       if (el.classList.contains("fullin")) {   // Full month view: one box holds both paychecks
         var pb = inputs[el.getAttribute("data-fb")] || 0, pc = inputs[el.getAttribute("data-fc")] || 0; tot += pb + pc;
-        if (pb && pc) lines += "<div><span>Paycheck 1</span><b>" + money.format(pb) + "</b></div><div><span>Paycheck 2</span><b>" + money.format(pc) + "</b></div>";
-        return;
+        return;   // Full month view: just the month's total, no paycheck split
       }
       var a = el.getAttribute("data-a"), v = inputs[a] || 0, th = heads[el.closest("td").cellIndex]; tot += v;
       lines += "<div><span>" + esc(th ? th.textContent.replace(/\u00d7/g, "").trim() : "Amount") + "</span><b>" + money.format(v) + "</b></div>";
     });
     var nm = tr.querySelector("input.nm"), name = nm ? nm.value : "";
-    $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + '<div class="tot"><span>Total plan</span><b>' + money.format(tot) + "</b></div>" +
+    $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + (lines ? '<div class="tot"><span>Total plan</span>' : '<div class="tot" style="border-top:0;margin-top:0;padding-top:0"><span>Planned this month</span>') + "<b>" + money.format(tot) + "</b></div>" +
       usedHtml(tr) + (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>') + spentHtml(name);
     var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
     tip.hidden = false;
