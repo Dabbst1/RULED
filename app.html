@@ -682,6 +682,33 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 #spendMon{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 #planTip h4.tipspent{margin:10px 0 4px;padding-top:8px;border-top:1px solid #E1EEF0}
 @media (max-width:700px){.srow{grid-template-columns:52px 1fr auto;gap:8px}.srow .sc{grid-column:1/-1}.srow .sc:empty{display:none}}
+
+/* budget warnings */
+#sheet tr.wnear td:last-child,#sheet tr.wover td:last-child,#sheet tr.wnone td:last-child{position:relative}
+#sheet tr.wnear td.lab{box-shadow:inset 4px 0 0 #D97706}
+#sheet tr.wover td.lab{box-shadow:inset 4px 0 0 #DC2626}
+#sheet tr.wnear input.in{background:#FFF7E6!important}
+#sheet tr.wover input.in{background:#FEECEC!important;color:#B42318!important;font-weight:700}
+.budwarn{position:absolute;left:8px;top:50%;transform:translateY(-50%);font:700 11px/1 inherit;padding:4px 7px;border-radius:99px;white-space:nowrap;pointer-events:auto;cursor:help}
+tr.wnear .budwarn{background:#FEF3C7;color:#92400E}
+tr.wover .budwarn{background:#FEE2E2;color:#B42318}
+tr.wnone .budwarn{background:#E8EEF9;color:#475569}
+#planTip .tipused{margin-top:6px}
+#planTip .tipnote{margin:2px 0 0;font-size:12px;font-weight:600;color:#15803D}
+#planTip .tipnote.wnear{color:#B45309}#planTip .tipnote.wover{color:#B42318}
+.warnpanel{border-left:5px solid #D97706}
+.warnpanel ul{margin:6px 0 0 18px;display:grid;gap:6px}
+.warnpanel li.wover::marker{color:#DC2626}.warnpanel li.wnear::marker{color:#D97706}
+#budToast{position:fixed;z-index:95;right:16px;bottom:16px;max-width:360px;background:#fff;color:var(--ink);border:1px solid var(--line);border-left:6px solid #D97706;border-radius:14px;box-shadow:0 18px 40px rgba(11,31,77,.22);padding:14px 40px 12px 16px;font-size:14px;line-height:1.5}
+#budToast.wover{border-left-color:#DC2626}
+#budToast[hidden]{display:none}
+#budToast>button:first-child{position:absolute;right:8px;top:6px;border:0;background:none;font-size:20px;color:var(--muted);cursor:pointer}
+#budToast .linkbtn{margin-top:8px;font:600 14px/1 inherit;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#F3F7FE;color:var(--blue);cursor:pointer}
+@media (max-width:700px){#budToast{left:12px;right:12px;max-width:none;bottom:calc(84px + env(safe-area-inset-bottom))}.budwarn{top:auto;bottom:2px;transform:none;font-size:10px;padding:2px 6px}}
+:root[data-theme="dark"] #sheet tr.wnear input.in{background:#33260E!important}:root[data-theme="dark"] #sheet tr.wover input.in{background:#3D1620!important;color:#FCA5A5!important}
+:root[data-theme="dark"] tr.wnear .budwarn{background:#4A3410;color:#FCD34D}:root[data-theme="dark"] tr.wover .budwarn{background:#4A1A22;color:#FCA5A5}:root[data-theme="dark"] tr.wnone .budwarn{background:#26355A;color:#C3D0EA}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #sheet tr.wnear input.in{background:#33260E!important}:root:not([data-theme="light"]) #sheet tr.wover input.in{background:#3D1620!important;color:#FCA5A5!important}
+:root:not([data-theme="light"]) tr.wnear .budwarn{background:#4A3410;color:#FCD34D}:root:not([data-theme="light"]) tr.wover .budwarn{background:#4A1A22;color:#FCA5A5}:root:not([data-theme="light"]) tr.wnone .budwarn{background:#26355A;color:#C3D0EA}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -839,6 +866,16 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root[data-theme="dark"] .srow select{background:#121B2E}
 :root[data-theme="dark"] .srow.wait{background:#2A1C10}
 :root[data-theme="dark"] #spendMon{background:#121B2E}
+:root[data-theme="dark"] #sheet tr.wnear input.in{background:#16213A}
+:root[data-theme="dark"] #sheet tr.wover input.in{background:#16213A;color:#FCA5A5}
+:root[data-theme="dark"] tr.wnear .budwarn{background:#33260E;color:#FCD34D}
+:root[data-theme="dark"] tr.wover .budwarn{background:#3D1620;color:#FCA5A5}
+:root[data-theme="dark"] tr.wnone .budwarn{background:#16213A;color:#B8C4DA}
+:root[data-theme="dark"] #planTip .tipnote{color:#4ADE80}
+:root[data-theme="dark"] #planTip .tipnote.wover{color:#FCA5A5}
+:root[data-theme="dark"] .warnpanel li.wover::marker{color:#FCA5A5}
+:root[data-theme="dark"] #budToast{background:#121B2E}
+:root[data-theme="dark"] #budToast .linkbtn{background:#16213A}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -996,6 +1033,16 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root:not([data-theme="light"]) .srow select{background:#121B2E}
 :root:not([data-theme="light"]) .srow.wait{background:#2A1C10}
 :root:not([data-theme="light"]) #spendMon{background:#121B2E}
+:root:not([data-theme="light"]) #sheet tr.wnear input.in{background:#16213A}
+:root:not([data-theme="light"]) #sheet tr.wover input.in{background:#16213A;color:#FCA5A5}
+:root:not([data-theme="light"]) tr.wnear .budwarn{background:#33260E;color:#FCD34D}
+:root:not([data-theme="light"]) tr.wover .budwarn{background:#3D1620;color:#FCA5A5}
+:root:not([data-theme="light"]) tr.wnone .budwarn{background:#16213A;color:#B8C4DA}
+:root:not([data-theme="light"]) #planTip .tipnote{color:#4ADE80}
+:root:not([data-theme="light"]) #planTip .tipnote.wover{color:#FCA5A5}
+:root:not([data-theme="light"]) .warnpanel li.wover::marker{color:#FCA5A5}
+:root:not([data-theme="light"]) #budToast{background:#121B2E}
+:root:not([data-theme="light"]) #budToast .linkbtn{background:#16213A}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1559,13 +1606,20 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     ["copyPrev"].forEach(function (id) { $(id).disabled = v === "actual"; $(id).title = v === "actual" ? "Switch to Plan to use this" : id === "copyPrev" ? "Fill this month with last month's amounts" : "Fill this month from your Annual budget"; });
     $("sheet").classList.toggle("actualview", v === "actual");
     drawRollPanel();
-    if (!quiet) { fillInputs(); run(); }
+    if (!quiet) { fillInputs(); run(); } else paintWarn();
   }
   /* ---------- Actual view: hover a category to see its plan and fill it in ---------- */
   var tipTimer = null, tipRow = null;
   function hideTip() { clearTimeout(tipTimer); tipTimer = setTimeout(function () { $("planTip").hidden = true; tipRow = null; }, 280); }
   var switchTimer = null;
   function keepTip() { clearTimeout(tipTimer); clearTimeout(switchTimer); }
+  function usedHtml(tr) {
+    if (!tr.hasAttribute("data-sec")) return "";
+    var b = rowBudget(tr); if (!(b.act > 0)) return "";
+    var lv = budgetLevel(b.plan, b.act), left = b.plan - b.act;
+    return '<div class="tipused ' + (lv ? lv.k : "") + '"><span>Spent so far</span><b>' + money.format(b.act) + "</b></div>" +
+      (b.plan > 0 ? '<p class="tipnote ' + (lv ? lv.k : "") + '">' + (left >= 0 ? money.format(left) + " left (" + Math.round(b.act / b.plan * 100) + "% used)" : money.format(-left) + " over your plan") + "</p>" : "");
+  }
   function spentHtml(name) {
     var L = spendFor(storageKey(), name, false); if (!L.length) L = spendFor(storageKey(), name, true); if (!L.length) return "";
     var sum = L.reduce(function (t, e) { return t + e.a; }, 0);
@@ -1587,7 +1641,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
     var nm = tr.querySelector("input.nm"), name = nm ? nm.value : "";
     $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + '<div class="tot"><span>Total plan</span><b>' + money.format(tot) + "</b></div>" +
-      (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>') + spentHtml(name);
+      usedHtml(tr) + (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>') + spentHtml(name);
     var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
     tip.hidden = false;
     // Put it in the empty space to the right of the budget, level with the row, so it never covers a category.
@@ -2104,7 +2158,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
         if (!res.ok) return res.text().then(function (t) { var c = ""; try { c = JSON.parse(t).error || ""; } catch (x) {} throw new Error("fail" + res.status + (c ? " " + c : "")); });
         return res.json();
       })
-      .then(function (d) { if (mine === seq) { paint(d.values); setStatus("Up to date"); } })
+      .then(function (d) { if (mine === seq) { paint(d.values); paintWarn(); setStatus("Up to date"); } })
       .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate (" + (String(err.message).indexOf("fail") === 0 ? "error " + err.message.slice(4) : "can’t reach the server") + "). Try again in a moment.", true); });
   }
   // On a computer, use the largest number size that still shows every digit without sideways scrolling.
@@ -2220,7 +2274,37 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) {
       el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(vals()[el.getAttribute("data-a")]);
     });
+    paintWarn();
   }
+  /* ---------- budget warnings: amber at 80% of a category's plan, red once it's over ---------- */
+  var WARN_AT = 0.8;
+  function rowBudget(tr) {
+    var plan = 0, act = 0;
+    Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) { boxAddrs(el).forEach(function (a) { plan += +inputs[a] || 0; act += +actual[a] || 0; }); });
+    return { plan: Math.round(plan * 100) / 100, act: Math.round(act * 100) / 100 };
+  }
+  function budgetLevel(plan, act) {
+    if (!(act > 0)) return null;
+    if (!(plan > 0)) return { k: "wnone", t: "No budget set" };
+    if (act > plan + 0.004) return { k: "wover", t: money.format(act - plan) + " over" };
+    if (act / plan >= WARN_AT) return { k: "wnear", t: Math.round(act / plan * 100) + "% used" };
+    return null;
+  }
+  function paintWarn() {
+    var sh = $("sheet"); if (!sh) return;
+    Array.prototype.forEach.call(sh.querySelectorAll(".budwarn"), function (x) { x.remove(); });
+    Array.prototype.forEach.call(sh.querySelectorAll("tr.wnear,tr.wover,tr.wnone"), function (r) { r.classList.remove("wnear", "wover", "wnone"); });
+    if (view !== "actual" || !layout || !layout.months) return;
+    Array.prototype.forEach.call(sh.querySelectorAll("tr[data-sec]"), function (tr) {
+      if (tr.hidden || !tr.querySelector("input.in")) return;
+      var b = rowBudget(tr), lv = budgetLevel(b.plan, b.act), tds = tr.querySelectorAll("td"), lab = tds[tds.length - 1]; if (!lv || !lab) return;
+      tr.classList.add(lv.k);
+      var sp = document.createElement("span"); sp.className = "budwarn"; sp.textContent = lv.t;
+      sp.title = lv.k === "wnone" ? "You’ve spent " + money.format(b.act) + " here, but nothing was planned." : "Spent " + money.format(b.act) + " of " + money.format(b.plan) + " planned.";
+      lab.appendChild(sp);
+    });
+  }
+  $("sheet").addEventListener("input", function () { if (view === "actual") paintWarn(); });
 
   /* ---------- open a tool / month ---------- */
   function openTool() {
@@ -3207,10 +3291,24 @@ details.panel summary{cursor:pointer;list-style-position:outside}
       }).then(function () {
         if (bankData && bankData.review) bankData.review = bankData.review.filter(function (t) { return added.indexOf(t.id) < 0 && skipped.indexOf(t.id) < 0; });
         refreshOpenMonth(touched);
+        if (added.length) budgetAlert();
         return { added: added.length, skipped: skipped.length, waiting: waiting };
       });
     }).then(function (r) { autoBusy = null; return r; }, function (e) { autoBusy = null; throw e; });
     return autoBusy;
+  }
+  function budgetAlert() {
+    var n = new Date(), mk = n.getFullYear() + "-" + pad(n.getMonth() + 1);
+    monthWarnings(n.getFullYear(), n.getMonth()).then(function (W) {
+      var fresh = W.filter(function (w) { var k = "monerem-warned:" + mk + ":" + nk(w.name) + ":" + w.k; try { if (localStorage.getItem(k)) return false; localStorage.setItem(k, "1"); } catch (e) {} return true; });
+      if (!fresh.length) return;
+      toast('<b>' + (fresh.some(function (w) { return w.k === "wover"; }) ? "Over budget" : "Getting close") + "</b><br>" + fresh.slice(0, 3).map(warnLine).join("<br>") + (fresh.length > 3 ? "<br>and " + (fresh.length - 3) + " more" : ""), fresh.some(function (w) { return w.k === "wover"; }) ? "wover" : "wnear");
+    });
+  }
+  function toast(html, k) {
+    var t = $("budToast"); if (!t) { t = document.createElement("div"); t.id = "budToast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.className = k || ""; t.innerHTML = '<button type="button" aria-label="Close" onclick="this.parentNode.hidden=true">×</button><div>' + html + '</div><button type="button" class="linkbtn" data-go="monthly-budget" data-act="1">See budget</button>';
+    t.hidden = false; clearTimeout(t._h); t._h = setTimeout(function () { t.hidden = true; }, 12000);
   }
   // after you log in: quietly pull in anything new from linked banks
   function quietBankImport() {
@@ -4685,7 +4783,24 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     return '<div class="panel"><h2>Net worth</h2><div class="kv"><span>As of ' + parseD(last.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span><b class=\"" + (last.t < 0 ? "neg" : "") + "\">" + money.format(last.t) + "</b></div>" + (H.length >= 2 ? spark(H.slice(-30).map(function (x) { return x.t; })) : "") +
       '<p style="margin-top:8px"><button class="linkbtn" data-gotool="money" data-sub="networth">Update net worth</button></p></div>';
   }
-  function growHome(v) { return homeCheckIn() + roadmap(v); }
+  function monthWarnings(y, mi) {
+    return monthDoc(y, mi).then(function (s) {
+      if (!s) return [];
+      var out = [];
+      s.cats.forEach(function (e) { var plan = catSum(s.doc, e, ""), act = catSum(s.doc, e, "a:"), lv = budgetLevel(plan, act); if (lv && lv.k !== "wnone") out.push({ name: e.name, plan: plan, act: act, k: lv.k }); });
+      return out.sort(function (a, b) { return (b.act / b.plan) - (a.act / a.plan); });
+    }).catch(function () { return []; });
+  }
+  function warnLine(w) { return w.k === "wover" ? "<b>" + esc(w.name) + "</b> is " + money.format(w.act - w.plan) + " over (" + money.format(w.act) + " of " + money.format(w.plan) + ")" : "<b>" + esc(w.name) + "</b> is at " + Math.round(w.act / w.plan * 100) + "%: " + money.format(w.plan - w.act) + " left of " + money.format(w.plan); }
+  function fillHomeWarn() {
+    var box = $("homeWarn"); if (!box) return; var n = new Date();
+    monthWarnings(n.getFullYear(), n.getMonth()).then(function (W) {
+      if (!$("homeWarn") || !W.length) return;
+      $("homeWarn").innerHTML = '<div class="panel warnpanel"><h2>Heads up</h2><p class="sub">These categories are close to or over what you planned for ' + MONTHS[n.getMonth()] + ".</p><ul>" +
+        W.slice(0, 6).map(function (w) { return '<li class="' + w.k + '">' + warnLine(w) + "</li>"; }).join("") + '</ul><p style="margin-top:8px"><button type="button" class="linkbtn" data-go="monthly-budget" data-act="1">See it in Monthly budget</button></p></div>';
+    });
+  }
+  function growHome(v) { setTimeout(fillHomeWarn, 0); return '<div id="homeWarn"></div>' + homeCheckIn() + roadmap(v); }
   $("homeBody").addEventListener("click", function (e) {
     var b = e.target.closest && e.target.closest("[data-grow]"); if (!b) return;
     var a = b.getAttribute("data-grow"), k = b.getAttribute("data-k");
