@@ -669,6 +669,19 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root:not([data-theme="light"]) .dadv li.warn{background:#2E1218}
 :root:not([data-theme="light"]) .dadv li.warn::before{color:#FCA5A5}
 }
+
+/* spending record */
+.srow{display:grid;grid-template-columns:62px 1fr auto minmax(170px,240px);gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.srow .sd{color:var(--muted);font-variant-numeric:tabular-nums}
+.srow .ss{min-width:0}.srow .ss b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.srow .ss small{color:var(--muted);font-size:12px}
+.srow .sa{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.srow .sa.in{color:#15803D}
+.srow select{width:100%;font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.srow.wait{background:#FFF8EB;margin:0 -10px;padding:10px;border-radius:10px;border-top:0}
+.srow.off .ss b,.srow.off .sa{color:var(--muted);font-weight:500}
+.stot{margin:12px 0 4px;font-size:15px}
+#spendMon{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+#planTip h4.tipspent{margin:10px 0 4px;padding-top:8px;border-top:1px solid #E1EEF0}
+@media (max-width:700px){.srow{grid-template-columns:52px 1fr auto;gap:8px}.srow .sc{grid-column:1/-1}.srow .sc:empty{display:none}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -822,6 +835,10 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root[data-theme="dark"] /* the cream tips box always has dark text in light mode (dark mode overrides below) */
 .tips[class*="tips-"]{color:#E6EDFB}
 :root[data-theme="dark"] .tips[class*="tips-"] li b{color:#E6EDFB}
+:root[data-theme="dark"] .srow .sa.in{color:#4ADE80}
+:root[data-theme="dark"] .srow select{background:#121B2E}
+:root[data-theme="dark"] .srow.wait{background:#2A1C10}
+:root[data-theme="dark"] #spendMon{background:#121B2E}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -975,6 +992,10 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 :root:not([data-theme="light"]) /* the cream tips box always has dark text in light mode (dark mode overrides below) */
 .tips[class*="tips-"]{color:#E6EDFB}
 :root:not([data-theme="light"]) .tips[class*="tips-"] li b{color:#E6EDFB}
+:root:not([data-theme="light"]) .srow .sa.in{color:#4ADE80}
+:root:not([data-theme="light"]) .srow select{background:#121B2E}
+:root:not([data-theme="light"]) .srow.wait{background:#2A1C10}
+:root:not([data-theme="light"]) #spendMon{background:#121B2E}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1545,6 +1566,12 @@ details.panel summary{cursor:pointer;list-style-position:outside}
   function hideTip() { clearTimeout(tipTimer); tipTimer = setTimeout(function () { $("planTip").hidden = true; tipRow = null; }, 280); }
   var switchTimer = null;
   function keepTip() { clearTimeout(tipTimer); clearTimeout(switchTimer); }
+  function spentHtml(name) {
+    var L = spendFor(storageKey(), name, false); if (!L.length) L = spendFor(storageKey(), name, true); if (!L.length) return "";
+    var sum = L.reduce(function (t, e) { return t + e.a; }, 0);
+    return '<h4 class="tipspent">Recorded (' + L.length + ")</h4>" + L.slice(0, 5).map(function (e) { return '<div><span>' + esc(e.s.length > 22 ? e.s.slice(0, 21) + "…" : e.s) + " · " + parseD(e.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span><b>" + money.format(e.a) + "</b></div>"; }).join("") +
+      (L.length > 5 ? '<p class="sub" style="margin:4px 0 0">+ ' + (L.length - 5) + " more · " + money.format(sum) + " total. See them all in Bank.</p>" : "");
+  }
   function showTip(tr) {
     if (view !== "actual" || !tr || tr.hidden || !tr.querySelector("input.in") || tr.closest("thead")) return;
     keepTip(); if (tipRow === tr && !$("planTip").hidden) return; tipRow = tr;
@@ -1560,7 +1587,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
     var nm = tr.querySelector("input.nm"), name = nm ? nm.value : "";
     $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + '<div class="tot"><span>Total plan</span><b>' + money.format(tot) + "</b></div>" +
-      (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>');
+      (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>') + spentHtml(name);
     var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
     tip.hidden = false;
     // Put it in the empty space to the right of the budget, level with the row, so it never covers a category.
@@ -2514,8 +2541,10 @@ details.panel summary{cursor:pointer;list-style-position:outside}
         if (addr === null) { fm.textContent = "That category is not in " + MONTHS[dt.getMonth()] + "’s budget. Pick another."; btn.disabled = false; return; }
         return doSave(s.key, s.doc).then(function () {
           var store = $("rcM").value.trim() || "Receipt";
-          receipts.unshift({ id: Date.now().toString(36), date: $("rcD").value, merchant: store, amount: amt, category: cat, col: col, key: s.key });
-          rcRules[nk(store)] = cat; return rcSave();
+          var rid = Date.now().toString(36);
+          receipts.unshift({ id: rid, date: $("rcD").value, merchant: store, amount: amt, category: cat, col: col, key: s.key });
+          rcRules[nk(store)] = cat;
+          return spendLoad().then(function () { spendPut({ id: "rc-" + rid, d: $("rcD").value, s: store, a: amt, key: s.key, col: col, cat: cat, kind: "ex", src: "receipt" }); return Promise.all([rcSave(), spendSave()]); });
         }).then(function () { done(money.format(amt) + " added to " + cat + " for " + MONTHS[dt.getMonth()] + "."); });
       }).catch(function () { fm.textContent = "Something went wrong. Try again."; btn.disabled = false; });
     });
@@ -2541,7 +2570,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     e.target.disabled = true;
     var m = /(\d{4})-(\d{2})$/.exec(r.key || "");
     var back = m ? rcMonthState(+m[1], +m[2] - 1).then(function (s) { if (rcApply(s, r.category, r.col || 0, r.amount, -1) !== null) return doSave(s.key, s.doc); }) : Promise.resolve();
-    back.catch(function () {}).then(function () { receipts = receipts.filter(function (x) { return x.id !== id; }); return rcSave(); }).then(renderReceipts);
+    back.catch(function () {}).then(function () { receipts = receipts.filter(function (x) { return x.id !== id; }); spend = spend.filter(function (x) { return x.id !== "rc-" + id; }); return Promise.all([rcSave(), spendSave()]); }).then(renderReceipts);
   });
   if (CFG.devMode) window.__rc = { parse: rcParse, date: rcDate };
 
@@ -2955,11 +2984,13 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[2]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
+      return autoImport(bankData.review).then(function (r) { if (r && r.added) spendMsg = "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers."; }).catch(function () {});
+    }).then(function () {
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
       clearTimeout(bankPoll);
       if (bankData && bankData.refreshing) { var tries = 0; (function again() { bankPoll = setTimeout(function () { if ($("bankView").hidden) return; var sig = function (x) { return JSON.stringify([(x.review || []).map(function (t) { return t.id + t.status; }), (x.accounts || []).map(function (a) { return a.balance_at + (a.balance && a.balance.current); })]); }, before = sig(bankData);
-            bankCall("sync").then(function (d) { var changed = sig(d) !== before; bankData = d; if (changed) { syncCardsToDebt(d.accounts); renderBank(); } else if (!d.refreshing) renderBank(); if (d.refreshing && ++tries < 9) again(); }).catch(function () {}); }, 6000); })(); }
+            bankCall("sync").then(function (d) { var changed = sig(d) !== before; bankData = d; if (changed) { syncCardsToDebt(d.accounts); autoImport(d.review).catch(function () {}).then(renderBank); } else if (!d.refreshing) renderBank(); if (d.refreshing && ++tries < 9) again(); }).catch(function () {}); }, 6000); })(); }
     }).catch(function (e) {
       $("bankView").innerHTML = '<h1>Bank accounts</h1><div class="panel"><p>' + (e.status === 404 ? "Bank linking isn’t set up yet. Deploy the <b>bank</b> function in Supabase to turn it on." : "Couldn’t load your bank accounts (" + esc(e.message) + "). Try again in a moment.") + "</p></div>";
     });
@@ -2982,12 +3013,12 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     return rcMonthState(n.getFullYear(), n.getMonth()).then(function (s) { return { ex: s.cats, inc: activeEntries(s.Lm, s.st).income }; }).catch(function () { return { ex: [], inc: [] }; });
   }
   function renderBank() {
-    return bankMonthCats().then(function (C) {
+    return Promise.all([bankMonthCats(), spendLoad()]).then(function (CC) { var C = CC[0];
       var v = $("bankView"), A = bankData.accounts || [], R = bankData.review || [], h = "";
       h += '<h1>Bank accounts</h1><p class="sub">Link your accounts so your spending and balances fill in for you. Read-only: Monerem can never move money.</p>';
       if (bankMsg) h += '<p class="bmsg">' + bankMsg + "</p>";
       if (!A.length) {
-        h += '<div class="panel bintro"><h2>Link a bank or credit card</h2><ul class="bperks"><li><b>Spending fills in for you.</b> Review your transactions and add them to your budget’s Actual numbers in one tap.</li>' +
+        h += '<div class="panel bintro"><h2>Link a bank or credit card</h2><ul class="bperks"><li><b>Spending fills in for you.</b> Purchases go straight into your budget’s Actual numbers, sorted by category, with a record of every one: where, when and how much.</li>' +
           '<li><b>Credit card balances stay current</b> on your Debt tab.</li><li><b>Safe and private.</b> You sign in to your bank through Stripe. Monerem never sees your bank password, and you can unlink anytime.</li></ul>' +
           '<button type="button" class="btn" data-bank="link"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Link a bank") + '</button><p class="sub" style="margin-top:10px">See our <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> for how bank data is handled.</p></div>';
         v.innerHTML = h; return;
@@ -3001,30 +3032,11 @@ details.panel summary{cursor:pointer;list-style-position:outside}
           '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (bankData && bankData.refreshing ? "checking with " + esc(a.institution || "your bank") + "…" : (a.balance_at ? "as of " + new Date(a.balance_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + (a.balance && a.balance.tx_at ? '<br><span class="btxat">transactions checked ' + new Date(a.balance.tx_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "</span>" : "")) + "</small></div>" +
           '<button type="button" class="sm" data-bank="unlink" data-id="' + esc(a.id) + '" data-name="' + esc((a.name || "this account") + (a.last4 ? " ••" + a.last4 : "")) + '">Unlink</button></div>';
       }).join("") + "</div>";
-      // review
-      h += '<div class="panel"><h2>New transactions to review</h2>';
+      // pending ones wait until they post (amounts can still change); everything else is already in the record
+      var P = R.filter(function (t) { return t.status === "pending"; });
       if (bankData.loading) h += '<p class="bmsg">Your bank is still sending transactions. This can take a minute after you link. Tap <b>Refresh</b> shortly.</p>';
-      if (!R.length) h += '<p class="sub">' + (bankData.loading ? "" : "You’re all caught up. New transactions show up here when your bank sends them (usually once a day).") + "</p>";
-      else {
-        var acctName = {}; A.forEach(function (a) { acctName[a.id] = (a.name || "") + (a.last4 ? " ••" + a.last4 : ""); });
-        var opts = function (t) {
-          var cur = bankChoice[t.id] !== undefined ? bankChoice[t.id] : bankGuess(t, C.ex, C.inc);
-          var o = '<option value="">Choose a category</option><option value="skip"' + (cur === "skip" ? " selected" : "") + ">Don’t add (transfer, card payment…)</option>";
-          if (t.amount > 0) o += '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (cur === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
-          o += '<optgroup label="Expenses">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (cur === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
-          return o;
-        };
-        h += '<p class="sub" style="margin-bottom:8px">We guessed a category for each one. Fix anything that’s off, then add them to your budget’s <b>Actual</b> numbers for the month they happened.</p>';
-        h += '<div class="brow bhd"><label><input type="checkbox" id="bAll" checked aria-label="Select all"></label><span>Date</span><span>Description</span><span class="r">Amount</span><span>Category</span></div>';
-        h += R.map(function (t) {
-          return '<div class="brow"><label><input type="checkbox" class="bsel" data-id="' + esc(t.id) + '" checked aria-label="Select"></label><span>' + new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-            '<span class="bdesc"><b>' + esc(t.description || "Transaction") + "</b><small>" + esc(acctName[t.account] || "") + (t.status === "pending" ? " · pending" : "") + "</small></span>" +
-            '<span class="r ' + (t.amount > 0 ? "in" : "out") + '">' + (t.amount > 0 ? "+" : "−") + money.format(Math.abs(t.amount)) + "</span>" +
-            '<span><select class="bcat" data-id="' + esc(t.id) + '" aria-label="Category">' + opts(t) + "</select></span></div>";
-        }).join("");
-        h += '<div class="admrow" style="margin-top:12px"><button type="button" class="btn" data-bank="import">Add selected to my budget</button><button type="button" class="btn ghost" data-bank="skip">Skip selected</button></div>';
-      }
-      h += "</div>";
+      h += spendPanel(C);
+      if (P.length) h += '<div class="panel"><h2>Pending (' + P.length + ')</h2><p class="sub">These are added automatically once they finish posting.</p>' + P.map(function (t) { return '<div class="srow off"><span class="sd">' + txDay(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span><span class="ss"><b>' + esc(t.description || "Transaction") + '</b><small>pending</small></span><span class="sa">' + (t.amount > 0 ? "+" : "") + money.format(Math.abs(t.amount)) + '</span><span class="sc"></span></div>'; }).join("") + "</div>";
       h += rulesPanel();
       v.innerHTML = h;
     });
@@ -3122,6 +3134,159 @@ details.panel summary{cursor:pointer;list-style-position:outside}
       }).catch(function (er) { bankMsg = "Couldn’t unlink (" + esc(er.message) + ")."; renderBank(); });
     }
   });
+
+  /* ---------- spending record: every bank transaction and receipt, with where the money went ----------
+     New bank transactions are added to that month's Actual numbers automatically (best-guess category).
+     Transfers and card payments are left out. Anything we can't place waits for one tap. Every one is
+     kept here (date, store, amount, category) so a number in Actual is never just a blank dollar amount. */
+  var spend = [], spendLoaded = false, autoBusy = null;
+  function spendLoad() {
+    if (spendLoaded) return Promise.resolve();
+    return loadSaved("spendlog").then(function (s) { spend = s && Array.isArray(s.__log) ? s.__log : []; spendLoaded = true; }).catch(function () { spendLoaded = true; });
+  }
+  function spendSave() {
+    spend.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : 0; });
+    if (spend.length > 3000) spend.length = 3000;
+    return doSave("spendlog", { __log: spend });
+  }
+  function spendFind(id) { return spend.filter(function (x) { return x.id === id; })[0]; }
+  function txDay(t) {
+    var v = t.date, m = typeof v === "string" && /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3], 12);   // a plain date is that day where you live, not in London
+    var d = new Date(typeof v === "number" && v < 1e11 ? v * 1000 : v); return isNaN(d) ? new Date() : d;
+  }
+  // "TARGET T-1234 SANFORD FL" -> "Target"
+  var US_ST = /^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)$/;
+  function cleanStore(desc) {
+    var w = String(desc || "").replace(/\b(pos|debit|purchase|card|ach|sq \*|tst\*|pp\*)\b/ig, " ").replace(/[#*]\S*/g, " ").replace(/\b[a-z]{0,2}-?\d[\w-]*\b/ig, " ").replace(/\s+/g, " ").trim().split(" ");
+    if (w.length >= 3 && US_ST.test(w[w.length - 1].toUpperCase())) w = w.slice(0, -2);
+    var out = w.join(" ").trim() || String(desc || "Transaction");
+    return out === out.toUpperCase() ? out.toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); }) : out;
+  }
+  function monthKeyOf(d) { return "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+  function spendPut(e) { var old = spendFind(e.id); if (old) Object.assign(old, e); else spend.push(e); }
+  // the month table that's open on screen reloads after a background change, unless you're mid-edit
+  function refreshOpenMonth(keys) {
+    if (!tool || tool.id !== "monthly-budget" || !layout || !layout.months || pendingSave) return;
+    if (keys.indexOf(storageKey()) >= 0) openTool();
+  }
+  /* add new bank transactions to Actual without asking */
+  function autoImport(list) {
+    if (autoBusy) return autoBusy;
+    var fresh = (list || []).filter(function (t) { return t && t.id && t.status !== "pending" && typeof t.amount === "number"; });
+    if (!fresh.length) return Promise.resolve(null);
+    autoBusy = Promise.all([spendLoad(), rcLoad()]).then(function () {
+      fresh = fresh.filter(function (t) { var e = spendFind(t.id); return !e || e.kind === "none"; });
+      var months = {};
+      fresh.forEach(function (t) { var k = monthKeyOf(txDay(t)); (months[k] = months[k] || []).push(t); });
+      var added = [], skipped = [], waiting = 0, touched = [], chain = Promise.resolve();
+      Object.keys(months).forEach(function (k) {
+        chain = chain.then(function () {
+          var m = /(\d{4})-(\d{2})$/.exec(k);
+          return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+            var inc = activeEntries(s.Lm, s.st).income, changed = false;
+            months[k].forEach(function (t) {
+              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
+              if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
+              if (g.indexOf("ex:") === 0 && rcApply(s, g.slice(3), col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: g.slice(3) })); added.push(t.id); changed = true; return; }
+              if (g.indexOf("in:") === 0) {
+                var e = inc.filter(function (c) { return nk(c.name) === nk(g.slice(3)); })[0];
+                if (e) { var a = e.addrs[Math.min(col, e.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + t.amount) * 100) / 100; spendPut(Object.assign(base, { kind: "in", cat: e.name })); added.push(t.id); changed = true; return; }
+              }
+              spendPut(Object.assign(base, { kind: "none", cat: "" })); waiting++;   // couldn't tell: waits for one tap
+            });
+            if (changed) { touched.push(k); return doSave(s.key, s.doc); }
+          });
+        });
+      });
+      return chain.then(function () {
+        var jobs = [spendSave()];
+        if (added.length) jobs.push(bankCall("mark", { ids: added, state: "imported" }).catch(function () {}));
+        if (skipped.length) jobs.push(bankCall("mark", { ids: skipped, state: "skipped" }).catch(function () {}));
+        return Promise.all(jobs);
+      }).then(function () {
+        if (bankData && bankData.review) bankData.review = bankData.review.filter(function (t) { return added.indexOf(t.id) < 0 && skipped.indexOf(t.id) < 0; });
+        refreshOpenMonth(touched);
+        return { added: added.length, skipped: skipped.length, waiting: waiting };
+      });
+    }).then(function (r) { autoBusy = null; return r; }, function (e) { autoBusy = null; throw e; });
+    return autoBusy;
+  }
+  // after you log in: quietly pull in anything new from linked banks
+  function quietBankImport() {
+    if (!session || CFG.devMode) return;
+    bankCall("list").then(function (d) { if (d && (d.accounts || []).length) { bankData = d; return autoImport(d.review); } }).catch(function () {});
+  }
+  /* move a recorded transaction to another category (or out of the budget), and remember it for that store */
+  function spendRecat(id, pick) {
+    var e = spendFind(id); if (!e) return Promise.resolve();
+    var m = /(\d{4})-(\d{2})$/.exec(e.key || ""); if (!m) return Promise.resolve();
+    return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+      var inc = activeEntries(s.Lm, s.st).income;
+      function move(kind, cat, sign) {
+        if (kind === "ex") return rcApply(s, cat, e.col || 0, e.a, sign) !== null;
+        if (kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(cat); })[0]; if (!c) return false; var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0, v = Math.round((cur + sign * e.a) * 100) / 100; s.doc["a:" + a] = v < 0 ? 0 : v; return true; }
+        return true;
+      }
+      var nk2 = pick === "skip" ? "skip" : pick.slice(0, 2), ncat = pick === "skip" ? "" : pick.slice(3);
+      if (!move(nk2, ncat, 1)) throw new Error("nocat");
+      move(e.kind, e.cat, -1);
+      var wasWaiting = e.kind === "none";
+      e.kind = nk2; e.cat = ncat; e.auto = false;
+      var k = merchantKey(e.s); if (k && nk2 !== "in") { rcRules[nk(k)] = nk2 === "skip" ? "__skip" : ncat; }
+      var jobs = [doSave(s.key, s.doc), spendSave(), rcSave()];
+      if (wasWaiting && e.src === "bank") jobs.push(bankCall("mark", { ids: [e.id], state: nk2 === "skip" ? "skipped" : "imported" }).catch(function () {}));
+      return Promise.all(jobs).then(function () { refreshOpenMonth([s.key]); });
+    });
+  }
+  /* the record on the Bank tab */
+  var spendMonth = null;
+  function spendPanel(C) {
+    var keys = {}; spend.forEach(function (e) { keys[e.key] = 1; });
+    var cur = monthKeyOf(new Date()); keys[cur] = 1;
+    var list = Object.keys(keys).sort().reverse(); if (!spendMonth || !keys[spendMonth]) spendMonth = cur;
+    var rows = spend.filter(function (e) { return e.key === spendMonth; }).sort(function (a, b) { return a.d < b.d ? 1 : -1; });
+    var wait = rows.filter(function (e) { return e.kind === "none"; }), spent = rows.filter(function (e) { return e.kind === "ex"; }), tot = spent.reduce(function (t, e) { return t + e.a; }, 0);
+    var mLabel = function (k) { var m = /(\d{4})-(\d{2})$/.exec(k); return MONTHS[+m[2] - 1] + " " + m[1]; };
+    var opts = function (e) {
+      var v = e.kind === "skip" ? "skip" : e.kind === "none" ? "" : e.kind + ":" + e.cat, isIn = e.kind === "in";
+      var o = (e.kind === "none" ? '<option value="" selected>Choose a category</option>' : "") + '<option value="skip"' + (v === "skip" ? " selected" : "") + ">Not counted (transfer, card payment)</option>";
+      if (isIn || (e.kind === "skip" && /payroll|direct dep|salary|paycheck/i.test(e.s))) o += '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      o += '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      return o;
+    };
+    var row = function (e) {
+      var d = parseD(e.d);
+      return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + "</small></span>" +
+        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" ? "+" : "") + money.format(e.a) + "</span>" +
+        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>";
+    };
+    var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
+      '<p class="sub">New transactions go into your budget’s <b>Actual</b> numbers automatically. Here’s what each one was and where it went. Change a category any time and the budget moves with it.</p>';
+    if (spendMsg) h += '<p class="bmsg">' + spendMsg + "</p>";
+    if (wait.length) h += '<h3 class="dh3" style="margin-top:12px">Needs a category (' + wait.length + ")</h3>" + wait.map(row).join("");
+    if (!rows.length) h += '<p class="sub" style="margin-top:10px">Nothing recorded for ' + mLabel(spendMonth) + " yet.</p>";
+    else {
+      h += '<p class="stot">' + mLabel(spendMonth) + ": <b>" + money.format(tot) + "</b> spent across " + spent.length + (spent.length === 1 ? " purchase" : " purchases") + ".</p>";
+      h += rows.filter(function (e) { return e.kind !== "none"; }).map(row).join("");
+    }
+    return h + "</div>";
+  }
+  var spendMsg = "";
+  $("bankView").addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.id === "spendMon") { spendMonth = t.value; spendMsg = ""; renderBank(); return; }
+    var id = t.getAttribute && t.getAttribute("data-spend"); if (!id || !t.value) return;
+    t.disabled = true;
+    spendRecat(id, t.value).then(function () {
+      var ex = spendFind(id); spendMsg = ex ? (ex.kind === "skip" ? "“" + esc(ex.s) + "” is no longer counted in your budget." : "“" + esc(ex.s) + "” is now in <b>" + esc(ex.cat) + "</b>. Future purchases there will go to the same place.") : ""; renderBank();
+    }).catch(function (er) { spendMsg = er && er.message === "nocat" ? "That category isn’t in that month’s budget. Pick another." : "Couldn’t change it right now. Try again."; renderBank(); });
+  });
+  // what was actually bought, for the "Plan for…" card in Actual view
+  function spendFor(key, name, isIncome) {
+    return spend.filter(function (e) { return e.key === key && nk(e.cat) === nk(name) && e.kind === (isIncome ? "in" : "ex"); }).sort(function (a, b) { return a.d < b.d ? 1 : -1; });
+  }
 
   /* ---------- link "Pay off debt" goals with the Debt tab ---------- */
   function debtComplete(d) { return (+d.min || 0) > 0 || (+d.balance || 0) <= 0; }
@@ -4926,9 +5091,9 @@ details.panel summary{cursor:pointer;list-style-position:outside}
     });
   });
   function start(h) {
-    loadBills(); Promise.all([loadSetup(), loadPlaced(), loadPrefs()]).then(function () {
+    loadBills(); Promise.all([loadSetup(), loadPlaced(), loadPrefs(), spendLoad()]).then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
-      seedNav(); makeTabs(); openTool();
+      seedNav(); makeTabs(); openTool(); setTimeout(quietBankImport, 1500);
     });
   }
 
