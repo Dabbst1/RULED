@@ -692,7 +692,8 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 .budwarn{position:absolute;left:8px;top:50%;transform:translateY(-50%);font:700 11px/1 inherit;padding:4px 7px;border-radius:99px;white-space:nowrap;pointer-events:auto;cursor:help}
 tr.wnear .budwarn{background:#FEF3C7;color:#92400E}
 tr.wover .budwarn{background:#FEE2E2;color:#B42318}
-tr.wnone .budwarn{background:#E8EEF9;color:#475569}
+tr.wnone .budwarn{background:#EDE9FE;color:#6D28D9}
+#sheet tr.wnone td.lab{box-shadow:inset 4px 0 0 #7C3AED}
 #planTip .tipused{margin-top:6px}
 #planTip .tipnote{margin:2px 0 0;font-size:12px;font-weight:600;color:#15803D}
 #planTip .tipnote.wnear{color:#B45309}#planTip .tipnote.wover{color:#B42318}
@@ -706,9 +707,18 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
 #budToast .linkbtn{margin-top:8px;font:600 14px/1 inherit;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#F3F7FE;color:var(--blue);cursor:pointer}
 @media (max-width:700px){#budToast{left:12px;right:12px;max-width:none;bottom:calc(84px + env(safe-area-inset-bottom))}.budwarn{top:auto;bottom:2px;transform:none;font-size:10px;padding:2px 6px}}
 :root[data-theme="dark"] #sheet tr.wnear input.in{background:#33260E!important}:root[data-theme="dark"] #sheet tr.wover input.in{background:#3D1620!important;color:#FCA5A5!important}
-:root[data-theme="dark"] tr.wnear .budwarn{background:#4A3410;color:#FCD34D}:root[data-theme="dark"] tr.wover .budwarn{background:#4A1A22;color:#FCA5A5}:root[data-theme="dark"] tr.wnone .budwarn{background:#26355A;color:#C3D0EA}
+:root[data-theme="dark"] tr.wnear .budwarn{background:#4A3410;color:#FCD34D}:root[data-theme="dark"] tr.wover .budwarn{background:#4A1A22;color:#FCA5A5}:root[data-theme="dark"] tr.wnone .budwarn{background:#2E1F55;color:#C4B5FD}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #sheet tr.wnear input.in{background:#33260E!important}:root:not([data-theme="light"]) #sheet tr.wover input.in{background:#3D1620!important;color:#FCA5A5!important}
-:root:not([data-theme="light"]) tr.wnear .budwarn{background:#4A3410;color:#FCD34D}:root:not([data-theme="light"]) tr.wover .budwarn{background:#4A1A22;color:#FCA5A5}:root:not([data-theme="light"]) tr.wnone .budwarn{background:#26355A;color:#C3D0EA}}
+:root:not([data-theme="light"]) tr.wnear .budwarn{background:#4A3410;color:#FCD34D}:root:not([data-theme="light"]) tr.wover .budwarn{background:#4A1A22;color:#FCA5A5}:root:not([data-theme="light"]) tr.wnone .budwarn{background:#2E1F55;color:#C4B5FD}}
+
+/* purchases that weren't part of the plan */
+.offtag{display:inline-block;font-style:normal;font-weight:700;font-size:11px;color:#6D28D9;background:#EDE9FE;border-radius:99px;padding:1px 7px;margin-left:6px;white-space:nowrap}
+#sheet tr.woff td:last-child{position:relative}
+#sheet tr.woff td.lab{box-shadow:inset 4px 0 0 #7C3AED}
+tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
+#planTip .offtag{margin-left:4px;font-size:10px}
+:root[data-theme="dark"] .offtag,:root[data-theme="dark"] tr.woff .budwarn{background:#2E1F55;color:#C4B5FD}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .offtag,:root:not([data-theme="light"]) tr.woff .budwarn{background:#2E1F55;color:#C4B5FD}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -870,12 +880,15 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
 :root[data-theme="dark"] #sheet tr.wover input.in{background:#16213A;color:#FCA5A5}
 :root[data-theme="dark"] tr.wnear .budwarn{background:#33260E;color:#FCD34D}
 :root[data-theme="dark"] tr.wover .budwarn{background:#3D1620;color:#FCA5A5}
-:root[data-theme="dark"] tr.wnone .budwarn{background:#16213A;color:#B8C4DA}
+:root[data-theme="dark"] tr.wnone .budwarn{background:#16213A;color:#C3D0EA}
 :root[data-theme="dark"] #planTip .tipnote{color:#4ADE80}
 :root[data-theme="dark"] #planTip .tipnote.wover{color:#FCA5A5}
 :root[data-theme="dark"] .warnpanel li.wover::marker{color:#FCA5A5}
 :root[data-theme="dark"] #budToast{background:#121B2E}
 :root[data-theme="dark"] #budToast .linkbtn{background:#16213A}
+:root[data-theme="dark"] /* purchases that weren't part of the plan */
+.offtag{color:#C3D0EA;background:#16213A}
+:root[data-theme="dark"] tr.woff .budwarn{background:#16213A;color:#C3D0EA}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1037,12 +1050,15 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
 :root:not([data-theme="light"]) #sheet tr.wover input.in{background:#16213A;color:#FCA5A5}
 :root:not([data-theme="light"]) tr.wnear .budwarn{background:#33260E;color:#FCD34D}
 :root:not([data-theme="light"]) tr.wover .budwarn{background:#3D1620;color:#FCA5A5}
-:root:not([data-theme="light"]) tr.wnone .budwarn{background:#16213A;color:#B8C4DA}
+:root:not([data-theme="light"]) tr.wnone .budwarn{background:#16213A;color:#C3D0EA}
 :root:not([data-theme="light"]) #planTip .tipnote{color:#4ADE80}
 :root:not([data-theme="light"]) #planTip .tipnote.wover{color:#FCA5A5}
 :root:not([data-theme="light"]) .warnpanel li.wover::marker{color:#FCA5A5}
 :root:not([data-theme="light"]) #budToast{background:#121B2E}
 :root:not([data-theme="light"]) #budToast .linkbtn{background:#16213A}
+:root:not([data-theme="light"]) /* purchases that weren't part of the plan */
+.offtag{color:#C3D0EA;background:#16213A}
+:root:not([data-theme="light"]) tr.woff .budwarn{background:#16213A;color:#C3D0EA}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1623,7 +1639,7 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
   function spentHtml(name) {
     var L = spendFor(storageKey(), name, false); if (!L.length) L = spendFor(storageKey(), name, true); if (!L.length) return "";
     var sum = L.reduce(function (t, e) { return t + e.a; }, 0);
-    return '<h4 class="tipspent">Recorded (' + L.length + ")</h4>" + L.slice(0, 5).map(function (e) { return '<div><span>' + esc(e.s.length > 22 ? e.s.slice(0, 21) + "…" : e.s) + " · " + parseD(e.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span><b>" + money.format(e.a) + "</b></div>"; }).join("") +
+    return '<h4 class="tipspent">Recorded (' + L.length + ")</h4>" + L.slice(0, 5).map(function (e) { return '<div><span>' + esc(e.s.length > 22 ? e.s.slice(0, 21) + "…" : e.s) + " · " + parseD(e.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + (e.off ? '<em class="offtag">not in plan' + (e.want ? ": really " + esc(e.want) : "") + "</em>" : "") + "</span><b>" + money.format(e.a) + "</b></div>"; }).join("") +
       (L.length > 5 ? '<p class="sub" style="margin:4px 0 0">+ ' + (L.length - 5) + " more · " + money.format(sum) + " total. See them all in Bank.</p>" : "");
   }
   function showTip(tr) {
@@ -2284,7 +2300,7 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
   }
   function budgetLevel(plan, act) {
     if (!(act > 0)) return null;
-    if (!(plan > 0)) return { k: "wnone", t: "No budget set" };
+    if (!(plan > 0)) return { k: "wnone", t: "Not in plan" };
     if (act > plan + 0.004) return { k: "wover", t: money.format(act - plan) + " over" };
     if (act / plan >= WARN_AT) return { k: "wnear", t: Math.round(act / plan * 100) + "% used" };
     return null;
@@ -2292,14 +2308,17 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
   function paintWarn() {
     var sh = $("sheet"); if (!sh) return;
     Array.prototype.forEach.call(sh.querySelectorAll(".budwarn"), function (x) { x.remove(); });
-    Array.prototype.forEach.call(sh.querySelectorAll("tr.wnear,tr.wover,tr.wnone"), function (r) { r.classList.remove("wnear", "wover", "wnone"); });
+    Array.prototype.forEach.call(sh.querySelectorAll("tr.wnear,tr.wover,tr.wnone,tr.woff"), function (r) { r.classList.remove("wnear", "wover", "wnone", "woff"); });
     if (view !== "actual" || !layout || !layout.months) return;
     Array.prototype.forEach.call(sh.querySelectorAll("tr[data-sec]"), function (tr) {
       if (tr.hidden || !tr.querySelector("input.in")) return;
-      var b = rowBudget(tr), lv = budgetLevel(b.plan, b.act), tds = tr.querySelectorAll("td"), lab = tds[tds.length - 1]; if (!lv || !lab) return;
+      var b = rowBudget(tr), lv = budgetLevel(b.plan, b.act), tds = tr.querySelectorAll("td"), lab = tds[tds.length - 1];
+      var nm = tr.querySelector("input.nm"), offs = nm ? spendFor(storageKey(), nm.value, false).filter(function (e) { return e.off; }) : [], offAmt = offs.reduce(function (t, e) { return t + e.a; }, 0);
+      if (!lv && offs.length && b.plan > 0) lv = { k: "woff", t: money.format(offAmt).replace(".00", "") + " unplanned" };
+      if (!lv || !lab) return;
       tr.classList.add(lv.k);
       var sp = document.createElement("span"); sp.className = "budwarn"; sp.textContent = lv.t;
-      sp.title = lv.k === "wnone" ? "You’ve spent " + money.format(b.act) + " here, but nothing was planned." : "Spent " + money.format(b.act) + " of " + money.format(b.plan) + " planned.";
+      sp.title = lv.k === "wnone" ? "You’ve spent " + money.format(b.act) + " here, but nothing was planned." : lv.k === "woff" ? offs.map(function (e) { return e.s + " " + money.format(e.a) + (e.want ? " (really " + e.want + ")" : ""); }).join(", ") + " wasn’t part of your plan." : "Spent " + money.format(b.act) + " of " + money.format(b.plan) + " planned." + (offs.length ? " Includes " + money.format(offAmt) + " not in your plan." : "");
       lab.appendChild(sp);
     });
   }
@@ -2502,14 +2521,22 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
     var total = strong.length ? Math.max.apply(null, strong) : (all.length ? Math.max.apply(null, all) : null);
     return { merchant: rcMerchant(lines), date: rcDate(text || "", now), total: total, sure: strong.length > 0 };
   }
-  var RC_GUESS = [
-    [/walmart|kroger|publix|aldi|safeway|whole foods|trader joe|costco|sam'?s club|winn|food lion|lidl|market|grocery|supermarket|sprouts|heb\b/i, ["groceries", "grocery", "supermarket", "food"]],
-    [/shell|bp\b|exxon|chevron|wawa|sunoco|circle k|speedway|marathon|mobil|racetrac|\bgas\b|fuel|texaco|7-eleven/i, ["gasoline", "gas", "fuel", "transportation", "car"]],
-    [/mcdonald|starbucks|chipotle|subway|restaurant|cafe|grill|pizza|burger|taco|diner|kitchen|bistro|dunkin|wendy|chick-fil|coffee|sushi|bbq/i, ["dining", "restaurant", "eatingout", "eatout", "takeout", "food"]],
-    [/cvs|walgreens|pharmacy|rite aid|clinic|dental|medical|health/i, ["medical", "health", "pharmacy", "doctor"]],
-    [/amazon|target|best buy|home depot|lowe|ikea|shop/i, ["shopping", "household", "home", "supplies", "clothing"]],
-    [/netflix|spotify|hulu|cinema|theater|amc|movie|game|steam/i, ["entertainment", "streaming", "fun"]]
+  var RC_GUESS = [   // [stores, category words to look for, the category it really belongs in, its budget group]
+    [/walmart|kroger|publix|aldi|safeway|whole foods|trader joe|costco|sam'?s club|winn|food lion|lidl|market|grocery|supermarket|sprouts|heb\b/i, ["groceries", "grocery", "supermarket", "food"], "Groceries", "groceries"],
+    [/shell|bp\b|exxon|chevron|wawa|sunoco|circle k|speedway|marathon|mobil|racetrac|\bgas\b|fuel|texaco|7-eleven/i, ["gasoline", "gas", "fuel", "transportation", "car"], "Gasoline", "transport"],
+    [/mcdonald|starbucks|chipotle|subway|restaurant|cafe|grill|pizza|burger|taco|diner|kitchen|bistro|dunkin|wendy|chick-fil|coffee|sushi|bbq|doordash|uber ?eats|grubhub/i, ["dining", "restaurant", "eatingout", "eatout", "takeout", "food"], "Restaurants", "dining"],
+    [/cvs|walgreens|pharmacy|rite aid|clinic|dental|medical|health|urgent care|hospital|optometr/i, ["medical", "health", "pharmacy", "doctor"], "Healthcare", "health"],
+    [/geico|progressive|state farm|allstate|insurance/i, ["insurance"], "Insurance", "health"],
+    [/petco|petsmart|chewy|\bvet\b|veterinar/i, ["pet"], "Pets", "pets"],
+    [/uber|lyft|parking|sunpass|e-?pass|toll|jiffy lube|autozone|o'?reilly|advance auto|firestone|pep boys/i, ["transportation", "car", "auto"], "Transportation", "transport"],
+    [/t-?mobile|verizon|at&t|cricket|metro ?pcs|comcast|xfinity|spectrum|duke energy|\bfpl\b|electric|water util|utilit/i, ["utilities", "phone", "internet", "electric"], "Utilities", "utilities"],
+    [/airbnb|delta|american air|southwest|jetblue|spirit air|hotel|marriott|hilton|expedia|booking\.com/i, ["travel", "vacation"], "Travel", "fun"],
+    [/old navy|gap\b|h&m|zara|nike|adidas|ross\b|tj ?maxx|marshalls|burlington|foot locker/i, ["clothing", "clothes", "shopping"], "Clothing", "personal"],
+    [/great clips|supercuts|barber|salon|ulta|sephora|nail/i, ["personalcare", "personal", "beauty", "hair"], "Personal Care", "personal"],
+    [/amazon|target|best buy|home depot|lowe|ikea|dollar|shop/i, ["shopping", "household", "home", "supplies", "clothing"], "Shopping", "personal"],
+    [/netflix|spotify|hulu|disney|youtube|cinema|theater|amc|movie|game|steam|playstation|xbox|nintendo|ticketmaster/i, ["entertainment", "streaming", "fun", "digitalentertainment", "gaming"], "Entertainment", "fun"]
   ];
+
   function rcGuessCat(text, merchant, cats) {
     var rule = rcRules[nk(merchant)];
     if (rule) { var hit = cats.filter(function (c) { return nk(c.name) === nk(rule); })[0]; if (hit) return hit.name; }
@@ -2656,6 +2683,7 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
     back.catch(function () {}).then(function () { receipts = receipts.filter(function (x) { return x.id !== id; }); spend = spend.filter(function (x) { return x.id !== "rc-" + id; }); return Promise.all([rcSave(), spendSave()]); }).then(renderReceipts);
   });
   if (CFG.devMode) window.__rc = { parse: rcParse, date: rcDate };
+  if (CFG.devMode) window.__bp = function (t, s) { return bankPlace(t, s); };
 
   function renderBills() { var r = renderBills0.apply(this, arguments); drawCalPanel(); return r; }
   function renderBills0() {
@@ -3054,6 +3082,22 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
   function merchantKey(desc) { return String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(pos|debit|purchase|card|ach|online|www|com|inc|llc|store|sq|tst|pp)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" "); }
   var NOT_SPENDING = /payment|thank you|transfer|xfer|autopay|zelle to|venmo|cash app|withdrawal|atm|credit card|cc pymt/i;
   var PAYCHECK = /payroll|direct dep|dir dep|salary|paycheck|adp|gusto|paychex/i;
+  /* where a bank purchase goes. off = it isn't part of this month's plan (we used the closest category, or that category has nothing planned) */
+  function bankPlace(t, s) {
+    var cats = s.cats, desc = t.description || "", mk = merchantKey(desc), hay = mk + " " + desc;
+    var planOf = function (name) { var e = cats.filter(function (c) { return nk(c.name) === nk(name); })[0]; return e ? catSum(s.doc, e, "") : 0; };
+    var done = function (cat, want, why) { return { cat: cat, off: !!why || !(planOf(cat) > 0), want: want || "", why: why || (planOf(cat) > 0 ? "" : "nothing planned") }; };
+    var exact = rcGuessCat(desc, mk, cats);
+    if (exact) return done(exact, "", "");
+    var grp = null, sect = "";
+    for (var g = 0; g < RC_GUESS.length; g++) if (RC_GUESS[g][0].test(hay)) { grp = RC_GUESS[g]; sect = grp[3]; break; }
+    if (!sect) { var low = hay.toLowerCase(); for (var w = 0; w < SECT_WORDS.length; w++) if (SECT_WORDS[w][1].test(low)) { sect = SECT_WORDS[w][0]; break; } }
+    var pickFrom = function (list) { if (!list.length) return null; var planned = list.filter(function (c) { return planOf(c.name) > 0; }); return (planned[0] || list[0]).name; };
+    var near = sect ? pickFrom(cats.filter(function (c) { return sectionOf(c.name) === sect; })) : null;
+    if (!near) near = pickFrom(cats.filter(function (c) { return /shopping|misc|other|general|personal/i.test(c.name); })) || pickFrom(cats.filter(function (c) { return /^(personal|other|fun)$/.test(sectionOf(c.name)); }));
+    if (!near) return null;
+    return { cat: near, off: true, want: grp ? grp[2] : "", why: grp ? grp[2] + " isn’t in your budget" : "store not recognized" };
+  }
   function bankGuess(t, cats, incs) {
     if (t.amount > 0) return PAYCHECK.test(t.description) && incs[0] ? "in:" + incs[0].name : "skip";
     if (NOT_SPENDING.test(t.description)) return "skip";
@@ -3271,7 +3315,10 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
             months[k].forEach(function (t) {
               var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
               if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
-              if (g.indexOf("ex:") === 0 && rcApply(s, g.slice(3), col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: g.slice(3) })); added.push(t.id); changed = true; return; }
+              if (g === "" || g.indexOf("ex:") === 0) {
+                var pl = bankPlace(t, s);
+                if (pl && rcApply(s, pl.cat, col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: pl.cat, off: pl.off, want: pl.want, why: pl.why })); added.push(t.id); changed = true; return; }
+              }
               if (g.indexOf("in:") === 0) {
                 var e = inc.filter(function (c) { return nk(c.name) === nk(g.slice(3)); })[0];
                 if (e) { var a = e.addrs[Math.min(col, e.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + t.amount) * 100) / 100; spendPut(Object.assign(base, { kind: "in", cat: e.name })); added.push(t.id); changed = true; return; }
@@ -3329,7 +3376,7 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
       if (!move(nk2, ncat, 1)) throw new Error("nocat");
       move(e.kind, e.cat, -1);
       var wasWaiting = e.kind === "none";
-      e.kind = nk2; e.cat = ncat; e.auto = false;
+      e.kind = nk2; e.cat = ncat; e.auto = false; e.want = ""; e.why = ""; e.off = nk2 === "ex" && !(catSum(s.doc, s.cats.filter(function (c) { return nk(c.name) === nk(ncat); })[0] || { addrs: [] }, "") > 0); if (e.off) e.why = "nothing planned";
       var k = merchantKey(e.s); if (k && nk2 !== "in") { rcRules[nk(k)] = nk2 === "skip" ? "__skip" : ncat; }
       var jobs = [doSave(s.key, s.doc), spendSave(), rcSave()];
       if (wasWaiting && e.src === "bank") jobs.push(bankCall("mark", { ids: [e.id], state: nk2 === "skip" ? "skipped" : "imported" }).catch(function () {}));
@@ -3355,7 +3402,7 @@ tr.wnone .budwarn{background:#E8EEF9;color:#475569}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>";
     };
