@@ -541,6 +541,8 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
 @media (max-width:900px){#calendarView .calsum{grid-template-columns:1fr 1fr}}
 /* 9 tabs on a phone: each tab is as wide as its label so none overlap (the bar scrolls if a screen is very narrow) */
 @media (max-width:700px){main#app #tabs .tab{flex:1 0 auto;min-width:0;padding:4px 2px 2px}}
+/* desktop: keep all 9 tabs on one line, even when a budget table narrows the page */
+@media (min-width:701px){main#app #tabs{flex-wrap:nowrap}main#app #tabs .tab{padding-left:13px;padding-right:13px;white-space:nowrap}}
 @media (max-width:640px){
   #calendarView .calbar h2{font-size:19px;min-width:0;flex:1 1 100%;order:-1;margin-bottom:2px}
   #calendarView .calsum b{font-size:19px}
