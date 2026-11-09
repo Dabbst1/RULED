@@ -477,6 +477,83 @@ button,a,.tab,input,select,label,summary{touch-action:manipulation;-webkit-tap-h
   dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 }
 
+/* ==== Calendar tab ==== */
+:root{--cal-bill:#1D4ED8;--cal-bill-bg:#E3ECFF;--cal-paid:#15803D;--cal-paid-bg:#DCFCE7;--cal-late:#B91C1C;--cal-late-bg:#FEE2E2;--cal-goal:#7C3AED;--cal-goal-bg:#EDE9FE;--cal-debt:#C2410C;--cal-debt-bg:#FFEDD5;--cal-in:#15803D;--cal-cell:#fff;--cal-out:#F4F8FF;--cal-today:#1D4ED8}
+:root[data-theme="dark"]{--cal-bill:#8FB2FF;--cal-bill-bg:#1C2B4A;--cal-paid:#6EE7A0;--cal-paid-bg:#12351F;--cal-late:#FF8A9A;--cal-late-bg:#3D1620;--cal-goal:#C4B5FD;--cal-goal-bg:#2A1F4A;--cal-debt:#FDBA74;--cal-debt-bg:#3A2312;--cal-in:#6EE7A0;--cal-cell:#121B2E;--cal-out:#0E1626;--cal-today:#6E9BFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--cal-bill:#8FB2FF;--cal-bill-bg:#1C2B4A;--cal-paid:#6EE7A0;--cal-paid-bg:#12351F;--cal-late:#FF8A9A;--cal-late-bg:#3D1620;--cal-goal:#C4B5FD;--cal-goal-bg:#2A1F4A;--cal-debt:#FDBA74;--cal-debt-bg:#3A2312;--cal-in:#6EE7A0;--cal-cell:#121B2E;--cal-out:#0E1626;--cal-today:#6E9BFF}}
+#calendarView .calbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+#calendarView .calbar h2{font-size:22px;letter-spacing:-.01em;margin:0 6px 0 0;min-width:190px}
+#calendarView .calnav{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--cal-cell);color:var(--ink);font:700 24px/1 inherit;padding-bottom:3px;cursor:pointer}
+#calendarView .caltoday{height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--cal-cell);color:var(--ink);font:600 14px/1 inherit;cursor:pointer}
+#calendarView .calnav:hover,#calendarView .caltoday:hover{border-color:var(--blue);color:var(--blue)}
+#calendarView .calsum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+#calendarView .calsum div{background:var(--cal-cell);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+#calendarView .calsum small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}
+#calendarView .calsum b{display:block;font-size:22px;letter-spacing:-.01em;margin-top:2px}
+#calendarView .calsum span{display:block;font-size:12.5px;color:var(--muted)}
+#calendarView .calfilt{margin:0 0 10px}
+#calendarView .calfilt button i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px}
+#calendarView .calfilt button[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+#calendarView .calfilt button[aria-pressed="true"]{background:var(--cal-cell);color:var(--ink);border-color:var(--ink)}
+#calendarView .calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--line);gap:1px;box-shadow:var(--shadow)}
+#calendarView .calhd{background:var(--cal-out);text-align:center;font:700 12px/1 inherit;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:9px 0}
+#calendarView .calday{position:relative;background:var(--cal-cell);min-height:112px;padding:6px 6px 22px;text-align:left;border:0;font:inherit;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0}
+#calendarView .calday.out{background:var(--cal-out)}
+#calendarView .calday.out .dn{opacity:.45}
+#calendarView .calday:hover{box-shadow:inset 0 0 0 2px var(--hl)}
+#calendarView .calday[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--blue)}
+#calendarView .calday .dn{font:600 13px/1 inherit;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin-bottom:1px}
+#calendarView .calday.today .dn{background:var(--cal-today);color:#fff}
+#calendarView .cpill{display:block;font:600 11.5px/1.25 inherit;padding:3px 6px;border-radius:6px;border-left:3px solid;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#calendarView .cpill.cb-due{color:var(--cal-bill);background:var(--cal-bill-bg);border-color:var(--cal-bill)}
+#calendarView .cpill.cb-paid{color:var(--cal-paid);background:var(--cal-paid-bg);border-color:var(--cal-paid);text-decoration:line-through}
+#calendarView .cpill.cb-late{color:var(--cal-late);background:var(--cal-late-bg);border-color:var(--cal-late)}
+#calendarView .cpill.cb-goal{color:var(--cal-goal);background:var(--cal-goal-bg);border-color:var(--cal-goal)}
+#calendarView .cmore{font:600 11px/1 inherit;color:var(--muted);padding-left:2px}
+#calendarView .cspend{position:absolute;left:8px;right:6px;bottom:5px;font:600 11.5px/1 inherit;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#calendarView .cspend .ci{color:var(--cal-in)}
+#calendarView .cdots{display:none;gap:3px;flex-wrap:wrap}
+#calendarView .cdots i{width:7px;height:7px;border-radius:50%;display:block}
+.cd-bill{background:var(--cal-bill)}.cd-paid{background:var(--cal-paid)}.cd-late{background:var(--cal-late)}.cd-goal{background:var(--cal-goal)}.cd-spend{background:var(--muted)}.cd-debt{background:var(--cal-debt)}.cd-in{background:var(--cal-in)}
+#calendarView .calmonth{display:flex;flex-direction:column;gap:8px;margin:0 0 12px}
+#calendarView .calmonth p{margin:0;padding:10px 14px;border-radius:12px;font-size:14px;background:var(--cal-debt-bg);color:var(--ink);border:1px solid var(--line)}
+#calendarView .calmonth p b{color:var(--cal-debt)}
+#calendarView .caldetail{margin-top:16px}
+#calendarView .caldetail h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+#calendarView .caldetail h2 small{font:600 13px/1.2 inherit;color:var(--muted)}
+#calendarView .crow{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+#calendarView .crow:first-of-type{border-top:0}
+#calendarView .crow > i{width:10px;height:10px;border-radius:50%}
+#calendarView .crow b{display:block;font-size:15px}
+#calendarView .crow small{display:block;font-size:12.5px;color:var(--muted)}
+#calendarView .crow .amt{font-weight:700;white-space:nowrap}
+#calendarView .crow .amt.in{color:var(--cal-in)}
+#calendarView .crow .acts{display:flex;gap:6px}
+#calendarView .crow .acts button,#calendarView .caladd{font:600 13px/1 inherit;padding:8px 11px;border-radius:8px;border:1px solid var(--line);background:var(--cal-cell);color:var(--blue);cursor:pointer;white-space:nowrap}
+#calendarView .crow .acts button.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+#calendarView .caladd{margin-top:12px}
+#calendarView .calempty{color:var(--muted);font-size:14px;padding:6px 0}
+#calendarView .calagenda h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 2px}
+#calendarView .calagenda h3:first-of-type{margin-top:4px}
+#calendarView .callegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:10px 2px 0}
+#calendarView .callegend span{display:inline-flex;align-items:center;gap:6px}
+#calendarView .callegend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+@media (max-width:900px){#calendarView .calsum{grid-template-columns:1fr 1fr}}
+/* 9 tabs on a phone: each tab is as wide as its label so none overlap (the bar scrolls if a screen is very narrow) */
+@media (max-width:700px){main#app #tabs .tab{flex:1 0 auto;min-width:0;padding:4px 2px 2px}}
+@media (max-width:640px){
+  #calendarView .calbar h2{font-size:19px;min-width:0;flex:1 1 100%;order:-1;margin-bottom:2px}
+  #calendarView .calsum b{font-size:19px}
+  #calendarView .calgrid{border-radius:12px}
+  #calendarView .calhd{font-size:10.5px;padding:7px 0}
+  #calendarView .calday{min-height:58px;padding:4px 3px 4px;align-items:center;gap:4px}
+  #calendarView .calday .dn{font-size:12.5px;width:24px;height:24px}
+  #calendarView .cpill,#calendarView .cmore,#calendarView .cspend{display:none}
+  #calendarView .cdots{display:flex;justify-content:center}
+  #calendarView .crow{grid-template-columns:12px 1fr auto;row-gap:6px}
+  #calendarView .crow .acts{grid-column:2/-1}
+}
+
 /* ==== GROW tools ==== */
 .term{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:help;border-bottom:1px dotted currentColor;display:inline;text-align:inherit}
 .term i{font:700 10px/1 system-ui,sans-serif;font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:3px;border-radius:50%;background:#DCE8FF;color:var(--blue);vertical-align:2px}
@@ -1212,6 +1289,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     </form>
     <div id="goalList"></div>
   </section>
+  <section id="calendarView" hidden></section>
   <section id="debtView" hidden></section>
   <section id="bankView" hidden></section>
   <section id="moneyView" hidden></section>
@@ -1247,6 +1325,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     { id: "monthly-budget", name: "Monthly budget" },
     { id: "yearly-projection", name: "Annual budget" },
     { id: "bills", name: "Bills", type: "bills" },
+    { id: "calendar", name: "Calendar", type: "calendar" },
     { id: "receipts", name: "Receipts", type: "receipts", hidden: true },
     { id: "goals", name: "Goals", type: "goals" },
     { id: "debt", name: "Debt", type: "debt" },
@@ -2330,7 +2409,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     show("app");
     scrollTab();
     var tp = tool.type;
-    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("moneyView").hidden = tp !== "money"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank";
+    $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("moneyView").hidden = tp !== "money"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank"; $("calendarView").hidden = tp !== "calendar";
     renderBanner();
     var vEl = $(tp ? tp + "View" : "sheetView"); if (vEl) { vEl.classList.remove("view-in"); void vEl.offsetWidth; vEl.classList.add("view-in"); }
     if (tp === "account") { renderAccount(); $("themeBox").innerHTML = themePanel(); return; }
@@ -2339,6 +2418,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (tp === "bank") { bankLoad(true, true); return; }   // opening the tab asks the bank for anything new
     if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(syncDebtGoals).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
     if (tp === "goals") { loadGoals().then(syncDebtGoals).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
+    if (tp === "calendar") { calLoad().then(function () { if (mine === loadSeq) renderCal(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     if (tp === "money") { renderMoney(mine); return; }
     var isBills = tp === "bills";
@@ -2466,6 +2546,187 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       (soon.length > 4 ? " and " + (soon.length - 4) + " more" : "") + '. <button type="button" data-t="bills">Open Bills</button>';
     el.hidden = false;
   }
+
+  /* ---------- calendar: bills, goals, spending and debt payoffs in one month view ---------- */
+  var calY = null, calM = null, calSel = null, calFilt = { bill: true, goal: true, spend: true, debt: true };
+  try { var cf = JSON.parse(localStorage.getItem("monerem-calfilt") || "null"); if (cf && typeof cf === "object") Object.keys(calFilt).forEach(function (k) { if (typeof cf[k] === "boolean") calFilt[k] = cf[k]; }); } catch (e) {}
+  var CAL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function calLoad() {
+    return Promise.all([loadBills(), loadGoals(), loadDebts(), spendLoad()].map(function (p) { return Promise.resolve(p).catch(function () {}); }));
+  }
+  function calDayKey(v) {
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+    var d = new Date(typeof v === "number" && v < 1e11 ? v * 1000 : v); return isNaN(d) ? null : iso(d);
+  }
+  // every time a bill falls between two dates (inclusive), with its paid / late status
+  function billOccs(b, from, to) {
+    var out = [], paid = b.paidThrough ? parseD(b.paidThrough) : null, next = nextDue(b), today = todayD();
+    var max = b.freq === "once" ? 1 : 1200;
+    for (var n = 0; n < max; n++) {
+      var d = occ(b, n); if (d > to) break; if (d < from) continue;
+      var st = paid && d <= paid ? "paid" : (next && +d === +next && d < today) ? "late" : d < today ? "past" : "due";
+      out.push({ d: d, n: n, st: st, isNext: !!(next && +d === +next) });
+    }
+    return out;
+  }
+  // everything on the calendar for one month, grouped by day
+  function calItems(y, m) {
+    var from = new Date(y, m, 1), to = new Date(y, m + 1, 0), days = {}, month = { debts: [], billTotal: 0, billCount: 0, billPaid: 0, spent: 0, income: 0, goals: 0 };
+    var add = function (k, it) { (days[k] = days[k] || []).push(it); };
+    // show the days from the neighbouring months that fill the grid too
+    var gFrom = new Date(y, m, 1 - from.getDay()), gTo = new Date(y, m + 1, 6 - to.getDay());
+    bills.forEach(function (b) {
+      billOccs(b, gFrom, gTo).forEach(function (o) {
+        add(iso(o.d), { t: "bill", st: o.st, b: b, o: o, name: b.name, amt: +b.amount || 0 });
+        if (o.d >= from && o.d <= to) { month.billCount++; month.billTotal += +b.amount || 0; if (o.st === "paid") month.billPaid++; }
+      });
+    });
+    goals.forEach(function (g) {
+      if (!g.due) return; var d = parseD(g.due); if (isNaN(d) || d < gFrom || d > gTo) return;
+      add(iso(d), { t: "goal", g: g, name: g.name, pct: goalPct(g) });
+      if (d >= from && d <= to) month.goals++;
+    });
+    var spendDays = {};
+    (spend || []).forEach(function (e) {
+      if (e.kind === "skip") return; var k = calDayKey(e.d); if (!k) return; var d = parseD(k); if (d < gFrom || d > gTo) return;
+      var s = spendDays[k] = spendDays[k] || { out: 0, inc: 0, list: [] };
+      if (e.kind === "in") s.inc += +e.a || 0; else s.out += +e.a || 0;
+      s.list.push(e);
+      if (d >= from && d <= to) { if (e.kind === "in") month.income += +e.a || 0; else month.spent += +e.a || 0; }
+    });
+    if (debtState && debtState.debts && debtState.debts.length) {
+      var sim = simulate(debtState.debts, debtState.extra, debtState.plan || "avalanche"), now = new Date();
+      debtState.debts.forEach(function (dbt) {
+        var mo = sim.paidOff[dbt.id]; if (!mo) return;
+        var at = new Date(now.getFullYear(), now.getMonth() + mo, 1);
+        if (at.getFullYear() === y && at.getMonth() === m) month.debts.push(dbt);
+      });
+    }
+    return { days: days, spend: spendDays, month: month, gFrom: gFrom, gTo: gTo };
+  }
+  function calDot(it) { return it.t === "goal" ? "cd-goal" : it.st === "paid" ? "cd-paid" : it.st === "late" ? "cd-late" : "cd-bill"; }
+  function calPillCls(it) { return it.t === "goal" ? "cb-goal" : it.st === "paid" ? "cb-paid" : it.st === "late" ? "cb-late" : "cb-due"; }
+  function calShown(it) { return it.t === "goal" ? calFilt.goal : calFilt.bill; }
+  function renderCal() {
+    var v = $("calendarView"), now = todayD();
+    if (calY === null) { calY = now.getFullYear(); calM = now.getMonth(); }
+    var data = calItems(calY, calM), mo = data.month, first = new Date(calY, calM, 1), inMonth = function (d) { return d.getMonth() === calM && d.getFullYear() === calY; };
+    if (!calSel || !inMonth(parseD(calSel))) calSel = inMonth(now) ? iso(now) : iso(first);
+    var title = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    var h = '<h1>Calendar</h1><p class="sub">Your bills, goals, spending and debt payoff dates, all in one place. Tap a day to see what&rsquo;s on it.</p>';
+    h += '<div class="calbar"><h2 aria-live="polite">' + title + '</h2><button type="button" class="calnav" data-cal="prev" aria-label="Previous month">&lsaquo;</button><button type="button" class="calnav" data-cal="next" aria-label="Next month">&rsaquo;</button><button type="button" class="caltoday" data-cal="today">Today</button></div>';
+    // month at a glance
+    var left = mo.billCount - mo.billPaid;
+    h += '<div class="calsum">' +
+      '<div><small>Bills this month</small><b>' + money.format(mo.billTotal) + '</b><span>' + (mo.billCount ? mo.billPaid + " of " + mo.billCount + " paid" + (left ? " · " + left + " to go" : "") : "No bills due") + '</span></div>' +
+      '<div><small>Spent</small><b>' + money.format(mo.spent) + '</b><span>From your bank and receipts</span></div>' +
+      '<div><small>Income in</small><b>' + money.format(mo.income) + '</b><span>' + (mo.income ? "Deposits recorded" : "None recorded yet") + '</span></div>' +
+      '<div><small>Goal dates</small><b>' + mo.goals + '</b><span>' + (mo.debts.length ? mo.debts.length + (mo.debts.length === 1 ? " debt" : " debts") + " paid off" : "Target dates this month") + '</span></div></div>';
+    h += '<div class="mchips calfilt" role="group" aria-label="Show on calendar">' + [["bill", "Bills", "cd-bill"], ["goal", "Goals", "cd-goal"], ["spend", "Spending", "cd-spend"], ["debt", "Debt payoff", "cd-debt"]].map(function (f) {
+      return '<button type="button" data-calf="' + f[0] + '" aria-pressed="' + calFilt[f[0]] + '"><i class="' + f[2] + '"></i>' + f[1] + "</button>";
+    }).join("") + "</div>";
+    if (calFilt.debt && mo.debts.length) h += '<div class="calmonth">' + mo.debts.map(function (d) { return "<p><b>Paid off this month:</b> " + esc(d.name) + " is on track to hit $0 in " + title.split(" ")[0] + " on your " + (debtState.plan === "snowball" ? "Snowball" : "Avalanche") + ' plan. <button type="button" class="linkbtn" data-gotool="debt" style="margin-left:6px">See plan</button></p>'; }).join("") + "</div>";
+    // the grid
+    h += '<div class="calgrid" role="grid" aria-label="' + title + '">' + CAL_DOW.map(function (d) { return '<div class="calhd" role="columnheader">' + d + "</div>"; }).join("");
+    for (var d = new Date(data.gFrom); d <= data.gTo; d.setDate(d.getDate() + 1)) {
+      var k = iso(d), items = (data.days[k] || []).filter(calShown), sp = calFilt.spend ? data.spend[k] : null;
+      items.sort(function (a, b) { return (a.t === "goal") - (b.t === "goal") || b.amt - a.amt; });
+      var cls = "calday" + (inMonth(d) ? "" : " out") + (+d === +now ? " today" : "");
+      var lab = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) + (items.length ? ", " + items.length + (items.length === 1 ? " item" : " items") : "") + (sp && sp.out ? ", " + money.format(sp.out) + " spent" : "");
+      h += '<button type="button" role="gridcell" class="' + cls + '" data-day="' + k + '" aria-pressed="' + (k === calSel) + '" aria-label="' + esc(lab) + '"><span class="dn">' + d.getDate() + "</span>";
+      h += items.slice(0, 3).map(function (it) { return '<span class="cpill ' + calPillCls(it) + '">' + esc(it.name) + (it.t === "bill" && it.amt ? " " + money.format(it.amt).replace(".00", "") : "") + "</span>"; }).join("");
+      if (items.length > 3) h += '<span class="cmore">+' + (items.length - 3) + " more</span>";
+      var dots = items.slice(0, 4).map(function (it) { return '<i class="' + calDot(it) + '"></i>'; });
+      if (sp && sp.out) dots.push('<i class="cd-spend"></i>'); if (sp && sp.inc) dots.push('<i class="cd-in"></i>');
+      if (dots.length) h += '<span class="cdots" aria-hidden="true">' + dots.slice(0, 5).join("") + "</span>";
+      if (sp && (sp.out || sp.inc)) h += '<span class="cspend">' + (sp.out ? money.format(sp.out).replace(".00", "") + " spent" : "") + (sp.inc ? (sp.out ? " · " : "") + '<span class="ci">+' + money.format(sp.inc).replace(".00", "") + "</span>" : "") + "</span>";
+      h += "</button>";
+    }
+    h += "</div>";
+    h += '<div class="callegend" aria-hidden="true"><span><i class="cd-bill"></i>Bill due</span><span><i class="cd-paid"></i>Paid</span><span><i class="cd-late"></i>Overdue</span><span><i class="cd-goal"></i>Goal date</span><span><i class="cd-spend"></i>Spending</span><span><i class="cd-in"></i>Income</span></div>';
+    h += '<div class="panel caldetail" id="calDetail">' + calDetail(data, calSel) + "</div>";
+    h += '<div class="panel calagenda"><h2>' + title.split(" ")[0] + " at a glance</h2>" + calAgenda(data) + "</div>";
+    v.innerHTML = h;
+  }
+  function calRow(dot, title, sub, amt, acts, amtCls) {
+    return '<div class="crow"><i class="' + dot + '"></i><span><b>' + title + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + '</span><span class="amt' + (amtCls ? " " + amtCls : "") + '">' + (amt || "") + '</span><span class="acts">' + (acts || "") + "</span></div>";
+  }
+  function calBillRow(it, withDate) {
+    var b = it.b, o = it.o, n = daysUntil(o.d), sub;
+    if (it.st === "paid") sub = "Paid";
+    else if (it.st === "late") sub = dueText(n);
+    else if (it.st === "past") sub = "Past due date";
+    else sub = dueText(n);
+    sub = (withDate ? dateFmt.format(o.d) + " · " : "") + sub + " · " + (b.freq === "monthly" ? "Every month" : b.freq === "yearly" ? "Every year" : "One time");
+    var acts = "";
+    if (it.st === "paid" && b.paidThrough === iso(o.d)) acts = '<button type="button" data-calundo="' + esc(b.id) + '" data-n="' + o.n + '">Undo</button>';
+    else if (o.isNext && it.st !== "paid") acts = '<button type="button" class="pri" data-calpaid="' + esc(b.id) + '" data-on="' + iso(o.d) + '">Paid</button>';
+    acts += '<button type="button" data-gotool="bills">Edit</button>';
+    return calRow(calDot(it), esc(b.name), sub, b.amount ? money.format(b.amount) : "", acts);
+  }
+  function calGoalRow(it, withDate) {
+    var g = it.g, p = Math.round(it.pct * 100), n = daysUntil(parseD(g.due));
+    var sub = (withDate ? dateFmt.format(parseD(g.due)) + " · " : "") + "Goal target date · " + p + "% there" + (p >= 100 ? " · reached" : n < 0 ? " · date has passed" : n === 0 ? " · today" : " · " + n + (n === 1 ? " day" : " days") + " left");
+    return calRow("cd-goal", esc(g.name), sub, "", '<button type="button" data-gotool="goals">Open goal</button>');
+  }
+  function calDetail(data, k) {
+    var d = parseD(k), items = (data.days[k] || []).filter(calShown), sp = calFilt.spend ? data.spend[k] : null, h = "";
+    var tot = (sp ? sp.out : 0);
+    h += "<h2>" + d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) + (tot ? "<small>" + money.format(tot) + " spent</small>" : "") + "</h2>";
+    if (!items.length && !(sp && sp.list.length)) h += '<p class="calempty">Nothing on this day.</p>';
+    items.forEach(function (it) { h += it.t === "bill" ? calBillRow(it, false) : calGoalRow(it, false); });
+    if (sp) sp.list.slice().sort(function (a, b) { return (b.a || 0) - (a.a || 0); }).forEach(function (e) {
+      var isIn = e.kind === "in";
+      h += calRow(isIn ? "cd-in" : "cd-spend", esc(e.s || "Purchase"), (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "none" ? " · needs a category" : e.cat ? " · " + esc(e.cat) : ""), (isIn ? "+" : "") + money.format(e.a || 0), '<button type="button" data-gotool="' + (e.src === "receipt" ? "receipts" : "bank") + '">' + (e.kind === "none" ? "Sort it" : "View") + "</button>", isIn ? "in" : "");
+    });
+    h += '<button type="button" class="caladd" data-caladd="' + k + '">+ Add a bill due this day</button>';
+    return h;
+  }
+  function calAgenda(data) {
+    var from = new Date(calY, calM, 1), to = new Date(calY, calM + 1, 0), list = [];
+    Object.keys(data.days).forEach(function (k) { var d = parseD(k); if (d < from || d > to) return; data.days[k].filter(calShown).forEach(function (it) { list.push({ d: d, it: it }); }); });
+    if (!list.length) return '<p class="calempty">No bills or goal dates this month. <button type="button" class="linkbtn" data-gotool="bills">Add a bill</button></p>';
+    list.sort(function (a, b) { return a.d - b.d || (a.it.t === "goal") - (b.it.t === "goal"); });
+    var today = todayD(), groups = [["Overdue", []], ["Coming up", []], ["Paid", []], ["Earlier this month", []]];
+    list.forEach(function (x) {
+      var it = x.it, gi = it.t === "goal" ? (x.d < today ? 3 : 1) : it.st === "late" ? 0 : it.st === "paid" ? 2 : it.st === "past" ? 3 : 1;
+      groups[gi][1].push(x);
+    });
+    return groups.filter(function (g) { return g[1].length; }).map(function (g) {
+      return "<h3>" + g[0] + "</h3>" + g[1].map(function (x) { return x.it.t === "bill" ? calBillRow(x.it, true) : calGoalRow(x.it, true); }).join("");
+    }).join("");
+  }
+  $("calendarView").addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest("button"); if (!t) return;
+    var a = t.getAttribute("data-cal"), k = t.getAttribute("data-day"), f = t.getAttribute("data-calf"), id;
+    if (a) {
+      if (a === "today") { var n = todayD(); calY = n.getFullYear(); calM = n.getMonth(); calSel = iso(n); }
+      else { var dm = new Date(calY, calM + (a === "next" ? 1 : -1), 1); calY = dm.getFullYear(); calM = dm.getMonth(); calSel = null; }
+      renderCal(); return;
+    }
+    if (k) {
+      var d = parseD(k);
+      if (d.getMonth() !== calM || d.getFullYear() !== calY) { calY = d.getFullYear(); calM = d.getMonth(); calSel = k; renderCal(); }
+      else { calSel = k; Array.prototype.forEach.call($("calendarView").querySelectorAll(".calday"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-day") === k)); }); $("calDetail").innerHTML = calDetail(calItems(calY, calM), k); }
+      if (window.innerWidth <= 640) $("calDetail").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (f) { calFilt[f] = !calFilt[f]; try { localStorage.setItem("monerem-calfilt", JSON.stringify(calFilt)); } catch (x) {} renderCal(); return; }
+    if ((id = t.getAttribute("data-calpaid"))) {
+      var on = t.getAttribute("data-on");
+      bills.forEach(function (b) { if (b.id === id && (!b.paidThrough || b.paidThrough < on)) b.paidThrough = on; });
+      saveBills(); renderBanner(); renderCal(); return;
+    }
+    if ((id = t.getAttribute("data-calundo"))) {
+      var nn = +t.getAttribute("data-n");
+      bills.forEach(function (b) { if (b.id !== id) return; if (nn > 0 && b.freq !== "once") b.paidThrough = iso(occ(b, nn - 1)); else delete b.paidThrough; });
+      saveBills(); renderBanner(); renderCal(); return;
+    }
+    if ((k = t.getAttribute("data-caladd"))) {
+      goTool("bills");
+      setTimeout(function () { var bd = $("bDate"), bn = $("bName"); if (bd) bd.value = k; if (bn) bn.focus(); }, 60);
+    }
+  });
 
   /* ---------- receipts: read a photo, confirm it, add it to that month's Actual spending ---------- */
   var receipts = [], rcRules = {}, rcLoaded = false, rcQueue = [], rcBusy = false, rcUrl = null, tessP = null, rcMsgText = "";
@@ -5040,7 +5301,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       }).join("") + '<p style="margin-top:10px"><button class="linkbtn" data-go="goals">Open Goals</button></p></div>';
     }
     h += homeNetWorth();
-    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button><button class="linkbtn" data-gotool="money" data-sub="paycheck">Paycheck</button><button class="linkbtn" data-gotool="money" data-sub="afford">Can I afford it?</button><button class="linkbtn" data-gotool="money" data-sub="subs">Subscriptions</button><button class="linkbtn" data-gotool="money" data-sub="reports">Reports</button><button class="linkbtn" data-go="receipts">Receipts</button><button class="linkbtn" data-go="setup">Change my categories</button></p></div>';
+    h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button><button class="linkbtn" data-go="calendar">Calendar</button><button class="linkbtn" data-gotool="money" data-sub="paycheck">Paycheck</button><button class="linkbtn" data-gotool="money" data-sub="afford">Can I afford it?</button><button class="linkbtn" data-gotool="money" data-sub="subs">Subscriptions</button><button class="linkbtn" data-gotool="money" data-sub="reports">Reports</button><button class="linkbtn" data-go="receipts">Receipts</button><button class="linkbtn" data-go="setup">Change my categories</button></p></div>';
     $("homeBody").innerHTML = h;
   }
   $("homeBody").addEventListener("click", function (e) {
@@ -5135,6 +5396,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     "yearly-projection": '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
     "bills": '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
     "receipts": '<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    "calendar": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01"/>',
     "goals": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     "debt": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
     "bank": '<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
