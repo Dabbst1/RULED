@@ -3547,6 +3547,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   // "TARGET T-1234 SANFORD FL" -> "Target"
   var US_ST = /^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)$/;
   function cleanStore(desc) {
+    if (/amazon|amzn/i.test(desc || "")) return /prime/i.test(desc) ? "Amazon Prime" : "Amazon";
     var w = String(desc || "").replace(/\b(pos|debit|purchase|card|ach|sq \*|tst\*|pp\*)\b/ig, " ").replace(/[#*]\S*/g, " ").replace(/\b[a-z]{0,2}-?\d[\w-]*\b/ig, " ").replace(/\s+/g, " ").trim().split(" ");
     if (w.length >= 3 && US_ST.test(w[w.length - 1].toUpperCase())) w = w.slice(0, -2);
     var out = w.join(" ").trim() || String(desc || "Transaction");
@@ -3575,7 +3576,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
             var inc = activeEntries(s.Lm, s.st).income, changed = false;
             months[k].forEach(function (t) {
-              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
+              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
               if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
               if (g === "" || g.indexOf("ex:") === 0) {
                 var pl = bankPlace(t, s);
@@ -3657,15 +3658,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var opts = function (e) {
       var v = e.kind === "skip" ? "skip" : e.kind === "none" ? "" : e.kind + ":" + e.cat, isIn = e.kind === "in";
       var o = (e.kind === "none" ? '<option value="" selected>Choose a category</option>' : "") + '<option value="skip"' + (v === "skip" ? " selected" : "") + ">Not counted (transfer, card payment)</option>";
-      if (isIn || (e.kind === "skip" && /payroll|direct dep|salary|paycheck/i.test(e.s))) o += '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
-      o += '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      var incG = '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      var exG = '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      var moneyIn = isIn || e.dir === "in" || /payroll|direct dep|salary|paycheck|deposit|transfer from|zelle from|venmo from|cashout|refund|hold on/i.test((e.raw || "") + " " + e.s);
+      o += moneyIn ? incG + exG : exG + incG;
       return o;
     };
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
         '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
-        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" ? "+" : "") + money.format(e.a) + "</span>" +
+        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" || e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>";
     };
     var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
@@ -3686,7 +3689,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var id = t.getAttribute && t.getAttribute("data-spend"); if (!id || !t.value) return;
     t.disabled = true;
     spendRecat(id, t.value).then(function () {
-      var ex = spendFind(id); spendMsg = ex ? (ex.kind === "skip" ? "“" + esc(ex.s) + "” is no longer counted in your budget." : "“" + esc(ex.s) + "” is now in <b>" + esc(ex.cat) + "</b>. Future purchases there will go to the same place.") : ""; renderBank();
+      var ex = spendFind(id); spendMsg = ex ? (ex.kind === "skip" ? "“" + esc(ex.s) + "” is no longer counted in your budget." : ex.kind === "in" ? "“" + esc(ex.s) + "” now counts as income in <b>" + esc(ex.cat) + "</b>." : "“" + esc(ex.s) + "” is now in <b>" + esc(ex.cat) + "</b>. Future purchases there will go to the same place.") : ""; renderBank();
     }).catch(function (er) { spendMsg = er && er.message === "nocat" ? "That category isn’t in that month’s budget. Pick another." : "Couldn’t change it right now. Try again."; renderBank(); });
   });
   // what was actually bought, for the "Plan for…" card in Actual view
