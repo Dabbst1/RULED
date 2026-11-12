@@ -1381,7 +1381,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var autoMode = snapMode || phone;
     if (autoMode) colgroup = "";
     var tstart = '<table style="' + (autoMode ? 'width:100%;table-layout:auto' : fitMode ? 'width:100%' : narrow ? 'width:100%;min-width:' + width + 'px' : 'width:calc(var(--a) + ' + (width - fc) + 'px)') + '">' + colgroup;
-    $("sheetView").style.maxWidth = autoMode || fitMode ? "" : narrow ? (width + 64) + "px" : ""; $("sheet").style.width = narrow || fitMode || autoMode ? "100%" : "";
+    // a narrow budget sits in the middle of the page; the page and tab bar keep their width
+    $("sheetView").style.maxWidth = autoMode || fitMode ? "" : narrow ? (width + 64) + "px" : ""; var ctr = narrow && !autoMode && !fitMode; $("sheetView").style.margin = ctr ? "0 auto" : ""; $("sheetView").style.width = ctr ? "100%" : ""; $("sheet").style.width = narrow || fitMode || autoMode ? "100%" : "";
     $("sheet").className = fitMode ? "fit" : ""; needFit = fitMode;
     $("sheet").parentNode.className = "scroller" + (autoMode ? " snap" : "");
     document.documentElement.style.setProperty("--a", fc + "px");
