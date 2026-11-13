@@ -877,6 +877,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .geta{margin:0}.gmuted{color:var(--muted);font-size:13px}.gok{color:#15803D;font-weight:600}.gwarnt{color:#B45309;font-weight:600}
 .gslide{width:100%;height:30px;accent-color:var(--blue);cursor:pointer;margin-top:6px}
 .greal{margin:8px 0 4px;padding:10px 12px;border-left:4px solid #D97706;background:#FFF7ED;color:#7C2D12;font-size:14px;border-radius:0}
+.emailsw{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;margin:8px 0 4px}
+.emailsw input{width:22px;height:22px;margin-top:2px;accent-color:var(--blue);flex:0 0 auto}
+.emailsw b{display:block;font-size:15px}.emailsw small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1067,6 +1070,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .gplan.good{color:#4ADE80}
 :root[data-theme="dark"] .gok{color:#4ADE80}
 :root[data-theme="dark"] .greal{background:#2A1C10;color:#FDBA74}
+:root[data-theme="dark"] .emailsw{background:#121B2E}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1257,6 +1261,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .gplan.good{color:#4ADE80}
 :root:not([data-theme="light"]) .gok{color:#4ADE80}
 :root:not([data-theme="light"]) .greal{background:#2A1C10;color:#FDBA74}
+:root:not([data-theme="light"]) .emailsw{background:#121B2E}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -2003,6 +2008,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         payPref = acctPrefs.payview; try { localStorage.setItem("monerem-payview", payPref); } catch (e) {}
         paintPaySeg();
       } else if (payPref === "full") { acctPrefs.payview = "full"; doSave("prefs", acctPrefs); }  // carry over a choice made before this was saved to the account
+      var tz = ""; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+      if (tz && acctPrefs.tz !== tz) { acctPrefs.tz = tz; doSave("prefs", acctPrefs); }   // bill emails go out at 8 AM where you live
     }).catch(function () {});
   }
   paintPaySeg();
@@ -5640,9 +5647,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function drawCalPanel() {
     var el = $("calPanel"); if (!el) return;
     el.hidden = !bills.length;
-    if (bills.length) el.innerHTML = "<h2>Get reminders on your phone</h2><p class=\"sub\">Add your bills to your phone’s calendar. You’ll get an alert before each one is due, even when Monerem is closed.</p>" +
+    var on = acctPrefs.emailBills !== false, who = currentUser();
+    if (bills.length) el.innerHTML = '<h2>Bill reminders</h2><label class="emailsw"><input type="checkbox" id="emailBills"' + (on ? " checked" : "") + '><span><b>Email me before bills are due</b><small>' +
+      (on ? "Sent around 8 AM on each bill’s “Remind me” day" + (who && who.email ? " to " + esc(who.email) : "") + ". Tap “I paid it” in the email to check a bill off." : "Off. Turn it on to get an email before each bill is due.") + "</small></span></label>" +
+      "<h3 class=\"wizh3\" style=\"margin-top:16px\">On your phone’s calendar</h3><p class=\"sub\">Add your bills to your phone’s calendar. You’ll get an alert before each one is due, even when Monerem is closed.</p>" +
       '<button type="button" class="btn" id="icsBtn">Add ' + (bills.length === 1 ? "1 bill" : bills.length + " bills") + ' to my calendar</button><p class="sub fine">Changed a bill later? Tap this again and replace the old events.</p>';
   }
+  $("calPanel").addEventListener("change", function (e) {
+    if (e.target.id !== "emailBills") return;
+    acctPrefs.emailBills = e.target.checked; doSave("prefs", acctPrefs); drawCalPanel();
+    toast(e.target.checked ? "<b>Bill emails are on</b><br>You’ll get an email before each bill is due." : "<b>Bill emails are off</b><br>You can turn them back on here any time.", "logged");
+  });
   $("calPanel").addEventListener("click", function (e) {
     if (e.target.id !== "icsBtn") return;
     var blob = new Blob([billsIcs()], { type: "text/calendar;charset=utf-8" }), url = URL.createObjectURL(blob), a = document.createElement("a");
@@ -5772,6 +5787,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (g) { var n = etaMonths(g.target - g.current, lines[nk(g.name)]); if (n !== null) return { t: esc(g.name) + " reached by " + monYr(n) }; }
     return { t: !R.save ? "No savings planned yet" : R.saved >= R.save ? "Goal met this month" : money.format(R.save - R.saved).replace(/\.00$/, "") + " to go this month" };
   }
+  // the bill email says what's safe to spend; keep the latest number on the account (only when it changes)
+  var lastSnap = null;
+  function saveSafeSnap(R) {
+    var snap = { safe: Math.round(R.safe), until: iso(R.next), cash: !!R.cash, at: Date.now() };
+    if (lastSnap && lastSnap.safe === snap.safe && lastSnap.until === snap.until && Date.now() - lastSnap.at < 6 * 36e5) return;
+    lastSnap = snap; doSave("safe", snap);
+  }
   function safeHtml(R) {
     var f0 = function (x) { return money.format(x).replace(/\.\d\d$/, ""); };
     var bar = function (a, b, k) { var w = b > 0 ? Math.min(100, a / b * 100) : 0; return '<div class="ovbar"><i class="' + k + '" style="width:' + w.toFixed(1) + '%"></i></div>'; };
@@ -5809,6 +5831,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     } else if (SD && v && typeof v.D35 === "number") {
       SD.cash = false; SD.safe = Math.round((v.D35 + SD.spend - SD.spent) * 100) / 100;   // no pay marked yet: an estimate from the plan
     }
+    if (SD && SD.inc > 0 && typeof SD.safe === "number" && !isNaN(SD.safe)) saveSafeSnap(SD);
     if (SD && SD.inc > 0) h += safeHtml(SD); else
     h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
       '<div class="stat"><small>Planned expenses</small><b>' + m(v && v.D34) + "</b>" + al(homeActV && homeActV.D34) + '</div>' +

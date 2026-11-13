@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Monerem</title>
+<link rel="icon" href="favicon.ico">
+<style>
+:root{--ink:#0B1F4D;--muted:#3F5586;--blue:#1D4ED8;--line:#D6E3F8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:#EEF4FF;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px 26px;max-width:440px;width:100%;text-align:center}
+.logo{font-weight:800;font-size:24px;letter-spacing:-.02em;margin-bottom:18px}.logo span{color:var(--blue)}
+.icon{width:56px;height:56px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}
+.ok{background:#E7F7EC;color:#15803D}.warn{background:#FFF7ED;color:#B45309}
+h1{font-size:22px;letter-spacing:-.01em;margin-bottom:8px}
+p{color:var(--muted);margin-bottom:20px}
+a.btn{display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:99px}
+@media (prefers-color-scheme:dark){body{background:#0B1220;color:#E6EDFA}.card{background:#121B2E;border-color:#22304D}p{color:#A9B8D6}.logo span{color:#60A5FA}.ok{background:#12301F;color:#4ADE80}.warn{background:#2A1D10;color:#FBBF24}a.btn{background:#3B82F6}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Monerem<span>.</span></div>
+  <div class="icon ok" id="icon">&#10003;</div>
+  <h1 id="title">Done</h1>
+  <p id="msg"></p>
+  <a class="btn" id="go" href="app.html#bills">Open Monerem</a>
+</div>
+<script>
+(function () {
+  var r = (location.search.match(/[?&]r=([a-z]+)/) || [])[1] || "";
+  var M = {
+    paid: ["Marked as paid", "Nice. That bill is checked off in Monerem, and you won’t get another reminder for it until it’s due again.", "app.html#home", "Open Monerem"],
+    off: ["Bill emails are off", "You won’t get bill reminder emails anymore. You can turn them back on any time in the Bills tab.", "app.html#bills", "Open Bills"],
+    gone: ["That bill isn’t there anymore", "It may have been deleted or changed. Open Monerem to see your current bills.", "app.html#bills", "Open Bills"],
+    bad: ["That link didn’t work", "It may be incomplete or out of date. Open Monerem and mark the bill paid from the Bills tab.", "app.html#bills", "Open Bills"],
+    err: ["Something went wrong", "We couldn’t save that just now. Open Monerem and mark the bill paid from the Bills tab.", "app.html#bills", "Open Bills"]
+  }, m = M[r] || M.bad, good = r === "paid" || r === "off";
+  document.getElementById("title").textContent = m[0];
+  document.getElementById("msg").textContent = m[1];
+  var go = document.getElementById("go"); go.href = m[2]; go.textContent = m[3];
+  var ic = document.getElementById("icon"); ic.className = "icon " + (good ? "ok" : "warn"); ic.textContent = good ? "✓" : "!";
+})();
+</script>
+</body>
+</html>
