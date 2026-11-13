@@ -5739,15 +5739,15 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     ent.expense.forEach(function (e) {
       var k = SECTION_OF[detailOf(e.name)] || "other", p = whole(e, ""), a = whole(e, "a:");
       if (k === "savings") { R.lines = R.lines || {}; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.save += p; R.saved += a; R.pSave += Math.max(0, part(e, "") - part(e, "a:")); return; }
-      if (k === "bills") { R.bills += p; R.billsPaid += a; R.pBillsLeft += Math.max(0, part(e, "") - part(e, "a:")); R.pSpent += part(e, "a:"); return; }
+      if (k === "bills") { R.bills += p; R.billsPaid += a; R.billsLeftM = (R.billsLeftM || 0) + Math.max(0, p - a); R.pBillsLeft += Math.max(0, part(e, "") - part(e, "a:")); R.pSpent += part(e, "a:"); return; }
       R.spend += p; R.spent += a; R.pSpent += part(e, "a:");
       if (p > 0 && a / p >= WARN_AT && (!R.hot || a / p > R.hot.r)) R.hot = { n: e.name, r: a / p };
     });
     // bills from the Bills tab that come due before the next paycheck, if you keep them there
     var due = bills.map(function (b) { return { b: b, d: nextDue(b) }; }).filter(function (x) { return x.d && x.d >= t && x.d <= end && +x.b.amount > 0; });
-    if (due.length) R.pBillsLeft = due.reduce(function (a, x) { return a + (+x.b.amount); }, 0);
+    // bills still due = what your budget planned for bills minus what you have paid (same as the Bills card)
     R.monthDue = bills.map(function (b) { return nextDue(b); }).filter(function (d) { return d && d >= t && d.getMonth() === mo && d.getFullYear() === y; }).length;
-    var got = R.pIncGot > 0 ? R.pIncGot : R.pInc;
+    var got = R.pIncGot > 0.5 ? R.pIncGot : R.pInc; R.estPay = !(R.pIncGot > 0.5);   // only pay that has come in; the plan is a stand-in until you mark it received
     R.got = got; R.safe = Math.round((got - R.pBillsLeft - R.pSave - R.pSpent) * 100) / 100;
     R.days = Math.max(1, Math.round((end - t) / 864e5) + 1);
     return R;
@@ -5766,13 +5766,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var bar = function (a, b, k) { var w = b > 0 ? Math.min(100, a / b * 100) : 0; return '<div class="ovbar"><i class="' + k + '" style="width:' + w.toFixed(1) + '%"></i></div>'; };
     var nd = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(R.next), neg = R.safe < 0;
     var h = '<div class="safe' + (neg ? " neg" : "") + '"><div class="safetop"><div><small>' + (R.full ? "Safe to spend for the rest of the month" : "Safe to spend until payday") + "</small>" +
-      "<b>" + (neg ? "−" : "") + f0(Math.abs(R.safe)) + "</b><span>" + (neg ? "You’re " + f0(-R.safe) + " over for this paycheck. Ease up until " + nd + "." :
+      "<b>" + (neg ? "−" : "") + f0(Math.abs(R.safe)) + "</b><span>" + (neg ? "You’re " + f0(-R.safe) + " over" + (R.estPay ? " on your planned pay" : " with the money that has come in") + ". Ease up until " + nd + "." :
       "About " + f0(R.safe / R.days) + " a day for " + R.days + " day" + (R.days === 1 ? "" : "s") + " · " + (R.full ? "new month starts " : "next paycheck ") + nd) + "</span></div>" +
       '<button type="button" class="safelog" data-log="1"><span aria-hidden="true">+</span> Log</button></div>' +
-      '<div class="safemath"><span>' + f0(R.got) + (R.full ? " this month" : " this paycheck") + "</span><span>− " + f0(R.pBillsLeft) + " bills still due</span><span>− " + f0(R.pSave) + " to savings</span><span>− " + f0(R.pSpent) + " already spent</span></div></div>";
+      '<div class="safemath"><span>' + f0(R.got) + (R.estPay ? " planned pay (not marked received yet)" : " received" + (R.full ? " this month" : " this paycheck")) + "</span><span>− " + f0(R.pBillsLeft) + " bills still due</span>" + (R.tithe ? "<span>− " + f0(R.tithe) + " tithe</span>" : "") + (R.other ? "<span>− " + f0(R.other) + " other planned costs</span>" : "") + "<span>− " + f0(R.pSave) + " to savings</span><span>− " + f0(R.pSpent) + " already spent</span></div></div>";
     h += '<div class="ovcards">' +
       '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Coming in</small><b>' + f0(R.inc) + "</b>" + bar(R.incGot, R.inc, "") + "<span>" + (R.incGot ? f0(R.incGot) + " received so far" : "Nothing marked received yet") + "</span></button>" +
-      '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.monthDue ? " · " + R.monthDue + " still due this month" : R.bills > R.billsPaid ? " · " + f0(R.bills - R.billsPaid) + " to go" : "") + "</span></button>" +
+      '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.billsLeftM > 0.5 ? " · " + f0(R.billsLeftM) + " to go" : "") + "</span></button>" +
       '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Spending</small><b>' + f0(R.spent) + " <em>of " + f0(R.spend) + "</em></b>" + bar(R.spent, R.spend, R.spent > R.spend ? "bad" : R.spend && R.spent / R.spend >= WARN_AT ? "warn" : "ok") +
         "<span" + (R.hot ? ' class="warnt"' : "") + ">" + (R.hot ? esc(R.hot.n) + " is at " + Math.round(R.hot.r * 100) + "%" : R.spend ? f0(Math.max(0, R.spend - R.spent)) + " left in the plan" : "No spending planned yet") + "</span></button>" +
       '<button type="button" class="ov" data-go="goals"><small>Savings</small><b>' + f0(R.saved) + " <em>of " + f0(R.save) + "</em></b>" + bar(R.saved, R.save, "ok") + "<span" + (homeSaveNote(R).w ? ' class="warnt"' : "") + ">" + homeSaveNote(R).t + "</span></button></div>";
@@ -5783,9 +5783,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var net = v ? v.D35 : null, h = "";
     function al(x) { return '<span class="actl">' + (homeActV && typeof x === "number" ? "Actual so far: <i>" + money.format(x) + "</i>" : "Actual: not entered yet") + "</span>"; }
     var SD = null; try { if (homeRef && homeDoc) SD = safeData(homeRef, homeDoc); } catch (e) { SD = null; }
-    if (SD && v && typeof v.D35 === "number" && typeof v.D7 === "number") {   // the table's own totals include calculated rows like Tithe
-      SD.net = v.D35; var un = Math.max(0, (v.D7 - v.D35) - (SD.bills + SD.spend + SD.save));
-      if (un > 0.5) { var sh = SD.full ? un : un / 2; SD.pBillsLeft += sh; SD.safe = Math.round((SD.safe - sh) * 100) / 100; }
+    if (SD && v && typeof v.D35 === "number") {   // costs the Monthly table works out itself, like Tithe, shown on their own line
+      SD.net = v.D35; var share = SD.full ? 1 : 0.5;
+      var ti = typeof v.D30 === "number" && v.D30 > 0.5 ? v.D30 : 0, tot = typeof v.D34 === "number" ? v.D34 : 0, oth = Math.max(0, tot - (SD.bills + SD.spend + SD.save) - ti);
+      SD.tithe = typeof v.D7 === "number" && v.D7 > 0 ? Math.round(ti / v.D7 * SD.got * 100) / 100 : Math.round(ti * share * 100) / 100;   // tithe on the money that came in
+      SD.other = oth > 0.5 ? Math.round(oth * share * 100) / 100 : 0;
+      SD.safe = Math.round((SD.safe - SD.tithe - SD.other) * 100) / 100;
     }
     if (SD && SD.inc > 0) h += safeHtml(SD); else
     h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
