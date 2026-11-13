@@ -880,10 +880,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .emailsw{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;margin:8px 0 4px}
 .emailsw input{width:22px;height:22px;margin-top:2px;accent-color:var(--blue);flex:0 0 auto}
 .emailsw b{display:block;font-size:15px}.emailsw small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
-.viewfloat{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:24px;margin:0;background:#fff;border:1px solid var(--line);border-radius:99px;padding:4px;box-shadow:0 10px 26px rgba(11,31,77,.22)}
+.viewfloat{position:fixed;z-index:60;right:124px;bottom:24px;margin:0;background:#fff;border:1px solid var(--line);border-radius:99px;padding:4px;box-shadow:0 10px 26px rgba(11,31,77,.22)}
 .viewfloat[hidden]{display:none}
-.viewfloat button{min-width:84px;height:42px;border-radius:99px;font-weight:700}
-@media (max-width:700px){.viewfloat{left:14px;transform:none;bottom:calc(80px + env(safe-area-inset-bottom))}.viewfloat button{min-width:72px;height:40px}}
+.viewfloat button{min-width:72px;height:42px;border-radius:99px;font-weight:700}
+@media (max-width:700px){.viewfloat{right:96px;bottom:calc(79px + env(safe-area-inset-bottom))}.viewfloat button{min-width:62px;height:40px;padding:0 12px}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1937,6 +1937,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (seg.hidden || $("sheetView").hidden || $("app").hidden) { fl.hidden = true; return; }
     var r = seg.getBoundingClientRect(), top = window.innerWidth <= 700 ? 70 : 0;
     fl.hidden = r.bottom > top && r.top < window.innerHeight;     // the one above the table is on screen: no need for this one
+    var lf = $("logFab"); if (!fl.hidden && lf && !lf.hidden) { var lr = lf.getBoundingClientRect(); fl.style.right = Math.round(window.innerWidth - lr.left + 10) + "px"; }   // sits just left of Log
   }
   window.addEventListener("scroll", syncViewFloat, { passive: true });
   window.addEventListener("resize", syncViewFloat);
