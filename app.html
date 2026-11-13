@@ -880,6 +880,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .emailsw{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;margin:8px 0 4px}
 .emailsw input{width:22px;height:22px;margin-top:2px;accent-color:var(--blue);flex:0 0 auto}
 .emailsw b{display:block;font-size:15px}.emailsw small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.viewfloat{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:24px;margin:0;background:#fff;border:1px solid var(--line);border-radius:99px;padding:4px;box-shadow:0 10px 26px rgba(11,31,77,.22)}
+.viewfloat[hidden]{display:none}
+.viewfloat button{min-width:84px;height:42px;border-radius:99px;font-weight:700}
+@media (max-width:700px){.viewfloat{left:14px;transform:none;bottom:calc(80px + env(safe-area-inset-bottom))}.viewfloat button{min-width:72px;height:40px}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1071,6 +1075,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .gok{color:#4ADE80}
 :root[data-theme="dark"] .greal{background:#2A1C10;color:#FDBA74}
 :root[data-theme="dark"] .emailsw{background:#121B2E}
+:root[data-theme="dark"] .viewfloat{background:#121B2E}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1262,6 +1267,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .gok{color:#4ADE80}
 :root:not([data-theme="light"]) .greal{background:#2A1C10;color:#FDBA74}
 :root:not([data-theme="light"]) .emailsw{background:#121B2E}
+:root:not([data-theme="light"]) .viewfloat{background:#121B2E}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1342,6 +1348,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="projectYear" title="Use this month's plan for the rest of the year">Project my year</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
+  <div class="seg viewfloat" id="viewFloat" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div>
   <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><div class="seg" id="paySeg" hidden role="group" aria-label="How to show paychecks"><button type="button" data-pay="split" title="Show Paycheck 1 and Paycheck 2 side by side">Split checks</button><button type="button" data-pay="full" title="Show one amount per category for the whole month">Full month</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
   <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time. Hover over a category to see its plan. <button type="button" class="linkbtn" id="fillAllPlan">No changes? Fill every empty row from my plan</button></p>
   <div class="copyoffer" id="copyOffer" hidden></div>
@@ -1831,7 +1838,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 
   function setView(v, quiet) {
     view = v;
-    Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+    Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button, #viewFloat button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
     $("planTip").hidden = true; tipRow = null;
     $("actNote").hidden = v !== "actual" || !layout || !layout.months;
     $("projectYear").disabled = v === "actual"; $("projectYear").title = v === "actual" ? "Switch to Plan to use this" : "Use this month's plan for the rest of the year";
@@ -1919,6 +1926,22 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     fillInputs(); schedule(); scheduleSave(); setStatus(n ? "Filled every empty row from your plan." : "Nothing to fill.");
   });
   $("viewSeg").addEventListener("click", function (e) { var v = e.target.getAttribute && e.target.getAttribute("data-view"); if (v && v !== view) setView(v); });
+  // the same Plan / Actual switch, pinned to the bottom of the screen once the one above the table scrolls away
+  $("viewFloat").addEventListener("click", function (e) {
+    var b = e.target.closest("button"), v = b && b.getAttribute("data-view"); if (!v || v === view) return;
+    var t0 = $("sheet").getBoundingClientRect().top; setView(v);
+    var d = $("sheet").getBoundingClientRect().top - t0; if (Math.abs(d) > 1) window.scrollBy(0, d);   // keep the same rows on screen
+  });
+  function syncViewFloat() {
+    var seg = $("viewSeg"), fl = $("viewFloat");
+    if (seg.hidden || $("sheetView").hidden || $("app").hidden) { fl.hidden = true; return; }
+    var r = seg.getBoundingClientRect(), top = window.innerWidth <= 700 ? 70 : 0;
+    fl.hidden = r.bottom > top && r.top < window.innerHeight;     // the one above the table is on screen: no need for this one
+  }
+  window.addEventListener("scroll", syncViewFloat, { passive: true });
+  window.addEventListener("resize", syncViewFloat);
+  new MutationObserver(syncViewFloat).observe($("viewSeg"), { attributes: true, attributeFilter: ["hidden"] });
+  new MutationObserver(syncViewFloat).observe($("sheetView"), { attributes: true, attributeFilter: ["hidden"] });
   /* ---------- undo / redo (last 5 changes) and clear column ---------- */
   var hist = [], redoS = [], histLast = null, histBusy = false, editFlag = false, dragFlag = false;
   function canon(o) { return Array.isArray(o) ? o.map(canon) : o && typeof o === "object" ? Object.keys(o).sort().reduce(function (r, k) { r[k] = canon(o[k]); return r; }, {}) : o; }
