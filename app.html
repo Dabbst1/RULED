@@ -4129,16 +4129,31 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function loadSavePlan() {
     var n = new Date();
     return Promise.all([rcMonthState(n.getFullYear(), n.getMonth()), loadDebts().catch(function () {})]).then(function (a) {
-      var st = a[0], ent = activeEntries(st.Lm, st.st), hid = (st.doc.__meta && st.doc.__meta.hidden) || [];
-      var plan = function (e) { return hid.indexOf(e.row) >= 0 ? 0 : e.addrs.reduce(function (t, ad) { return t + (typeof st.doc[ad] === "number" ? st.doc[ad] : 0); }, 0); };
-      var R = { inc: 0, exp: 0, needs: 0, save: 0, lines: {}, names: {} };
+      var st = a[0], ent = activeEntries(st.Lm, st.st), num2 = function (k) { return typeof st.doc[k] === "number" ? st.doc[k] : 0; };
+      var plan = function (e) { return e.addrs.reduce(function (t, ad) { return t + num2(ad); }, 0); };      // hidden rows still count, like the Monthly table
+      var act = function (e) { return e.addrs.reduce(function (t, ad) { return t + num2("a:" + ad); }, 0); };
+      var R = { inc: 0, exp: 0, needs: 0, save: 0, over: 0, overIn: [], lines: {}, names: {}, calcOk: false };
       ent.income.forEach(function (e) { R.inc += plan(e); });
       ent.expense.forEach(function (e) {
         var p = plan(e), k = SECTION_OF[detailOf(e.name)] || "other";
-        if (k === "savings") { R.save += p; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.names[nk(e.name)] = e.name; }
-        else { R.exp += p; if (k === "bills" || k === "food" || k === "transport" || k === "health") R.needs += p; }
+        if (k === "savings") { R.save += p; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.names[nk(e.name)] = e.name; return; }
+        R.exp += p; if (k === "bills" || k === "food" || k === "transport" || k === "health") R.needs += p;
+        var x = act(e); if (x > p + 0.5) { R.over += x - p; R.overIn.push(e.name); }       // already spent more than planned
       });
-      R.free = Math.round((R.inc - R.exp - R.save) * 100) / 100;
+      R.free = R.inc - R.exp - R.save;
+      // use the Monthly table's own totals (they include calculated rows like Tithe), so this can't disagree with it
+      return calcMonthly(stripA(numericOf(st.doc))).then(function (v) {
+        if (v && typeof v.D7 === "number" && typeof v.D35 === "number") {
+          var extra = Math.max(0, (v.D7 - v.D35) - (R.exp + R.save));      // costs the table works out itself
+          R.inc = v.D7; R.free = v.D35; R.exp += extra; R.needs += extra; R.calcOk = true;
+        }
+        return R;
+      }).catch(function (e) { if (e && e.message === "stop") throw e; return R; });
+    }).then(function (R) {
+      R.free = Math.round(R.free * 100) / 100; R.over = Math.round(R.over * 100) / 100;
+      R.freeNow = Math.round((R.free - R.over) * 100) / 100;          // what's really left after overspending so far
+      R.cushion = Math.max(50, Math.round(R.inc * 0.05 / 25) * 25);   // never plan every last dollar
+      R.movable = R.calcOk ? Math.max(0, Math.floor((R.freeNow - R.cushion) / 25) * 25) : 0;
       SP = R; return R;
     }).catch(function () { SP = null; return null; });
   }
@@ -4171,10 +4186,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   // is this goal realistic with the money you have?
   function goalRealHtml(g, planM) {
     if (!SP || !g.due || !(g.target > g.current)) return "";
-    var left = g.target - g.current, mt = Math.max(1, monthsTill(g.due)), need = left / mt, avail = planM + Math.max(0, SP.free);
+    var left = g.target - g.current, mt = Math.max(1, monthsTill(g.due)), need = left / mt, avail = Math.max(0, planM + Math.min(0, SP.freeNow)) + SP.movable;
     if (need <= avail + 0.5) return "";
     var real = etaMonths(left, avail);
-    return '<p class="greal"><b>This date isn’t realistic with your budget.</b> It needs ' + f0(need) + " a month, but you have about " + f0(avail) + " for it" + (SP.free > 0.5 ? " (" + f0(planM) + " planned + " + f0(SP.free) + " not assigned)" : "") + ". " +
+    return '<p class="greal"><b>This date isn’t realistic with your budget.</b> It needs ' + f0(need) + " a month, but your budget can only give it about " + f0(avail) + (SP.movable > 0 ? " (" + f0(planM) + " planned + " + f0(SP.movable) + " you could free up)" : SP.freeNow < -0.5 ? " because your budget is already over" : "") + ". " +
       (real === null ? "Free up money in your budget first." : "A realistic date is <b>" + monYr(real) + "</b>, or lower the goal amount.") + "</p>";
   }
   // the panel at the top of Goals
@@ -4185,13 +4200,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var h = '<div class="panel splan"><h2>Your savings plan</h2><div class="spstats">' +
       '<div><small>You save each month</small><b>' + f0(SP.save) + "</b><span>" + Math.round(pct * 100) + "% of your pay</span></div>" +
       '<div><small>50/30/20 target</small><b>' + f0(target) + "</b><span>20% of your pay</span></div>" +
-      '<div><small>Not assigned in your budget</small><b' + (SP.free < -0.5 ? ' class="bad"' : "") + ">" + (SP.free < -0.5 ? "−" : "") + f0(Math.abs(SP.free)) + "</b><span>" + (SP.free < -0.5 ? "you’re over budget" : "money with no job yet") + "</span></div></div>";
+      '<div><small>' + (SP.free < -0.5 ? "Your budget is over by" : "Not assigned in your budget") + '</small><b' + (SP.freeNow < -0.5 ? ' class="bad"' : "") + ">" + (SP.free < -0.5 ? "−" : "") + f0(Math.abs(SP.free)) + "</b><span>" + (SP.free < -0.5 ? "Net Income in your Monthly budget" : SP.over > 0.5 ? "but " + f0(SP.over) + " overspent so far" : "money with no job yet") + "</span></div></div>";
     // warnings: is saving realistic?
     var warns = [];
     if (SP.free < -0.5) warns.push("Your plan spends <b>" + f0(-SP.free) + "</b> more than you bring in each month" + (SP.save > 0 ? ", so the " + f0(SP.save) + " you planned for savings won’t really happen. Cut spending by " + f0(-SP.free) + (SP.save + SP.free > 0.5 ? " or lower savings to " + f0(SP.save + SP.free) + "." : ", or pause savings until your spending fits your pay.") : ". Cut spending before planning savings."));
+    if (SP.free >= -0.5 && SP.freeNow < -0.5) warns.push("You’ve already spent <b>" + f0(SP.over) + "</b> more than planned this month (" + SP.overIn.slice(0, 3).map(esc).join(", ") + "). That uses up your unassigned money" + (SP.save > 0 ? " and puts " + f0(-SP.freeNow) + " of your planned savings at risk" : "") + ". Hold off on adding to savings until next month.");
     if (SP.free >= -0.5 && SP.inc > 0 && SP.needs > SP.inc * 0.8 && SP.save > SP.inc - SP.needs) warns.push("Your bills and basics take " + Math.round(SP.needs / SP.inc * 100) + "% of your pay. Saving " + f0(SP.save) + " leaves too little for everything else. Start smaller, with " + f0(Math.max(25, (SP.inc - SP.needs) * 0.3)) + " a month, and grow it.");
     var due = goals.filter(function (g) { return g.kind === "save" && g.due && g.target > g.current; }), needAll = due.reduce(function (t, g) { return t + (g.target - g.current) / Math.max(1, monthsTill(g.due)); }, 0);
-    var room = SP.save + Math.max(0, SP.free);
+    var room = Math.max(0, SP.save + Math.min(0, SP.freeNow)) + Math.max(0, SP.freeNow);
     if (due.length > 1 && needAll > room + 0.5) warns.push("Your goals with target dates need <b>" + f0(needAll) + "</b> a month together, but your budget only has about " + f0(room) + " for savings. Push back a date or two, starting with the least important.");
     else if (due.length === 1 && needAll > room + 0.5) warns.push("<b>" + esc(due[0].name) + "</b> needs " + f0(needAll) + " a month to hit its date, more than the " + f0(room) + " your budget has for savings. See the goal below for a realistic date.");
     if (warns.length) h += '<div class="spwarn"><b>Heads up: this savings plan may not be realistic</b>' + warns.map(function (w) { return "<p>" + w + "</p>"; }).join("") + "</div>";
@@ -4210,10 +4226,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     }).join("") + "</div>";
     // put unassigned money to work
     var tgt = ef && ef.current < threeMo ? ef : goals.filter(function (g) { return g.kind === "save" && g.target > g.current; })[0];
-    if (SP.free > 0.5 && tgt && SP.lines[nk(tgt.name)] !== undefined) {
-      var cur = goalMonthly(tgt), left = tgt.target - tgt.current, a = etaMonths(left, cur), b = etaMonths(left, cur + SP.free);
-      h += '<div class="spmove"><span>You have <b>' + f0(SP.free) + "</b> in your budget with no job yet. Moving it to <b>" + esc(tgt.name) + "</b>" + (a !== null && b !== null && a - b > 0 ? " gets you there " + durTxt(a - b) + " sooner." : a === null && b !== null ? " gets you there by " + monYr(b) + "." : " helps it grow faster.") +
-        '</span><button class="btn" data-spmove="' + tgt.id + '">Move ' + f0(SP.free) + " to savings</button></div>";
+    if (SP.movable >= 25 && !warns.length && tgt && SP.lines[nk(tgt.name)] !== undefined) {
+      var cur = goalMonthly(tgt), left = tgt.target - tgt.current, a = etaMonths(left, cur), b = etaMonths(left, cur + SP.movable);
+      h += '<div class="spmove"><span>Your budget has <b>' + f0(SP.freeNow) + "</b> with no job yet. You could move <b>" + f0(SP.movable) + "</b> to <b>" + esc(tgt.name) + "</b> and still keep " + f0(SP.freeNow - SP.movable) + " as a cushion" + (a !== null && b !== null && a - b > 0 ? ". That gets you there " + durTxt(a - b) + " sooner." : a === null && b !== null ? ". That gets you there by " + monYr(b) + "." : ".") +
+        '</span><button class="btn" data-spmove="' + tgt.id + '">Move ' + f0(SP.movable) + " to savings</button></div>";
     }
     return h + "</div>";
   }
@@ -4241,7 +4257,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return;
     }
     if (b.getAttribute("data-spmove")) {
-      var g = goalById(b.getAttribute("data-spmove")), amt = SP ? SP.free : 0; if (!g || !(amt > 0)) return; b.disabled = true;
+      var g = goalById(b.getAttribute("data-spmove")), amt = SP ? SP.movable : 0; if (!g || !(amt > 0)) return; b.disabled = true;
       var n = new Date();
       rcMonthState(n.getFullYear(), n.getMonth()).then(function (st) {
         var e2 = st.cats.filter(function (c) { return nk(c.name) === nk(g.name); })[0]; if (!e2) return;
@@ -5738,7 +5754,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   // the line under Savings on Home: a finish date for your main goal, or a warning if saving doesn't fit
   function homeSaveNote(R) {
-    var free = R.inc - R.bills - R.spend - R.save;
+    var free = typeof R.net === "number" ? R.net : R.inc - R.bills - R.spend - R.save;
     if (R.save > 0 && free < -0.5) return { w: 1, t: "Not realistic: your plan is " + money.format(Math.round(-free)).replace(/\.00$/, "") + " over your pay" };
     var lines = R.lines || {}, list = (goals || []).filter(function (g) { return g.kind === "save" && g.target > g.current && lines[nk(g.name)] > 0; });
     var g = list.filter(isEF)[0] || list[0];
@@ -5767,6 +5783,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var net = v ? v.D35 : null, h = "";
     function al(x) { return '<span class="actl">' + (homeActV && typeof x === "number" ? "Actual so far: <i>" + money.format(x) + "</i>" : "Actual: not entered yet") + "</span>"; }
     var SD = null; try { if (homeRef && homeDoc) SD = safeData(homeRef, homeDoc); } catch (e) { SD = null; }
+    if (SD && v && typeof v.D35 === "number" && typeof v.D7 === "number") {   // the table's own totals include calculated rows like Tithe
+      SD.net = v.D35; var un = Math.max(0, (v.D7 - v.D35) - (SD.bills + SD.spend + SD.save));
+      if (un > 0.5) { var sh = SD.full ? un : un / 2; SD.pBillsLeft += sh; SD.safe = Math.round((SD.safe - sh) * 100) / 100; }
+    }
     if (SD && SD.inc > 0) h += safeHtml(SD); else
     h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
       '<div class="stat"><small>Planned expenses</small><b>' + m(v && v.D34) + "</b>" + al(homeActV && homeActV.D34) + '</div>' +
