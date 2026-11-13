@@ -851,6 +851,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .safetop span{font-size:14px;opacity:.92}
 .safelog{display:flex;align-items:center;gap:6px;flex:0 0 auto;height:42px;padding:0 16px;border:1.5px solid rgba(255,255,255,.8);border-radius:99px;background:transparent;color:#fff;font:700 15px/1 inherit;cursor:pointer}
 .safelog span{font-size:20px}.safelog:hover{background:rgba(255,255,255,.14)}
+.safepace{margin:8px 0 0;font-size:12.5px;opacity:.9}
 .safemath{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px 12px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.35);font-size:13px;opacity:.95;font-variant-numeric:tabular-nums}
 .ovcards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
 .ov{display:block;text-align:left;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;transition:border-color .12s}
@@ -5734,20 +5735,20 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var num = function (k) { var x = doc[k]; return typeof x === "number" ? x : 0; };
     var part = function (e, pre) { return col < 0 ? e.addrs.reduce(function (a, ad) { return a + num(pre + ad); }, 0) : num(pre + e.addrs[Math.min(col, e.addrs.length - 1)]); };
     var whole = function (e, pre) { return e.addrs.reduce(function (a, ad) { return a + num(pre + ad); }, 0); };
-    var R = { inc: 0, incGot: 0, bills: 0, billsPaid: 0, spend: 0, spent: 0, save: 0, saved: 0, pInc: 0, pIncGot: 0, pBillsLeft: 0, pSave: 0, pSpent: 0, hot: null, end: end, next: next, full: full };
+    var R = { inc: 0, incGot: 0, bills: 0, billsPaid: 0, billsLeftM: 0, billsPace: 0, spend: 0, spent: 0, save: 0, saved: 0, pInc: 0, pIncGot: 0, pBillsLeft: 0, pSave: 0, pSpent: 0, hot: null, end: end, next: next, full: full };
     ent.income.forEach(function (e) { R.inc += whole(e, ""); R.incGot += whole(e, "a:"); R.pInc += part(e, ""); R.pIncGot += part(e, "a:"); });
+    // Everything builds up in step with your pay: if half of this period's pay is in, half of each bill and of savings is set aside.
+    R.estPay = !(R.pIncGot > 0.5);                      // nothing marked received yet: use the plan as a stand-in
+    var got = R.estPay ? R.pInc : R.pIncGot;
+    R.pace = R.pInc > 0 ? Math.min(1, got / R.pInc) : 1;
+    R.paceM = R.inc > 0 ? Math.min(1, (R.incGot > 0.5 ? R.incGot : R.inc) / R.inc) : 1;
     ent.expense.forEach(function (e) {
-      var k = SECTION_OF[detailOf(e.name)] || "other", p = whole(e, ""), a = whole(e, "a:");
-      if (k === "savings") { R.lines = R.lines || {}; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.save += p; R.saved += a; R.pSave += Math.max(0, part(e, "") - part(e, "a:")); return; }
-      if (k === "bills") { R.bills += p; R.billsPaid += a; R.billsLeftM = (R.billsLeftM || 0) + Math.max(0, p - a); R.pBillsLeft += Math.max(0, part(e, "") - part(e, "a:")); R.pSpent += part(e, "a:"); return; }
-      R.spend += p; R.spent += a; R.pSpent += part(e, "a:");
+      var k = SECTION_OF[detailOf(e.name)] || "other", p = whole(e, ""), a = whole(e, "a:"), pp = part(e, ""), pa = part(e, "a:");
+      if (k === "savings") { R.lines = R.lines || {}; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.save += p; R.saved += a; R.pSave += Math.max(0, pp * R.pace - pa); return; }
+      if (k === "bills") { R.bills += p; R.billsPaid += a; R.billsLeftM += Math.max(0, p - a); R.billsPace += p * R.paceM; R.pBillsLeft += Math.max(0, pp * R.pace - pa); R.pSpent += pa; return; }
+      R.spend += p; R.spent += a; R.pSpent += pa;
       if (p > 0 && a / p >= WARN_AT && (!R.hot || a / p > R.hot.r)) R.hot = { n: e.name, r: a / p };
     });
-    // bills from the Bills tab that come due before the next paycheck, if you keep them there
-    var due = bills.map(function (b) { return { b: b, d: nextDue(b) }; }).filter(function (x) { return x.d && x.d >= t && x.d <= end && +x.b.amount > 0; });
-    // bills still due = what your budget planned for bills minus what you have paid (same as the Bills card)
-    R.monthDue = bills.map(function (b) { return nextDue(b); }).filter(function (d) { return d && d >= t && d.getMonth() === mo && d.getFullYear() === y; }).length;
-    var got = R.pIncGot > 0.5 ? R.pIncGot : R.pInc; R.estPay = !(R.pIncGot > 0.5);   // only pay that has come in; the plan is a stand-in until you mark it received
     R.got = got; R.safe = Math.round((got - R.pBillsLeft - R.pSave - R.pSpent) * 100) / 100;
     R.days = Math.max(1, Math.round((end - t) / 864e5) + 1);
     return R;
@@ -5769,10 +5770,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       "<b>" + (neg ? "−" : "") + f0(Math.abs(R.safe)) + "</b><span>" + (neg ? "You’re " + f0(-R.safe) + " over" + (R.estPay ? " on your planned pay" : " with the money that has come in") + ". Ease up until " + nd + "." :
       "About " + f0(R.safe / R.days) + " a day for " + R.days + " day" + (R.days === 1 ? "" : "s") + " · " + (R.full ? "new month starts " : "next paycheck ") + nd) + "</span></div>" +
       '<button type="button" class="safelog" data-log="1"><span aria-hidden="true">+</span> Log</button></div>' +
-      '<div class="safemath"><span>' + f0(R.got) + (R.estPay ? " planned pay (not marked received yet)" : " received" + (R.full ? " this month" : " this paycheck")) + "</span><span>− " + f0(R.pBillsLeft) + " bills still due</span>" + (R.tithe ? "<span>− " + f0(R.tithe) + " tithe</span>" : "") + (R.other ? "<span>− " + f0(R.other) + " other planned costs</span>" : "") + "<span>− " + f0(R.pSave) + " to savings</span><span>− " + f0(R.pSpent) + " already spent</span></div></div>";
+      '<div class="safemath"><span>' + f0(R.got) + (R.estPay ? " planned pay (not marked received yet)" : " received" + (R.full ? " this month" : " this paycheck")) + "</span><span>− " + f0(R.pBillsLeft) + " bills due so far</span>" + (R.tithe ? "<span>− " + f0(R.tithe) + " tithe</span>" : "") + (R.other ? "<span>− " + f0(R.other) + " other planned costs</span>" : "") + "<span>− " + f0(R.pSave) + " to savings so far</span><span>− " + f0(R.pSpent) + " already spent</span></div>" +
+      (!R.estPay && R.pace < 0.995 ? '<p class="safepace">' + Math.round(R.pace * 100) + "% of " + (R.full ? "this month’s" : "this paycheck’s") + " pay is in, so " + Math.round(R.pace * 100) + "% of each bill and of savings is set aside. The rest is counted as more pay comes in.</p>" : "") + "</div>";
     h += '<div class="ovcards">' +
       '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Coming in</small><b>' + f0(R.inc) + "</b>" + bar(R.incGot, R.inc, "") + "<span>" + (R.incGot ? f0(R.incGot) + " received so far" : "Nothing marked received yet") + "</span></button>" +
-      '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.billsLeftM > 0.5 ? " · " + f0(R.billsLeftM) + " to go" : "") + "</span></button>" +
+      '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.billsLeftM < 0.5 ? " · all paid" : R.paceM < 0.995 ? (R.billsPaid + 0.5 >= R.billsPace ? " · on pace" : " · " + f0(R.billsPace - R.billsPaid) + " behind pace") : " · " + f0(R.billsLeftM) + " to go") + "</span></button>" +
       '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Spending</small><b>' + f0(R.spent) + " <em>of " + f0(R.spend) + "</em></b>" + bar(R.spent, R.spend, R.spent > R.spend ? "bad" : R.spend && R.spent / R.spend >= WARN_AT ? "warn" : "ok") +
         "<span" + (R.hot ? ' class="warnt"' : "") + ">" + (R.hot ? esc(R.hot.n) + " is at " + Math.round(R.hot.r * 100) + "%" : R.spend ? f0(Math.max(0, R.spend - R.spent)) + " left in the plan" : "No spending planned yet") + "</span></button>" +
       '<button type="button" class="ov" data-go="goals"><small>Savings</small><b>' + f0(R.saved) + " <em>of " + f0(R.save) + "</em></b>" + bar(R.saved, R.save, "ok") + "<span" + (homeSaveNote(R).w ? ' class="warnt"' : "") + ">" + homeSaveNote(R).t + "</span></button></div>";
@@ -5787,7 +5789,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       SD.net = v.D35; var share = SD.full ? 1 : 0.5;
       var ti = typeof v.D30 === "number" && v.D30 > 0.5 ? v.D30 : 0, tot = typeof v.D34 === "number" ? v.D34 : 0, oth = Math.max(0, tot - (SD.bills + SD.spend + SD.save) - ti);
       SD.tithe = typeof v.D7 === "number" && v.D7 > 0 ? Math.round(ti / v.D7 * SD.got * 100) / 100 : Math.round(ti * share * 100) / 100;   // tithe on the money that came in
-      SD.other = oth > 0.5 ? Math.round(oth * share * 100) / 100 : 0;
+      SD.other = oth > 0.5 ? Math.round(oth * share * SD.pace * 100) / 100 : 0;
       SD.safe = Math.round((SD.safe - SD.tithe - SD.other) * 100) / 100;
     }
     if (SD && SD.inc > 0) h += safeHtml(SD); else
