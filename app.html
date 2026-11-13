@@ -1439,7 +1439,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       <label>Bill name<input id="bName" maxlength="40" required placeholder="Rent"></label>
       <label>Amount<input id="bAmt" inputmode="decimal" autocomplete="off" placeholder="$0.00"></label>
       <label>Next due date<input id="bDate" type="date" required></label>
-      <label>Repeats<select id="bFreq"><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="once">One time</option></select></label>
+      <label>Repeats<select id="bFreq"><option value="weekly">Every week</option><option value="biweekly">Every 2 weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="once">One time</option></select></label>
       <label>Remind me<select id="bRemind"><option value="1">1 day before</option><option value="3" selected>3 days before</option><option value="7">7 days before</option><option value="14">14 days before</option></select></label>
       <div><button class="btn" type="submit" id="bSave">Add bill</button> <button type="button" class="tab" id="bCancel" hidden>Cancel</button></div>
     </form>
@@ -2629,8 +2629,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function parseD(str) { var p = String(str).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function todayD() { var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
   function dim(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  var REPEAT_TXT = { weekly: "Every week", biweekly: "Every 2 weeks", monthly: "Every month", yearly: "Every year", once: "One time" };
   function occ(b, n) {
     var base = parseD(b.date);
+    if (b.freq === "weekly" || b.freq === "biweekly") { var w = new Date(base); w.setDate(w.getDate() + n * (b.freq === "weekly" ? 7 : 14)); return w; }
     if (b.freq === "monthly") {
       var m = base.getMonth() + n, y = base.getFullYear() + Math.floor(m / 12); m = ((m % 12) + 12) % 12;
       return new Date(y, m, Math.min(base.getDate(), dim(y, m)));
@@ -2797,7 +2799,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     else if (it.st === "late") sub = dueText(n);
     else if (it.st === "past") sub = "Past due date";
     else sub = dueText(n);
-    sub = (withDate ? dateFmt.format(o.d) + " · " : "") + sub + " · " + (b.freq === "monthly" ? "Every month" : b.freq === "yearly" ? "Every year" : "One time");
+    sub = (withDate ? dateFmt.format(o.d) + " · " : "") + sub + " · " + (REPEAT_TXT[b.freq] || "One time");
     var acts = "";
     if (it.st === "paid" && b.paidThrough === iso(o.d)) acts = '<button type="button" data-calundo="' + esc(b.id) + '" data-n="' + o.n + '">Undo</button>';
     else if (o.isNext && it.st !== "paid") acts = '<button type="button" class="pri" data-calpaid="' + esc(b.id) + '" data-on="' + iso(o.d) + '">Paid</button>';
@@ -3094,7 +3096,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     function card(x, isDone) {
       var b = x.b, n = x.d ? daysUntil(x.d) : 0, cls = "bill";
       if (isDone) cls += " done"; else if (n < 0) cls += " late"; else if (n <= (b.remind || 3)) cls += " soon";
-      var rep = b.freq === "monthly" ? "Every month" : b.freq === "yearly" ? "Every year" : "One time";
+      var rep = REPEAT_TXT[b.freq] || "One time";
       return '<div class="' + cls + '"><div class="bn"><strong>' + esc(b.name) + "</strong><span>" + (b.amount ? money.format(b.amount) : "No amount") + " · " + rep + "</span></div>" +
         '<div class="bd">' + (isDone ? "Paid" : dueText(n) + "<span>" + dateFmt.format(x.d) + "</span>") + "</div>" +
         '<div class="ba">' + (isDone ? "" : '<button class="go" data-paid="' + b.id + '">Paid</button>') +
@@ -5404,7 +5406,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         if (b.getAttribute("data-sub") === "no") { grow.subs.no.push(s.k); saveGrowth(); drawSubs(loadSeq); return; }
         var next = parseD(s.last); next.setDate(next.getDate() + (s.freq === "yearly" ? 365 : s.freq === "monthly" ? 0 : s.gap));
         if (s.freq === "monthly") next.setMonth(next.getMonth() + 1);
-        bills.push({ id: newId(), name: s.name.slice(0, 40), amount: Math.round(s.amt * 100) / 100, date: iso(next), freq: s.freq === "yearly" ? "yearly" : "monthly", remind: 3 });
+        bills.push({ id: newId(), name: s.name.slice(0, 40), amount: Math.round(s.amt * 100) / 100, date: iso(next), freq: s.freq === "yearly" ? "yearly" : s.freq === "weekly" ? "weekly" : "monthly", remind: 3 });
         saveBills(); drawSubs(loadSeq);
       };
     });
@@ -5629,7 +5631,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var rem = Math.max(0, (b.remind || 3) * 24 - 9), txt = String(b.name).replace(/[,;\\]/g, " ");
       L.push("BEGIN:VEVENT", "UID:" + (b.id || newId()) + "@monerem", "DTSTAMP:" + stamp, "DTSTART;VALUE=DATE:" + day, "DTEND;VALUE=DATE:" + iso(end).replace(/-/g, ""),
         "SUMMARY:" + txt + (b.amount ? " due (" + money.format(b.amount) + ")" : " due"));
-      if (b.freq === "monthly") L.push("RRULE:FREQ=MONTHLY"); else if (b.freq === "yearly") L.push("RRULE:FREQ=YEARLY");
+      if (b.freq === "weekly") L.push("RRULE:FREQ=WEEKLY"); else if (b.freq === "biweekly") L.push("RRULE:FREQ=WEEKLY;INTERVAL=2"); else if (b.freq === "monthly") L.push("RRULE:FREQ=MONTHLY"); else if (b.freq === "yearly") L.push("RRULE:FREQ=YEARLY");
       L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + txt + " is due soon", "TRIGGER:-PT" + rem + "H", "END:VALARM", "END:VEVENT");
     });
     L.push("END:VCALENDAR");
