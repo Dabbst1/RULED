@@ -862,6 +862,20 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .ovbar i.ok{background:#16A34A}.ovbar i.warn{background:#D97706}.ovbar i.bad{background:#DC2626}
 @media (max-width:860px){.ovcards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:700px){.safe b{font-size:36px}.safe{padding:16px}.ov{padding:12px 13px}.ov b{font-size:19px}}
+.splan .spstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:6px 0 4px}
+.spstats small{display:block;font-size:13px;font-weight:600;color:var(--muted)}.spstats b{display:block;font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.spstats b.bad{color:#B91C1C}.spstats span{font-size:12.5px;color:var(--muted)}
+.spwarn{margin:12px 0 4px;padding:12px 14px;border:1px solid #F5C2A8;border-left:5px solid #D97706;border-radius:0;background:#FFF7ED;color:#7C2D12;font-size:14px}
+.spwarn>b{display:block;margin-bottom:4px}.spwarn p{margin:4px 0 0}
+.spsteps{margin-top:10px}.spnow{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:var(--blue);color:#fff;border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:2px}
+.spsteps .tick{font-size:13px;font-weight:700;color:var(--muted)}.spsteps .step.done .tick{color:#fff}
+.spmove{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:12px 14px;border-radius:14px;background:#EEF4FF;border:1px solid #BCD0F5;font-size:14px}
+.spmove .btn{margin:0;height:40px;padding:0 14px;font-size:14px}
+.efsug{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px;padding:14px 16px;border:1.5px dashed var(--rule);border-radius:16px;background:#fff}
+.efsug span{display:block;font-size:13px;color:var(--muted)}.efsug .btn{margin:0;height:40px;padding:0 14px;font-size:14px}
+.gplan{margin:10px 0 4px;font-size:15px}.gplan.good{color:#15803D;font-weight:600}
+.geta{margin:0}.gmuted{color:var(--muted);font-size:13px}.gok{color:#15803D;font-weight:600}.gwarnt{color:#B45309;font-weight:600}
+.gslide{width:100%;height:30px;accent-color:var(--blue);cursor:pointer;margin-top:6px}
+.greal{margin:8px 0 4px;padding:10px 12px;border-left:4px solid #D97706;background:#FFF7ED;color:#7C2D12;font-size:14px;border-radius:0}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1045,6 +1059,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .dsl #dSooner{color:#4ADE80}
 :root[data-theme="dark"] .ov{background:#121B2E}
 :root[data-theme="dark"] .ovbar{background:#16213A}
+:root[data-theme="dark"] .spstats b.bad{color:#FCA5A5}
+:root[data-theme="dark"] .spwarn{background:#2A1C10;color:#FDBA74}
+:root[data-theme="dark"] .spmove{background:#16213A}
+:root[data-theme="dark"] .efsug{background:#121B2E}
+:root[data-theme="dark"] .gplan.good{color:#4ADE80}
+:root[data-theme="dark"] .gok{color:#4ADE80}
+:root[data-theme="dark"] .greal{background:#2A1C10;color:#FDBA74}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1228,6 +1249,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .dsl #dSooner{color:#4ADE80}
 :root:not([data-theme="light"]) .ov{background:#121B2E}
 :root:not([data-theme="light"]) .ovbar{background:#16213A}
+:root:not([data-theme="light"]) .spstats b.bad{color:#FCA5A5}
+:root:not([data-theme="light"]) .spwarn{background:#2A1C10;color:#FDBA74}
+:root:not([data-theme="light"]) .spmove{background:#16213A}
+:root:not([data-theme="light"]) .efsug{background:#121B2E}
+:root:not([data-theme="light"]) .gplan.good{color:#4ADE80}
+:root:not([data-theme="light"]) .gok{color:#4ADE80}
+:root:not([data-theme="light"]) .greal{background:#2A1C10;color:#FDBA74}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1235,6 +1263,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wizseg button.on{background:var(--blue);border-color:var(--blue);color:#0B1220}:root:not([data-theme="light"]) .wizsum .kv.tot,:root:not([data-theme="light"]) .dsl #dSooner{color:#4ADE80}:root:not([data-theme="light"]) .wizsum .kv.bad,:root:not([data-theme="light"]) .wizwarn{color:#F87171}:root:not([data-theme="light"]) .wiznote{color:#86EFAC}:root:not([data-theme="light"]) .copyoffer{background:#16213A;border-color:#2A3A5C}}
 :root[data-theme="dark"] .safe{background:#1D4ED8!important;color:#fff!important}:root[data-theme="dark"] .safe.neg{background:#991B1B!important}:root[data-theme="dark"] .safe b,:root[data-theme="dark"] .safe small,:root[data-theme="dark"] .safe span{color:#fff!important}:root[data-theme="dark"] .ov span.warnt{color:#FBBF24}:root[data-theme="dark"] .ovbar{background:#22304D}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .safe{background:#1D4ED8!important;color:#fff!important}:root:not([data-theme="light"]) .safe.neg{background:#991B1B!important}:root:not([data-theme="light"]) .safe b,:root:not([data-theme="light"]) .safe small,:root:not([data-theme="light"]) .safe span{color:#fff!important}:root:not([data-theme="light"]) .ov span.warnt{color:#FBBF24}:root:not([data-theme="light"]) .ovbar{background:#22304D}}
+:root[data-theme="dark"] .spwarn,:root[data-theme="dark"] .greal{background:#2A1D10!important;color:#FED7AA!important;border-color:#B45309!important}:root[data-theme="dark"] .spstats b.bad{color:#F87171}:root[data-theme="dark"] .gok{color:#4ADE80}:root[data-theme="dark"] .gwarnt{color:#FBBF24}:root[data-theme="dark"] .gplan.good{color:#4ADE80}:root[data-theme="dark"] .spmove{background:#16213A;border-color:#2A3A5C}:root[data-theme="dark"] .efsug{background:#121B2E;border-color:#2A3A5C}:root[data-theme="dark"] .spnow{background:#60A5FA;color:#0B1220}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .spwarn,:root:not([data-theme="light"]) .greal{background:#2A1D10!important;color:#FED7AA!important;border-color:#B45309!important}:root:not([data-theme="light"]) .spstats b.bad{color:#F87171}:root:not([data-theme="light"]) .gok{color:#4ADE80}:root:not([data-theme="light"]) .gwarnt{color:#FBBF24}:root:not([data-theme="light"]) .gplan.good{color:#4ADE80}:root:not([data-theme="light"]) .spmove{background:#16213A;border-color:#2A3A5C}:root:not([data-theme="light"]) .efsug{background:#121B2E;border-color:#2A3A5C}:root:not([data-theme="light"]) .spnow{background:#60A5FA;color:#0B1220}}
 /* ==== end safety net ==== */
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
@@ -1371,6 +1401,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   <section id="goalsView" hidden>
     <h1>Goals</h1>
     <p class="sub">Pick a goal, follow the checklist, and watch your progress. Change any step to fit your plan.</p>
+    <div id="savePlan"></div>
     <form class="billform" id="goalForm">
       <label>Goal type<select id="gKind"><option value="debt">Pay off debt</option><option value="save">Save for something</option><option value="credit">Raise my credit score</option><option value="custom">Something else</option></select></label>
       <label id="glPick" hidden>Savings category<select id="gPick"></select></label>
@@ -2517,7 +2548,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (tp === "receipts") { rcLoad().then(function () { if (mine === loadSeq) renderReceipts(); }); return; }
     if (tp === "bank") { bankLoad(true, true); return; }   // opening the tab asks the bank for anything new
     if (tp === "debt") { Promise.all([loadDebts(), loadGoals(), loadBudgetLeft()]).then(syncDebtGoals).then(function () { if (mine === loadSeq) renderDebt(); }); return; }
-    if (tp === "goals") { loadGoals().then(syncDebtGoals).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
+    if (tp === "goals") { loadGoals().then(syncDebtGoals).then(loadSavePlan).then(function () { if (mine === loadSeq) renderGoals(); return syncSaveGoals(); }).then(function (changed) { if (mine === loadSeq && changed) renderGoals(); }); return; }
     if (tp === "calendar") { calLoad().then(function () { if (mine === loadSeq) renderCal(); }); return; }
     if (tp === "home") { renderHome(mine); return; }
     if (tp === "money") { renderMoney(mine); return; }
@@ -4062,7 +4093,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   $("gDebt").addEventListener("change", function () { if ($("gDebt").value === "__new") { $("g1").value = ""; $("g2").value = ""; } syncDebtFields(); });
   $("gKind").addEventListener("change", goalForm);
-  function num(k, v) { return k === "credit" ? (parseFloat(v) || 0) : parseMoney(v); }
+  function goalNum(k, v) { return k === "credit" ? (parseFloat(v) || 0) : parseMoney(v); }
   $("goalForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var k = $("gKind").value;
@@ -4071,9 +4102,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var name = pickD ? ("Pay off " + pickD.name).slice(0, 50) : $("gName").value.trim().slice(0, 50); if (!name || goals.length >= 30) return;
     var g = { id: newId(), kind: k, name: name, start: 0, current: 0, target: 0, due: $("gDate").value || "",
       steps: STARTERS[k].map(function (t) { return { id: newId(), t: t, done: false }; }) };
-    if (k === "save") { g.target = num(k, $("g1").value); g.current = num(k, $("g2").value); g.base = g.current; g.from = thisMonthKey(); g.fromBudget = 0; }
+    if (k === "save") { g.target = goalNum(k, $("g1").value); g.current = goalNum(k, $("g2").value); g.base = g.current; g.from = thisMonthKey(); g.fromBudget = 0; }
     if (k === "debt") {
-      g.start = num(k, $("g1").value); g.current = num(k, $("g2").value);
+      g.start = goalNum(k, $("g1").value); g.current = goalNum(k, $("g2").value);
       if (pickD) { g.current = +pickD.balance || 0; g.start = Math.max(g.start, g.current); g.debtId = pickD.id; pickD.goalId = g.id; }
       else {
         var nd = { id: newId(), name: name.replace(/^pay off\s+/i, "") || name, type: $("gDType").value || "other", balance: g.current || g.start,
@@ -4083,7 +4114,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       }
       saveDebts();
     }
-    if (k === "credit") { g.start = num(k, $("g1").value); g.current = num(k, $("g2").value) || g.start; g.target = num(k, $("g3").value); }
+    if (k === "credit") { g.start = goalNum(k, $("g1").value); g.current = goalNum(k, $("g2").value) || g.start; g.target = goalNum(k, $("g3").value); }
     goals.unshift(g); $("goalForm").reset(); $("gKind").value = k; goalForm(); saveGoals(); renderGoals();
     if (k === "save") {
       var addLine = $("gLink").checked && !budgetSavings.some(function (n) { return nk(n) === nk(name); });
@@ -4093,8 +4124,136 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       }).then(function () { loadBudgetSavings(); renderGoals(); });
     }
   });
+  /* ---------- Savings planner: how much, in what order, when you'll get there, and whether it's realistic ---------- */
+  var SP = null, goalTry = {};   // this month's numbers; slider "what if" amounts per goal (not saved)
+  function loadSavePlan() {
+    var n = new Date();
+    return Promise.all([rcMonthState(n.getFullYear(), n.getMonth()), loadDebts().catch(function () {})]).then(function (a) {
+      var st = a[0], ent = activeEntries(st.Lm, st.st), hid = (st.doc.__meta && st.doc.__meta.hidden) || [];
+      var plan = function (e) { return hid.indexOf(e.row) >= 0 ? 0 : e.addrs.reduce(function (t, ad) { return t + (typeof st.doc[ad] === "number" ? st.doc[ad] : 0); }, 0); };
+      var R = { inc: 0, exp: 0, needs: 0, save: 0, lines: {}, names: {} };
+      ent.income.forEach(function (e) { R.inc += plan(e); });
+      ent.expense.forEach(function (e) {
+        var p = plan(e), k = SECTION_OF[detailOf(e.name)] || "other";
+        if (k === "savings") { R.save += p; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.names[nk(e.name)] = e.name; }
+        else { R.exp += p; if (k === "bills" || k === "food" || k === "transport" || k === "health") R.needs += p; }
+      });
+      R.free = Math.round((R.inc - R.exp - R.save) * 100) / 100;
+      SP = R; return R;
+    }).catch(function () { SP = null; return null; });
+  }
+  function isEF(g) { return g.kind === "save" && /emergency|rainy/i.test(g.name); }
+  function goalMonthly(g) { return SP ? SP.lines[nk(g.name)] || 0 : 0; }
+  function monthsTill(due) { var d = parseD(due), n = new Date(); return (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); }
+  function etaMonths(left, m) { return left <= 0 ? 0 : m > 0 ? Math.ceil(left / m - 1e-9) : null; }
+  function f0(x) { return money.format(Math.round(x)).replace(/\.00$/, ""); }
+  // the "when will I get there" block on a savings goal card
+  function goalPlanHtml(g) {
+    if (!(g.target > 0)) return '<p class="gplan">Set a goal amount (tap <b>Edit goal</b>) to see when you’ll reach it.</p>';
+    var left = Math.max(0, g.target - g.current); if (!left) return '<p class="gplan good">Goal reached. Nice work.</p>';
+    var planM = goalMonthly(g), m = goalTry[g.id] !== undefined ? goalTry[g.id] : planM;
+    var need = g.due ? left / Math.max(1, monthsTill(g.due)) : 0, top = Math.max(1000, Math.ceil(Math.max(planM * 3, need * 2, (SP && SP.free > 0 ? planM + SP.free : 0)) / 100) * 100);
+    var h = '<div class="gplan" data-gp="' + g.id + '">' + goalEtaLine(g, m, planM) +
+      '<input type="range" class="gslide" data-gs="' + g.id + '" min="0" max="' + top + '" step="25" value="' + Math.round(m) + '" aria-label="Try a monthly amount for ' + esc(g.name) + '">' +
+      '<div class="dsl"><small>$0</small><small data-gd="' + g.id + '">' + goalDiffTxt(m, planM) + '</small><small>' + f0(top) + "</small></div></div>";
+    return h + goalRealHtml(g, planM);
+  }
+  function goalEtaLine(g, m, planM) {
+    var left = Math.max(0, g.target - g.current), n = etaMonths(left, m);
+    var t = n === null ? "At <b>$0</b> a month you won’t reach it. Slide to try an amount." : "At <b>" + f0(m) + "</b> a month, you’ll reach it by <b>" + monYr(n) + "</b> <span class=\"gmuted\">(" + durTxt(n) + ")</span>";
+    if (g.due) {
+      var mt = Math.max(1, monthsTill(g.due)), need = left / mt, dd = parseD(g.due).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      t += '<br>To hit it by <b>' + dd + "</b>, save <b>" + f0(need) + "</b> a month" + (m + 0.5 >= need ? ' <span class="gok">· you’re on track</span>' : ' <span class="gwarnt">· ' + f0(need - m) + " short each month</span>");
+    }
+    return '<p class="geta" data-ge="' + g.id + '">' + t + "</p>";
+  }
+  function goalDiffTxt(m, planM) { var d = Math.round(m - planM); return !planM && !m ? "Nothing planned in your budget yet" : d === 0 ? "What your budget plans" : d > 0 ? f0(d) + " more than your budget" : f0(-d) + " less than your budget"; }
+  // is this goal realistic with the money you have?
+  function goalRealHtml(g, planM) {
+    if (!SP || !g.due || !(g.target > g.current)) return "";
+    var left = g.target - g.current, mt = Math.max(1, monthsTill(g.due)), need = left / mt, avail = planM + Math.max(0, SP.free);
+    if (need <= avail + 0.5) return "";
+    var real = etaMonths(left, avail);
+    return '<p class="greal"><b>This date isn’t realistic with your budget.</b> It needs ' + f0(need) + " a month, but you have about " + f0(avail) + " for it" + (SP.free > 0.5 ? " (" + f0(planM) + " planned + " + f0(SP.free) + " not assigned)" : "") + ". " +
+      (real === null ? "Free up money in your budget first." : "A realistic date is <b>" + monYr(real) + "</b>, or lower the goal amount.") + "</p>";
+  }
+  // the panel at the top of Goals
+  function savePlanHtml() {
+    if (!SP || !(SP.inc > 0)) return '<div class="panel splan"><h2>Your savings plan</h2><p class="sub">Add your pay and expenses in the Monthly budget and this will show how much to save, in what order, and when you’ll reach each goal.</p><p><button class="linkbtn" data-go="monthly-budget">Open Monthly budget</button></p></div>';
+    var pct = SP.save / SP.inc, target = SP.inc * 0.2, ef = goals.filter(isEF)[0], efSaved = ef ? ef.current : 0, threeMo = Math.max(1000, Math.round(SP.exp * 3 / 100) * 100);
+    var hi = (debtState.debts || []).filter(function (d) { return +d.balance > 0 && +d.apr >= 8; }).sort(function (a, b) { return b.apr - a.apr; });
+    var h = '<div class="panel splan"><h2>Your savings plan</h2><div class="spstats">' +
+      '<div><small>You save each month</small><b>' + f0(SP.save) + "</b><span>" + Math.round(pct * 100) + "% of your pay</span></div>" +
+      '<div><small>50/30/20 target</small><b>' + f0(target) + "</b><span>20% of your pay</span></div>" +
+      '<div><small>Not assigned in your budget</small><b' + (SP.free < -0.5 ? ' class="bad"' : "") + ">" + (SP.free < -0.5 ? "−" : "") + f0(Math.abs(SP.free)) + "</b><span>" + (SP.free < -0.5 ? "you’re over budget" : "money with no job yet") + "</span></div></div>";
+    // warnings: is saving realistic?
+    var warns = [];
+    if (SP.free < -0.5) warns.push("Your plan spends <b>" + f0(-SP.free) + "</b> more than you bring in each month" + (SP.save > 0 ? ", so the " + f0(SP.save) + " you planned for savings won’t really happen. Cut spending by " + f0(-SP.free) + (SP.save + SP.free > 0.5 ? " or lower savings to " + f0(SP.save + SP.free) + "." : ", or pause savings until your spending fits your pay.") : ". Cut spending before planning savings."));
+    if (SP.free >= -0.5 && SP.inc > 0 && SP.needs > SP.inc * 0.8 && SP.save > SP.inc - SP.needs) warns.push("Your bills and basics take " + Math.round(SP.needs / SP.inc * 100) + "% of your pay. Saving " + f0(SP.save) + " leaves too little for everything else. Start smaller, with " + f0(Math.max(25, (SP.inc - SP.needs) * 0.3)) + " a month, and grow it.");
+    var due = goals.filter(function (g) { return g.kind === "save" && g.due && g.target > g.current; }), needAll = due.reduce(function (t, g) { return t + (g.target - g.current) / Math.max(1, monthsTill(g.due)); }, 0);
+    var room = SP.save + Math.max(0, SP.free);
+    if (due.length > 1 && needAll > room + 0.5) warns.push("Your goals with target dates need <b>" + f0(needAll) + "</b> a month together, but your budget only has about " + f0(room) + " for savings. Push back a date or two, starting with the least important.");
+    else if (due.length === 1 && needAll > room + 0.5) warns.push("<b>" + esc(due[0].name) + "</b> needs " + f0(needAll) + " a month to hit its date, more than the " + f0(room) + " your budget has for savings. See the goal below for a realistic date.");
+    if (warns.length) h += '<div class="spwarn"><b>Heads up: this savings plan may not be realistic</b>' + warns.map(function (w) { return "<p>" + w + "</p>"; }).join("") + "</div>";
+    else if (pct < 0.2 && SP.free > 0.5) h += '<p class="sub" style="margin:10px 0 0">You’re saving ' + Math.round(pct * 100) + "%. The 50/30/20 rule says aim for 20% (" + f0(target) + "), but any amount you keep up beats a big number you can’t.</p>";
+    // the order to save in
+    var steps = [
+      { t: "Starter emergency fund of $1,000", s: "Covers a surprise bill so it doesn’t go on a card.", done: efSaved >= 1000 },
+    ];
+    if (hi.length) steps.push({ t: "Pay down high-interest debt", s: "Your " + esc(hi[0].name) + " charges " + (+hi[0].apr) + "%. Extra money saves more there than in savings. Your Debt tab has the plan.", done: false, go: "debt" });
+    steps.push({ t: "Full emergency fund: 3 months of expenses, " + f0(threeMo), s: "Based on your planned expenses of " + f0(SP.exp) + " a month. Six months (" + f0(threeMo * 2) + ") is even safer.", done: efSaved >= threeMo });
+    var others = goals.filter(function (g) { return g.kind === "save" && !isEF(g); }).map(function (g) { return esc(g.name); });
+    steps.push({ t: "Then your other goals", s: others.length ? others.slice(0, 3).join(", ") + (others.length > 3 ? " and more" : "") + "." : "A car, a trip, a down payment, retirement.", done: false });
+    var now = -1; steps.forEach(function (x, i) { if (now < 0 && !x.done) now = i; });
+    h += '<div class="spsteps">' + steps.map(function (x, i) {
+      return '<div class="step' + (x.done ? " done" : "") + '"><div class="tick">' + (x.done ? "&#10003;" : i + 1) + '</div><div class="st">' + x.t + (i === now ? ' <em class="spnow">Now</em>' : "") + "<span>" + x.s + "</span></div>" + (x.go && i === now ? '<button data-go="' + x.go + '">Open Debt</button>' : "") + "</div>";
+    }).join("") + "</div>";
+    // put unassigned money to work
+    var tgt = ef && ef.current < threeMo ? ef : goals.filter(function (g) { return g.kind === "save" && g.target > g.current; })[0];
+    if (SP.free > 0.5 && tgt && SP.lines[nk(tgt.name)] !== undefined) {
+      var cur = goalMonthly(tgt), left = tgt.target - tgt.current, a = etaMonths(left, cur), b = etaMonths(left, cur + SP.free);
+      h += '<div class="spmove"><span>You have <b>' + f0(SP.free) + "</b> in your budget with no job yet. Moving it to <b>" + esc(tgt.name) + "</b>" + (a !== null && b !== null && a - b > 0 ? " gets you there " + durTxt(a - b) + " sooner." : a === null && b !== null ? " gets you there by " + monYr(b) + "." : " helps it grow faster.") +
+        '</span><button class="btn" data-spmove="' + tgt.id + '">Move ' + f0(SP.free) + " to savings</button></div>";
+    }
+    return h + "</div>";
+  }
+  // a suggested emergency fund if you don't have one
+  function efSuggestHtml() {
+    if (!SP || !(SP.exp > 0) || goals.some(isEF) || goals.length >= 30) return "";
+    var t = Math.max(1000, Math.round(SP.exp * 3 / 100) * 100);
+    return '<div class="efsug"><div><b>Suggested: Emergency fund · ' + f0(t) + "</b><span>3 months of your planned expenses (" + f0(SP.exp) + " a month). Aim for 6 months (" + f0(t * 2) + ") later.</span></div><button class=\"btn\" data-efadd=\"" + t + '">Add this goal</button></div>';
+  }
+  $("goalsView").addEventListener("input", function (e) {
+    var id = e.target.getAttribute("data-gs"); if (!id) return;
+    var g = goalById(id); if (!g) return; goalTry[id] = +e.target.value || 0;
+    var box = $("goalsView").querySelector('[data-ge="' + id + '"]'); if (box) box.outerHTML = goalEtaLine(g, goalTry[id], goalMonthly(g));
+    var d = $("goalsView").querySelector('[data-gd="' + id + '"]'); if (d) d.textContent = goalDiffTxt(goalTry[id], goalMonthly(g));
+  });
+  $("goalsView").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-efadd],[data-spmove],[data-go]") : null; if (!b || !$("goalsView").contains(b)) return;
+    if (b.getAttribute("data-go") && b.closest(".splan")) { var id0 = b.getAttribute("data-go"); tool = TOOLS.filter(function (x) { return x.id === id0; })[0]; navPush(id0); makeTabs(); openTool(); return; }
+    if (b.getAttribute("data-efadd")) {
+      b.disabled = true;
+      var t = +b.getAttribute("data-efadd"), name = (SP && Object.keys(SP.names).map(function (k) { return SP.names[k]; }).filter(function (n) { return /emergency|rainy/i.test(n); })[0]) || "Emergency Fund";
+      goals.unshift({ id: newId(), kind: "save", name: name, start: 0, current: 0, target: t, due: "", base: 0, from: thisMonthKey(), fromBudget: 0, steps: STARTERS.save.map(function (x) { return { id: newId(), t: x, done: false }; }) });
+      saveGoals();
+      (SP && SP.lines[nk(name)] !== undefined ? Promise.resolve() : addSavingsLine(name)).then(loadSavePlan).then(syncSaveGoals).then(function () { renderGoals(); });
+      return;
+    }
+    if (b.getAttribute("data-spmove")) {
+      var g = goalById(b.getAttribute("data-spmove")), amt = SP ? SP.free : 0; if (!g || !(amt > 0)) return; b.disabled = true;
+      var n = new Date();
+      rcMonthState(n.getFullYear(), n.getMonth()).then(function (st) {
+        var e2 = st.cats.filter(function (c) { return nk(c.name) === nk(g.name); })[0]; if (!e2) return;
+        var half = Math.round(amt / 2 * 100) / 100, parts = e2.addrs.length > 1 ? [half, Math.round((amt - half) * 100) / 100] : [amt];
+        parts.forEach(function (v, i) { var a = e2.addrs[i]; st.doc[a] = Math.round(((typeof st.doc[a] === "number" ? st.doc[a] : 0) + v) * 100) / 100; });
+        delete st.doc.__filled; return doSave(st.key, st.doc);
+      }).then(loadSavePlan).then(syncSaveGoals).then(function () { delete goalTry[g.id]; renderGoals(); toast("<b>" + f0(amt) + " moved to " + esc(g.name) + "</b><br>It’s in this month’s Monthly budget.", "logged"); });
+    }
+  });
   function renderGoals() {
     goalForm();
+    $("savePlan").innerHTML = savePlanHtml() + efSuggestHtml();
     $("goalList").innerHTML = goals.length ? goals.map(function (g) {
       var pc = Math.round(goalPct(g) * 100), done = g.steps.filter(function (x) { return x.done; }).length, due = "";
       if (g.due) { var n = daysUntil(parseD(g.due)); due = n < 0 ? "Target date passed" : n === 0 ? "Target date is today" : n + " days to go"; }
@@ -4103,7 +4262,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return '<article class="goalcard"><header><div><h3>' + esc(g.name) + '</h3><div class="meta"><span class="kind">' + KIND[g.kind] + "</span>" + [goalLine(g), due].filter(Boolean).join(" · ") + "</div></div>" +
         '<span class="gbtns"><button class="sm" data-editgoal="' + g.id + '">Edit goal</button> <button class="sm" data-delgoal="' + g.id + '">Delete goal</button></span></header>' +
         '<div class="bar' + (pc >= 100 ? " full" : "") + '" role="progressbar" aria-valuenow="' + pc + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pc + '%"></i></div>' +
-        '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + upd +
+        '<div class="meta">' + pc + "% · " + done + " of " + g.steps.length + " steps done</div>" + (g.kind === "save" ? goalPlanHtml(g) : "") + upd +
         (g.kind === "debt" && g.debtId ? debtGoalNote(g) : "") +
         (g.kind === "save" ? (g.linked
           ? '<p class="glink on">&#128279; Linked to your <b>' + esc(g.name) + "</b> budget line" + (g.fromBudget ? " &middot; " + money.format(g.fromBudget) + " added from your budget" : " &middot; nothing added yet") + "</p>" +
@@ -4134,9 +4293,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var fd = e.target.elements, nm = fd.name.value.trim().slice(0, 50); if (!nm) return;
     g.name = nm; g.due = fd.due.value || "";
     var oldName = g.name;
-    if (g.kind === "save") { g.target = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); g.base = g.current - (g.fromBudget || 0); }
-    if (g.kind === "debt") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value); pushGoalToDebt(g); }
-    if (g.kind === "credit") { g.start = num(g.kind, fd.a.value); g.current = num(g.kind, fd.b.value) || g.start; g.target = num(g.kind, fd.c.value); }
+    if (g.kind === "save") { g.target = goalNum(g.kind, fd.a.value); g.current = goalNum(g.kind, fd.b.value); g.base = g.current - (g.fromBudget || 0); }
+    if (g.kind === "debt") { g.start = goalNum(g.kind, fd.a.value); g.current = goalNum(g.kind, fd.b.value); pushGoalToDebt(g); }
+    if (g.kind === "credit") { g.start = goalNum(g.kind, fd.a.value); g.current = goalNum(g.kind, fd.b.value) || g.start; g.target = goalNum(g.kind, fd.c.value); }
     editingGoal = null; saveGoals(); renderGoals();
     if (g.kind === "save" && nk(oldName) !== nk(g.name)) { g.base = g.current; g.fromBudget = 0; syncSaveGoals().then(function (c) { if (c) renderGoals(); }); }
   });
@@ -5563,7 +5722,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     ent.income.forEach(function (e) { R.inc += whole(e, ""); R.incGot += whole(e, "a:"); R.pInc += part(e, ""); R.pIncGot += part(e, "a:"); });
     ent.expense.forEach(function (e) {
       var k = SECTION_OF[detailOf(e.name)] || "other", p = whole(e, ""), a = whole(e, "a:");
-      if (k === "savings") { R.save += p; R.saved += a; R.pSave += Math.max(0, part(e, "") - part(e, "a:")); return; }
+      if (k === "savings") { R.lines = R.lines || {}; R.lines[nk(e.name)] = (R.lines[nk(e.name)] || 0) + p; R.save += p; R.saved += a; R.pSave += Math.max(0, part(e, "") - part(e, "a:")); return; }
       if (k === "bills") { R.bills += p; R.billsPaid += a; R.pBillsLeft += Math.max(0, part(e, "") - part(e, "a:")); R.pSpent += part(e, "a:"); return; }
       R.spend += p; R.spent += a; R.pSpent += part(e, "a:");
       if (p > 0 && a / p >= WARN_AT && (!R.hot || a / p > R.hot.r)) R.hot = { n: e.name, r: a / p };
@@ -5576,6 +5735,15 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     R.got = got; R.safe = Math.round((got - R.pBillsLeft - R.pSave - R.pSpent) * 100) / 100;
     R.days = Math.max(1, Math.round((end - t) / 864e5) + 1);
     return R;
+  }
+  // the line under Savings on Home: a finish date for your main goal, or a warning if saving doesn't fit
+  function homeSaveNote(R) {
+    var free = R.inc - R.bills - R.spend - R.save;
+    if (R.save > 0 && free < -0.5) return { w: 1, t: "Not realistic: your plan is " + money.format(Math.round(-free)).replace(/\.00$/, "") + " over your pay" };
+    var lines = R.lines || {}, list = (goals || []).filter(function (g) { return g.kind === "save" && g.target > g.current && lines[nk(g.name)] > 0; });
+    var g = list.filter(isEF)[0] || list[0];
+    if (g) { var n = etaMonths(g.target - g.current, lines[nk(g.name)]); if (n !== null) return { t: esc(g.name) + " reached by " + monYr(n) }; }
+    return { t: !R.save ? "No savings planned yet" : R.saved >= R.save ? "Goal met this month" : money.format(R.save - R.saved).replace(/\.00$/, "") + " to go this month" };
   }
   function safeHtml(R) {
     var f0 = function (x) { return money.format(x).replace(/\.\d\d$/, ""); };
@@ -5591,7 +5759,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.monthDue ? " · " + R.monthDue + " still due this month" : R.bills > R.billsPaid ? " · " + f0(R.bills - R.billsPaid) + " to go" : "") + "</span></button>" +
       '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Spending</small><b>' + f0(R.spent) + " <em>of " + f0(R.spend) + "</em></b>" + bar(R.spent, R.spend, R.spent > R.spend ? "bad" : R.spend && R.spent / R.spend >= WARN_AT ? "warn" : "ok") +
         "<span" + (R.hot ? ' class="warnt"' : "") + ">" + (R.hot ? esc(R.hot.n) + " is at " + Math.round(R.hot.r * 100) + "%" : R.spend ? f0(Math.max(0, R.spend - R.spent)) + " left in the plan" : "No spending planned yet") + "</span></button>" +
-      '<button type="button" class="ov" data-go="goals"><small>Savings</small><b>' + f0(R.saved) + " <em>of " + f0(R.save) + "</em></b>" + bar(R.saved, R.save, "ok") + "<span>" + (!R.save ? "No savings planned yet" : R.saved >= R.save ? "Goal met this month" : f0(R.save - R.saved) + " to go this month") + "</span></button></div>";
+      '<button type="button" class="ov" data-go="goals"><small>Savings</small><b>' + f0(R.saved) + " <em>of " + f0(R.save) + "</em></b>" + bar(R.saved, R.save, "ok") + "<span" + (homeSaveNote(R).w ? ' class="warnt"' : "") + ">" + homeSaveNote(R).t + "</span></button></div>";
     return h;
   }
   function drawHome(v) {
