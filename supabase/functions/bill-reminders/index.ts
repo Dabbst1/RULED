@@ -11,7 +11,7 @@ const FROM = "Monerem <reminders@monerem.com>";
 const REPLY_TO = "monerembudgeting@gmail.com";
 const SEND_HOUR = 8;               // local time
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-const SECRET = Deno.env.get("REMINDER_SECRET") || "";
+const SECRET = (Deno.env.get("REMINDER_SECRET") || "").trim().replace(/^["']|["']$/g, "");   // ignore stray spaces or quotes from pasting
 const enc = new TextEncoder();
 
 /* ---------- signed links ---------- */
@@ -175,7 +175,8 @@ Deno.serve(async (req) => {
     return Response.redirect(SITE + "/reminder.html?r=" + done, 302);
   }
   if (req.method === "POST") {
-    if (!SECRET || req.headers.get("x-cron-key") !== SECRET) return new Response("forbidden", { status: 403 });
+    if (!SECRET) return new Response("forbidden: the REMINDER_SECRET secret isn't set in Supabase", { status: 403 });
+    if ((req.headers.get("x-cron-key") || "").trim() !== SECRET) return new Response("forbidden: x-cron-key doesn't match REMINDER_SECRET (secret has " + SECRET.length + " characters)", { status: 403 });
     let body: any = {}; try { body = await req.json(); } catch { /* empty */ }
     try { return Response.json(await run(body.testUser)); } catch (e) { console.error(e); return new Response("error", { status: 500 }); }
   }
