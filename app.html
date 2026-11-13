@@ -843,6 +843,25 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .dslide input[type=range]{width:100%;height:30px;accent-color:var(--blue);cursor:pointer}
 .dsl{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}.dsl #dSooner{font-weight:700;color:#15803D;text-align:center}
 @media (min-width:701px){main#app #tabs{flex-wrap:nowrap;width:max-content;max-width:100%}main#app #tabs .tab{flex:0 0 auto;white-space:nowrap}}
+.safe{background:var(--blue);color:#fff;border-radius:18px;padding:18px 20px;margin:0 0 12px}
+.safe.neg{background:#B91C1C}
+.safetop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.safe small{display:block;font-size:14px;font-weight:600;opacity:.92}
+.safe b{display:block;font-size:42px;line-height:1.15;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.safetop span{font-size:14px;opacity:.92}
+.safelog{display:flex;align-items:center;gap:6px;flex:0 0 auto;height:42px;padding:0 16px;border:1.5px solid rgba(255,255,255,.8);border-radius:99px;background:transparent;color:#fff;font:700 15px/1 inherit;cursor:pointer}
+.safelog span{font-size:20px}.safelog:hover{background:rgba(255,255,255,.14)}
+.safemath{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px 12px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.35);font-size:13px;opacity:.95;font-variant-numeric:tabular-nums}
+.ovcards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.ov{display:block;text-align:left;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;transition:border-color .12s}
+.ov:hover{border-color:var(--blue)}
+.ov small{display:block;font-size:13px;font-weight:600;color:var(--muted)}
+.ov b{display:block;font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.ov b em{font-style:normal;font-size:13px;font-weight:500;color:var(--muted)}
+.ov span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}.ov span.warnt{color:#B45309;font-weight:600}
+.ovbar{height:6px;border-radius:99px;background:#E4ECFA;overflow:hidden;margin:8px 0 4px}.ovbar i{display:block;height:100%;border-radius:99px;background:var(--blue)}
+.ovbar i.ok{background:#16A34A}.ovbar i.warn{background:#D97706}.ovbar i.bad{background:#DC2626}
+@media (max-width:860px){.ovcards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.safe b{font-size:36px}.safe{padding:16px}.ov{padding:12px 13px}.ov b{font-size:19px}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1024,6 +1043,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .logamt{background:#121B2E}
 :root[data-theme="dark"] .copyoffer{background:#16213A}
 :root[data-theme="dark"] .dsl #dSooner{color:#4ADE80}
+:root[data-theme="dark"] .ov{background:#121B2E}
+:root[data-theme="dark"] .ovbar{background:#16213A}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1205,11 +1226,15 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .logamt{background:#121B2E}
 :root:not([data-theme="light"]) .copyoffer{background:#16213A}
 :root:not([data-theme="light"]) .dsl #dSooner{color:#4ADE80}
+:root:not([data-theme="light"]) .ov{background:#121B2E}
+:root:not([data-theme="light"]) .ovbar{background:#16213A}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
 :root[data-theme="dark"] .wizseg button.on{background:var(--blue);border-color:var(--blue);color:#0B1220}:root[data-theme="dark"] .wizsum .kv.tot,:root[data-theme="dark"] .dsl #dSooner{color:#4ADE80}:root[data-theme="dark"] .wizsum .kv.bad,:root[data-theme="dark"] .wizwarn{color:#F87171}:root[data-theme="dark"] .wiznote{color:#86EFAC}:root[data-theme="dark"] .copyoffer{background:#16213A;border-color:#2A3A5C}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wizseg button.on{background:var(--blue);border-color:var(--blue);color:#0B1220}:root:not([data-theme="light"]) .wizsum .kv.tot,:root:not([data-theme="light"]) .dsl #dSooner{color:#4ADE80}:root:not([data-theme="light"]) .wizsum .kv.bad,:root:not([data-theme="light"]) .wizwarn{color:#F87171}:root:not([data-theme="light"]) .wiznote{color:#86EFAC}:root:not([data-theme="light"]) .copyoffer{background:#16213A;border-color:#2A3A5C}}
+:root[data-theme="dark"] .safe{background:#1D4ED8!important;color:#fff!important}:root[data-theme="dark"] .safe.neg{background:#991B1B!important}:root[data-theme="dark"] .safe b,:root[data-theme="dark"] .safe small,:root[data-theme="dark"] .safe span{color:#fff!important}:root[data-theme="dark"] .ov span.warnt{color:#FBBF24}:root[data-theme="dark"] .ovbar{background:#22304D}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .safe{background:#1D4ED8!important;color:#fff!important}:root:not([data-theme="light"]) .safe.neg{background:#991B1B!important}:root:not([data-theme="light"]) .safe b,:root:not([data-theme="light"]) .safe small,:root:not([data-theme="light"]) .safe span{color:#fff!important}:root:not([data-theme="light"]) .ov span.warnt{color:#FBBF24}:root:not([data-theme="light"]) .ovbar{background:#22304D}}
 /* ==== end safety net ==== */
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
@@ -5475,8 +5500,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return res.json();
       }).then(function (j) { return j.values; });
   }
+  var homeRef = null, homeDoc = null;
   function renderHome(mine) {
-    homeCmp = null; homeActV = null;
+    homeCmp = null; homeActV = null; homeRef = null; homeDoc = null;
     var d = new Date(), key = "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1), Lref = null, srcDoc = null;
     $("homeSub").textContent = "Here’s where things stand for " + MONTHS[d.getMonth()] + ".";
     $("homeBody").innerHTML = '<p class="sub">Loading…</p>';
@@ -5496,6 +5522,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       });
     }).then(function (v) {
       try { if (Lref && srcDoc) homeCmp = buildCompare(Lref, srcDoc); } catch (e) { homeCmp = null; }
+      homeRef = Lref; homeDoc = srcDoc;
       if (mine === loadSeq) drawHome(v || {});
     }).catch(function (err) { if (err.message !== "stop" && mine === loadSeq) drawHome(null); });
   }
@@ -5524,10 +5551,55 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (over.length) h += '<p class="sub" style="margin-top:8px">Biggest gap: <b>' + esc(over[0].name) + "</b>, " + money.format(over[0].diff) + " over. Either cut back there next month, or raise its plan so your budget matches real life.</p>";
     return h + '<p style="margin-top:10px"><button class="linkbtn" data-go="monthly-budget" data-act="1">' + (c.hasAct ? "Update actual spending" : "Enter actual spending") + '</button> <button class="linkbtn" data-go="monthly-budget">Open plan</button></p></div>';
   }
+  /* ---------- Safe to spend + month at a glance (top of Home) ---------- */
+  function safeData(Lm, doc) {
+    var dm = doc.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] }, ent = activeEntries(Lm, st);
+    var t = todayD(), y = t.getFullYear(), mo = t.getMonth(), full = payPref === "full", col = full ? -1 : t.getDate() <= 15 ? 0 : 1;
+    var end = full || col === 1 ? new Date(y, mo, dim(y, mo)) : new Date(y, mo, 15), next = new Date(end); next.setDate(next.getDate() + 1);
+    var num = function (k) { var x = doc[k]; return typeof x === "number" ? x : 0; };
+    var part = function (e, pre) { return col < 0 ? e.addrs.reduce(function (a, ad) { return a + num(pre + ad); }, 0) : num(pre + e.addrs[Math.min(col, e.addrs.length - 1)]); };
+    var whole = function (e, pre) { return e.addrs.reduce(function (a, ad) { return a + num(pre + ad); }, 0); };
+    var R = { inc: 0, incGot: 0, bills: 0, billsPaid: 0, spend: 0, spent: 0, save: 0, saved: 0, pInc: 0, pIncGot: 0, pBillsLeft: 0, pSave: 0, pSpent: 0, hot: null, end: end, next: next, full: full };
+    ent.income.forEach(function (e) { R.inc += whole(e, ""); R.incGot += whole(e, "a:"); R.pInc += part(e, ""); R.pIncGot += part(e, "a:"); });
+    ent.expense.forEach(function (e) {
+      var k = SECTION_OF[detailOf(e.name)] || "other", p = whole(e, ""), a = whole(e, "a:");
+      if (k === "savings") { R.save += p; R.saved += a; R.pSave += Math.max(0, part(e, "") - part(e, "a:")); return; }
+      if (k === "bills") { R.bills += p; R.billsPaid += a; R.pBillsLeft += Math.max(0, part(e, "") - part(e, "a:")); R.pSpent += part(e, "a:"); return; }
+      R.spend += p; R.spent += a; R.pSpent += part(e, "a:");
+      if (p > 0 && a / p >= WARN_AT && (!R.hot || a / p > R.hot.r)) R.hot = { n: e.name, r: a / p };
+    });
+    // bills from the Bills tab that come due before the next paycheck, if you keep them there
+    var due = bills.map(function (b) { return { b: b, d: nextDue(b) }; }).filter(function (x) { return x.d && x.d >= t && x.d <= end && +x.b.amount > 0; });
+    if (due.length) R.pBillsLeft = due.reduce(function (a, x) { return a + (+x.b.amount); }, 0);
+    R.monthDue = bills.map(function (b) { return nextDue(b); }).filter(function (d) { return d && d >= t && d.getMonth() === mo && d.getFullYear() === y; }).length;
+    var got = R.pIncGot > 0 ? R.pIncGot : R.pInc;
+    R.got = got; R.safe = Math.round((got - R.pBillsLeft - R.pSave - R.pSpent) * 100) / 100;
+    R.days = Math.max(1, Math.round((end - t) / 864e5) + 1);
+    return R;
+  }
+  function safeHtml(R) {
+    var f0 = function (x) { return money.format(x).replace(/\.\d\d$/, ""); };
+    var bar = function (a, b, k) { var w = b > 0 ? Math.min(100, a / b * 100) : 0; return '<div class="ovbar"><i class="' + k + '" style="width:' + w.toFixed(1) + '%"></i></div>'; };
+    var nd = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(R.next), neg = R.safe < 0;
+    var h = '<div class="safe' + (neg ? " neg" : "") + '"><div class="safetop"><div><small>' + (R.full ? "Safe to spend for the rest of the month" : "Safe to spend until payday") + "</small>" +
+      "<b>" + (neg ? "−" : "") + f0(Math.abs(R.safe)) + "</b><span>" + (neg ? "You’re " + f0(-R.safe) + " over for this paycheck. Ease up until " + nd + "." :
+      "About " + f0(R.safe / R.days) + " a day for " + R.days + " day" + (R.days === 1 ? "" : "s") + " · " + (R.full ? "new month starts " : "next paycheck ") + nd) + "</span></div>" +
+      '<button type="button" class="safelog" data-log="1"><span aria-hidden="true">+</span> Log</button></div>' +
+      '<div class="safemath"><span>' + f0(R.got) + (R.full ? " this month" : " this paycheck") + "</span><span>− " + f0(R.pBillsLeft) + " bills still due</span><span>− " + f0(R.pSave) + " to savings</span><span>− " + f0(R.pSpent) + " already spent</span></div></div>";
+    h += '<div class="ovcards">' +
+      '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Coming in</small><b>' + f0(R.inc) + "</b>" + bar(R.incGot, R.inc, "") + "<span>" + (R.incGot ? f0(R.incGot) + " received so far" : "Nothing marked received yet") + "</span></button>" +
+      '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.monthDue ? " · " + R.monthDue + " still due this month" : R.bills > R.billsPaid ? " · " + f0(R.bills - R.billsPaid) + " to go" : "") + "</span></button>" +
+      '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Spending</small><b>' + f0(R.spent) + " <em>of " + f0(R.spend) + "</em></b>" + bar(R.spent, R.spend, R.spent > R.spend ? "bad" : R.spend && R.spent / R.spend >= WARN_AT ? "warn" : "ok") +
+        "<span" + (R.hot ? ' class="warnt"' : "") + ">" + (R.hot ? esc(R.hot.n) + " is at " + Math.round(R.hot.r * 100) + "%" : R.spend ? f0(Math.max(0, R.spend - R.spent)) + " left in the plan" : "No spending planned yet") + "</span></button>" +
+      '<button type="button" class="ov" data-go="goals"><small>Savings</small><b>' + f0(R.saved) + " <em>of " + f0(R.save) + "</em></b>" + bar(R.saved, R.save, "ok") + "<span>" + (!R.save ? "No savings planned yet" : R.saved >= R.save ? "Goal met this month" : f0(R.save - R.saved) + " to go this month") + "</span></button></div>";
+    return h;
+  }
   function drawHome(v) {
     function m(x) { return v && typeof x === "number" ? money.format(x) : "—"; }
     var net = v ? v.D35 : null, h = "";
     function al(x) { return '<span class="actl">' + (homeActV && typeof x === "number" ? "Actual so far: <i>" + money.format(x) + "</i>" : "Actual: not entered yet") + "</span>"; }
+    var SD = null; try { if (homeRef && homeDoc) SD = safeData(homeRef, homeDoc); } catch (e) { SD = null; }
+    if (SD && SD.inc > 0) h += safeHtml(SD); else
     h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
       '<div class="stat"><small>Planned expenses</small><b>' + m(v && v.D34) + "</b>" + al(homeActV && homeActV.D34) + '</div>' +
       '<div class="stat' + (net > 0 ? " good" : net < 0 ? " bad" : "") + '"><small>Planned net income</small><b>' + m(net) + "</b>" + al(homeActV && homeActV.D35) + "</div></div>";
@@ -5558,10 +5630,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     h += homeNetWorth();
     h += '<div class="panel"><h2>Your tools</h2><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="linkbtn" data-go="monthly-budget">Monthly budget</button><button class="linkbtn" data-go="yearly-projection">Annual budget</button><button class="linkbtn" data-go="calendar">Calendar</button><button class="linkbtn" data-gotool="money" data-sub="paycheck">Paycheck</button><button class="linkbtn" data-gotool="money" data-sub="afford">Can I afford it?</button><button class="linkbtn" data-gotool="money" data-sub="subs">Subscriptions</button><button class="linkbtn" data-gotool="money" data-sub="reports">Reports</button><button class="linkbtn" data-go="receipts">Receipts</button><button class="linkbtn" data-go="setup">Change my categories</button></p></div>';
     $("homeBody").innerHTML = h;
+    $("logFab").hidden = !!$("homeBody").querySelector(".safe");   // the blue card has its own Log button
   }
   $("homeBody").addEventListener("click", function (e) {
-    var id = e.target.getAttribute && e.target.getAttribute("data-go"); if (!id) return;
-    wantActual = !!e.target.getAttribute("data-act");
+    var el = e.target.closest ? e.target.closest("[data-go],[data-log]") : null; if (!el || !$("homeBody").contains(el)) return;
+    if (el.getAttribute("data-log")) { logOpen(); return; }
+    var id = el.getAttribute("data-go"); if (!id) return;
+    wantActual = !!el.getAttribute("data-act");
     tool = TOOLS.filter(function (x) { return x.id === id; })[0]; navPush(id); makeTabs(); openTool();
   });
 
