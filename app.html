@@ -796,6 +796,53 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 #planTip .offtag{margin-left:4px;font-size:10px}
 :root[data-theme="dark"] .offtag,:root[data-theme="dark"] tr.woff .budwarn{background:#2E1F55;color:#C4B5FD}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .offtag,:root:not([data-theme="light"]) tr.woff .budwarn{background:#2E1F55;color:#C4B5FD}}
+/* ---- setup with amounts, + Log, copy offer, debt slider ---- */
+.wizbar{height:6px;border-radius:99px;background:#DCE7FB;overflow:hidden;margin:0 0 12px}.wizbar i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .3s}
+.wiznote{background:#E7F7EC;color:#14532D;border:1px solid #A7DDB6;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;margin-top:8px}
+.wizseg{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.wizseg button{font:inherit;font-size:14px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);cursor:pointer;min-height:44px}
+.wizseg button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.wizfld{display:flex;flex-direction:column;gap:4px;margin:10px 0;font-size:14px;font-weight:600}
+.wizfld small{font-weight:500;color:var(--muted);font-size:13px}
+.wizmoney{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;height:46px;padding:0 10px;max-width:320px}
+.wizmoney:focus-within{border-color:var(--blue);box-shadow:0 0 0 4px rgba(29,78,216,.15)}
+.wizmoney i{font-style:normal;color:var(--muted);margin-right:4px;font-weight:600}
+.wizmoney input{border:0;outline:0;background:transparent;font:inherit;font-size:17px;font-weight:600;width:100%;height:100%;color:var(--ink)}
+.wizgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0 16px}
+.wizgrid .wizfld{margin:6px 0}
+.wizchk{display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0}.wizchk input{width:20px;height:20px}
+.wiz2{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0 16px;padding:4px 12px;border-left:3px solid var(--rule);margin:4px 0}
+.wizh3{font-size:15px;margin:16px 0 4px}.wizh3 small{font-weight:500;color:var(--muted);font-size:13px}
+.wizsum{border:1px solid var(--line);border-radius:14px;background:#fff;padding:6px 14px;margin-top:14px;max-width:440px}
+.wizsum .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #E4ECFA;font-size:15px}
+.wizsum .kv:last-child{border-bottom:0}.wizsum .kv.tot{font-size:16px;color:#14532D}.wizsum .kv.bad{font-size:16px;color:#B91C1C}
+.wizwarn{color:#B91C1C;font-size:14px;font-weight:600;margin-top:8px}
+.wizmore{margin-top:16px}.wizmore summary{cursor:pointer;font-weight:600;color:var(--blue-dark)}.wizmore .wiztxt{margin-top:10px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#logFab{position:fixed;z-index:60;right:20px;bottom:24px;display:flex;align-items:center;gap:6px;height:52px;padding:0 20px 0 16px;border:0;border-radius:99px;background:var(--blue);color:#fff;font:700 16px/1 inherit;cursor:pointer;box-shadow:0 10px 26px rgba(29,78,216,.38)}
+#logFab span{font-size:24px;font-weight:600;margin-top:-2px}
+#logFab:hover{background:#1A43BD}#logFab[hidden]{display:none}
+@media (max-width:700px){#logFab{right:14px;bottom:calc(80px + env(safe-area-inset-bottom));height:48px;padding:0 16px 0 13px}#budToast{bottom:calc(140px + env(safe-area-inset-bottom))}}
+#logDlg{max-width:520px;position:relative}
+.dlgx{position:absolute;top:10px;right:12px;width:36px;height:36px;border:0;background:none;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;border-radius:99px}
+.dlgx:hover{background:#EEF3FC}
+.logseg{margin:4px 0}.logseg button{flex:1}
+.logamt{display:flex;align-items:center;border:2px solid var(--blue);border-radius:14px;padding:0 14px;height:64px;background:#fff}
+.logamt i{font-style:normal;font-size:28px;font-weight:700;color:var(--muted);margin-right:4px}
+#logDlg .logamt input{border:0;box-shadow:none;outline:0;height:100%;font-size:30px;font-weight:700;padding:0;background:transparent;color:var(--ink)}
+.logrow{display:grid;grid-template-columns:150px 1fr;gap:10px}.logrow label{font-size:13px;font-weight:600;display:flex;flex-direction:column;gap:4px}.logrow small{font-weight:500;color:var(--muted)}
+#logDlg .logrow input{height:42px;border:1px solid var(--line);border-radius:10px}
+#logDlg .wizh3{text-transform:none;letter-spacing:0;color:var(--ink);margin:6px 0 0}
+.logchips{max-height:34vh;overflow:auto;padding:2px}
+.logchips .chip:disabled{opacity:.45;cursor:default}
+#budToast.logged{border-left-color:#16A34A}
+@media (min-width:701px){#budToast{bottom:92px}}
+.copyoffer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:#EEF4FF;border:1px solid #BCD0F5;border-radius:14px;padding:10px 14px;margin:6px 0 10px;font-size:15px}
+.copyoffer[hidden]{display:none}.copyoffer .cobtns{display:flex;gap:8px;flex-wrap:wrap}.copyoffer .btn{margin:0;height:40px;padding:0 14px;font-size:14px}
+.dslide{display:block;margin:10px 0 2px}
+.dslide input[type=range]{width:100%;height:30px;accent-color:var(--blue);cursor:pointer}
+.dsl{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}.dsl #dSooner{font-weight:700;color:#15803D;text-align:center}
+@media (min-width:701px){main#app #tabs{flex-wrap:nowrap;width:max-content;max-width:100%}main#app #tabs .tab{flex:0 0 auto;white-space:nowrap}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -966,6 +1013,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] /* purchases that weren't part of the plan */
 .offtag{color:#C3D0EA;background:#16213A}
 :root[data-theme="dark"] tr.woff .budwarn{background:#16213A;color:#C3D0EA}
+:root[data-theme="dark"] .wiznote{background:#16213A;color:#C3D0EA}
+:root[data-theme="dark"] .wizseg button{background:#121B2E}
+:root[data-theme="dark"] .wizmoney{background:#121B2E}
+:root[data-theme="dark"] .wizsum{background:#121B2E}
+:root[data-theme="dark"] .wizsum .kv.tot{color:#C3D0EA}
+:root[data-theme="dark"] .wizsum .kv.bad{color:#FCA5A5}
+:root[data-theme="dark"] .wizwarn{color:#FCA5A5}
+:root[data-theme="dark"] .dlgx:hover{background:#16213A}
+:root[data-theme="dark"] .logamt{background:#121B2E}
+:root[data-theme="dark"] .copyoffer{background:#16213A}
+:root[data-theme="dark"] .dsl #dSooner{color:#4ADE80}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1136,11 +1194,23 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) /* purchases that weren't part of the plan */
 .offtag{color:#C3D0EA;background:#16213A}
 :root:not([data-theme="light"]) tr.woff .budwarn{background:#16213A;color:#C3D0EA}
+:root:not([data-theme="light"]) .wiznote{background:#16213A;color:#C3D0EA}
+:root:not([data-theme="light"]) .wizseg button{background:#121B2E}
+:root:not([data-theme="light"]) .wizmoney{background:#121B2E}
+:root:not([data-theme="light"]) .wizsum{background:#121B2E}
+:root:not([data-theme="light"]) .wizsum .kv.tot{color:#C3D0EA}
+:root:not([data-theme="light"]) .wizsum .kv.bad{color:#FCA5A5}
+:root:not([data-theme="light"]) .wizwarn{color:#FCA5A5}
+:root:not([data-theme="light"]) .dlgx:hover{background:#16213A}
+:root:not([data-theme="light"]) .logamt{background:#121B2E}
+:root:not([data-theme="light"]) .copyoffer{background:#16213A}
+:root:not([data-theme="light"]) .dsl #dSooner{color:#4ADE80}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
+:root[data-theme="dark"] .wizseg button.on{background:var(--blue);border-color:var(--blue);color:#0B1220}:root[data-theme="dark"] .wizsum .kv.tot,:root[data-theme="dark"] .dsl #dSooner{color:#4ADE80}:root[data-theme="dark"] .wizsum .kv.bad,:root[data-theme="dark"] .wizwarn{color:#F87171}:root[data-theme="dark"] .wiznote{color:#86EFAC}:root[data-theme="dark"] .copyoffer{background:#16213A;border-color:#2A3A5C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wizseg button.on{background:var(--blue);border-color:var(--blue);color:#0B1220}:root:not([data-theme="light"]) .wizsum .kv.tot,:root:not([data-theme="light"]) .dsl #dSooner{color:#4ADE80}:root:not([data-theme="light"]) .wizsum .kv.bad,:root:not([data-theme="light"]) .wizwarn{color:#F87171}:root:not([data-theme="light"]) .wiznote{color:#86EFAC}:root:not([data-theme="light"]) .copyoffer{background:#16213A;border-color:#2A3A5C}}
 /* ==== end safety net ==== */
-@media (min-width:701px){main#app #tabs{flex-wrap:nowrap;width:max-content;max-width:100%}main#app #tabs .tab{flex:0 0 auto;white-space:nowrap}}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 </style>
@@ -1176,6 +1246,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   <p style="margin-top:12px;font-size:14px"><button type="button" class="linkbtn" id="inactivePortal" hidden>Manage billing</button> <button type="button" class="linkbtn" id="inactiveOut">Log out</button></p>
 </section>
 
+<dialog id="logDlg" aria-labelledby="logTitle"><div id="logBody"></div></dialog>
 <dialog id="projDlg" aria-labelledby="projTitle">
   <h2 id="projTitle" style="margin:0 0 6px">Project my year</h2>
   <p class="sub" id="projLead" style="margin:0 0 14px"></p>
@@ -1198,6 +1269,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 </dialog>
 
 <main id="app" hidden>
+  <button type="button" id="logFab" aria-label="Log money spent or received" hidden><span aria-hidden="true">+</span> Log</button>
   <div class="tabs" id="tabs" role="tablist"></div>
   <div class="due" id="dueBanner" role="status" hidden></div>
   <section id="homeView" hidden>
@@ -1211,6 +1283,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   <p class="sub" id="hint"></p>
   <div class="toolrow"><div class="seg" id="viewSeg" hidden role="group" aria-label="Plan or actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div><div class="seg" id="paySeg" hidden role="group" aria-label="How to show paychecks"><button type="button" data-pay="split" title="Show Paycheck 1 and Paycheck 2 side by side">Split checks</button><button type="button" data-pay="full" title="Show one amount per category for the whole month">Full month</button></div><button type="button" class="tab" id="undoBtn" disabled title="Undo your last change (up to 5)">&#8630; Undo</button><button type="button" class="tab" id="redoBtn" disabled title="Redo">&#8631; Redo</button></div>
   <p class="actnote" id="actNote" hidden>You are viewing <b>what you actually spent</b>. Type your real amounts as they happen. Totals and Net Income use these numbers, and your plan stays safe. Switch back to Plan any time. Hover over a category to see its plan. <button type="button" class="linkbtn" id="fillAllPlan">No changes? Fill every empty row from my plan</button></p>
+  <div class="copyoffer" id="copyOffer" hidden></div>
   <div id="planTip" hidden></div>
   <p class="rollnote" id="rollPanel" hidden></p>
   <details class="rowspanel" id="rowsPanel"><summary>Show or hide rows</summary><p class="note2">Hidden rows still count in your totals.</p><div class="grid" id="rowsList"></div></details>
@@ -2412,7 +2485,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     scrollTab();
     var tp = tool.type;
     $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("moneyView").hidden = tp !== "money"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank"; $("calendarView").hidden = tp !== "calendar";
-    renderBanner();
+    renderBanner(); $("logFab").hidden = tp === "setup" || tp === "account";
     var vEl = $(tp ? tp + "View" : "sheetView"); if (vEl) { vEl.classList.remove("view-in"); void vEl.offsetWidth; vEl.classList.add("view-in"); }
     if (tp === "account") { renderAccount(); $("themeBox").innerHTML = themePanel(); return; }
     if (tp === "setup") { loadSetup().then(function () { if (mine === loadSeq) startWizard(); }); return; }
@@ -2453,6 +2526,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       }
       build(); fillInputs(); buildRowsPanel(); run(); histReset();
       if (x.d && x.d.any) scheduleSave();
+      copyOffer(!!x.d && !x.d.any, mine);   // empty new month (the Annual budget didn't fill it)
     });
   }
   function buildDefaults() { // collect input addresses so saved values can be matched before building
@@ -2679,7 +2753,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     items.forEach(function (it) { h += it.t === "bill" ? calBillRow(it, false) : calGoalRow(it, false); });
     if (sp) sp.list.slice().sort(function (a, b) { return (b.a || 0) - (a.a || 0); }).forEach(function (e) {
       var isIn = e.kind === "in";
-      h += calRow(isIn ? "cd-in" : "cd-spend", esc(e.s || "Purchase"), (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "none" ? " · needs a category" : e.cat ? " · " + esc(e.cat) : ""), (isIn ? "+" : "") + money.format(e.a || 0), '<button type="button" data-gotool="' + (e.src === "receipt" ? "receipts" : "bank") + '">' + (e.kind === "none" ? "Sort it" : "View") + "</button>", isIn ? "in" : "");
+      h += calRow(isIn ? "cd-in" : "cd-spend", esc(e.s || "Purchase"), (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : "Bank") + (e.kind === "none" ? " · needs a category" : e.cat ? " · " + esc(e.cat) : ""), (isIn ? "+" : "") + money.format(e.a || 0), '<button type="button" data-gotool="' + (e.src === "receipt" ? "receipts" : "bank") + '">' + (e.kind === "none" ? "Sort it" : "View") + "</button>", isIn ? "in" : "");
     });
     h += '<button type="button" class="caladd" data-caladd="' + k + '">+ Add a bill due this day</button>';
     return h;
@@ -3217,18 +3291,18 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var start = debtState.hist.length ? Math.max.apply(null, debtState.hist.map(function (x) { return x.t; })) : tot, paid = Math.max(0, start - tot);
     var h = '<h1>Debt</h1><p class="sub">Track what you owe, choose a payoff plan, and see the date you’ll be debt-free.</p>';
     h += '<div class="cards"><div class="stat"><small>Total debt</small><b>' + money.format(tot) + "</b></div>" +
-      '<div class="stat"><small>Debt-free by</small><b>' + (sim.months === null ? "—" : monYr(sim.months)) + '</b><small style="font-weight:500">' + durTxt(sim.months) + "</small></div>" +
-      '<div class="stat"><small>Interest left to pay</small><b>' + (sim.months === null ? "—" : money.format(sim.interest)) + "</b></div>" +
+      '<div class="stat"><small>Debt-free by</small><b id="dFree">' + (sim.months === null ? "—" : monYr(sim.months)) + '</b><small id="dFreeDur" style="font-weight:500">' + durTxt(sim.months) + "</small></div>" +
+      '<div class="stat"><small>Interest left to pay</small><b id="dIntLeft">' + (sim.months === null ? "—" : money.format(sim.interest)) + "</b></div>" +
       '<div class="stat"><small>Interest this month</small><b>' + money.format(intNow) + "</b></div></div>";
     if (paid > 0.5) h += '<div class="panel dprog"><b>You’ve paid off ' + money.format(paid) + "</b> since you started tracking (" + Math.round(paid / start * 100) + '%).<div class="dbar"><i style="width:' + Math.min(100, paid / start * 100).toFixed(1) + '%"></i></div></div>';
     // plan
     h += '<div class="panel"><h2>Your payoff plan</h2>' +
-      '<div class="dplan"><label>Extra each month, on top of minimums<input id="dExtra" inputmode="decimal" value="' + (debtState.extra ? money.format(debtState.extra) : "") + '" placeholder="$0.00"></label>' +
+      '<div class="dplan"><label>Extra each month, on top of minimums<input id="dExtra" inputmode="decimal" value="' + (debtState.extra ? money.format(debtState.extra) : "") + '" placeholder="$0.00"></label>' + '<label class="dslide"><span class="sr">Slide to try a different extra payment</span><input type="range" id="dSlide" min="0" max="' + debtSlideMax() + '" step="10" value="' + Math.round(debtState.extra || 0) + '"><span class="dsl"><small>$0</small><small id="dSooner">' + debtSooner(sims) + '</small><small>' + money.format(debtSlideMax()).replace(/\.00$/, "") + '</small></span></label>' +
       '<div class="seg" role="group" aria-label="Payoff plan"><button type="button" data-plan="avalanche" class="' + (debtState.plan === "avalanche" ? "on" : "") + '">Avalanche<small>Highest rate first · saves the most</small></button><button type="button" data-plan="snowball" class="' + (debtState.plan === "snowball" ? "on" : "") + '">Snowball<small>Smallest balance first · quick wins</small></button></div></div>' +
       (missing.length ? '<p class="dmiss">' + missing.map(function (d) { return "<b>" + esc(d.name) + "</b>"; }).join(", ") + (missing.length === 1 ? " isn’t" : " aren’t") + ' in your plan yet. Tap <b>Update</b> below and add the interest rate and minimum payment.</p>' : "") +
-      '<p class="sub" style="margin:8px 0 0">You’ll pay <b>' + money.format(mins + debtState.extra) + "</b> a month in total. When a debt is paid off, its payment rolls into the next one.</p>";
+      '<p class="sub" style="margin:8px 0 0">You’ll pay <b id="dTotPay">' + money.format(mins + debtState.extra) + "</b> a month in total. When a debt is paid off, its payment rolls into the next one.</p>";
     var row = function (nm, s, k) { var save = sims.min.months === null ? null : sims.min.interest - s.interest; return '<tr class="' + (k === debtState.plan ? "on" : "") + '"><td>' + nm + "</td><td>" + (s.months === null ? "Never at this rate" : monYr(s.months)) + "</td><td>" + (s.months === null ? "—" : money.format(s.interest)) + "</td><td>" + (k === "min" ? "—" : save === null ? "Pays it off" : money.format(Math.max(0, save))) + "</td></tr>"; };
-    h += '<div class="dscroll"><table class="dtable cmp"><thead><tr><th>Plan</th><th>Debt-free by</th><th>Total interest</th><th>Interest saved</th></tr></thead><tbody>' +
+    h += '<div class="dscroll"><table class="dtable cmp"><thead><tr><th>Plan</th><th>Debt-free by</th><th>Total interest</th><th>Interest saved</th></tr></thead><tbody id="dCmp">' +
       row("Minimums only", sims.min, "min") + row("Snowball", sims.snowball, "snowball") + row("Avalanche", sims.avalanche, "avalanche") + "</tbody></table></div>";
     var same = sims.avalanche.totals.length === sims.snowball.totals.length && sims.avalanche.totals.every(function (v, i) { return Math.abs(v - sims.snowball.totals[i]) < 1; });
     var planName = debtState.plan === "avalanche" ? "Avalanche" : "Snowball";
@@ -3304,9 +3378,31 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       '<div class="dform-actions"><div><button class="btn" type="submit">' + (d ? "Save" : "Add debt") + "</button>" + (d ? '<button class="btn ghost" type="button" data-debt="cancel">Cancel</button>' : "") + "</div>" +
       (d ? '<div><button class="btn ghost" type="button" data-debt="paid" data-id="' + d.id + '">Mark paid off</button><button class="btn ghost danger" type="button" data-debt="del" data-id="' + d.id + '">Delete</button></div>' : "") + "</div></form>";
   }
+  function debtSlideMax() { return Math.max(1000, Math.ceil((debtState.extra || 0) * 1.5 / 100) * 100); }
+  function debtSooner(sims) {
+    var a = sims.min.months, b = sims[debtState.plan].months;
+    if (b === null) return "Not paid off at this rate";
+    if (a === null) return "Paid off in " + durTxt(b);
+    var d = a - b; return d > 0 ? d + " month" + (d === 1 ? "" : "s") + " sooner than minimums" : "Minimums only";
+  }
+  // slide the extra payment and watch the date move, without redrawing the page
+  function debtLive() {
+    var ds = debtState.debts.filter(debtComplete), sims = { min: simulate(ds, 0, "min"), avalanche: simulate(ds, debtState.extra, "avalanche"), snowball: simulate(ds, debtState.extra, "snowball") }, sim = sims[debtState.plan];
+    var mins = ds.reduce(function (a, d) { return a + (+d.min || 0); }, 0), set = function (id, t) { var e = $(id); if (e) e.textContent = t; };
+    set("dFree", sim.months === null ? "—" : monYr(sim.months)); set("dFreeDur", durTxt(sim.months)); set("dIntLeft", sim.months === null ? "—" : money.format(sim.interest));
+    set("dTotPay", money.format(mins + debtState.extra)); set("dSooner", debtSooner(sims));
+    var row = function (nm, s2, k) { var save = sims.min.months === null ? null : sims.min.interest - s2.interest; return '<tr class="' + (k === debtState.plan ? "on" : "") + '"><td>' + nm + "</td><td>" + (s2.months === null ? "Never at this rate" : monYr(s2.months)) + "</td><td>" + (s2.months === null ? "—" : money.format(s2.interest)) + "</td><td>" + (k === "min" ? "—" : save === null ? "Pays it off" : money.format(Math.max(0, save))) + "</td></tr>"; };
+    var tb = $("dCmp"); if (tb) tb.innerHTML = row("Minimums only", sims.min, "min") + row("Snowball", sims.snowball, "snowball") + row("Avalanche", sims.avalanche, "avalanche");
+  }
+  $("debtView").addEventListener("input", function (e) {
+    if (e.target.id !== "dSlide") return;
+    debtState.extra = Math.max(0, +e.target.value || 0); var x = $("dExtra"); if (x) x.value = debtState.extra ? money.format(debtState.extra) : "";
+    debtLive(); clearTimeout(debtLive._t); debtLive._t = setTimeout(saveDebts, 600);
+  });
   $("debtView").addEventListener("change", function (e) {
     if (e.target.name === "type") { var f = e.target.closest("form"), l = f && f.querySelector(".dlimit"); if (l) l.hidden = e.target.value !== "card"; }
     if (e.target.id === "dExtra") { debtState.extra = Math.max(0, parseMoney(e.target.value)); saveDebts(); renderDebt(); }
+    if (e.target.id === "dSlide") renderDebt();   // let go: redraw the plan details (rolling payments, order)
   });
   $("debtView").addEventListener("submit", function (e) {
     var f = e.target, id = f.getAttribute("data-dform"); if (!id) return; e.preventDefault();
@@ -3620,6 +3716,70 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     t.className = k || ""; t.innerHTML = '<button type="button" aria-label="Close" onclick="this.parentNode.hidden=true">×</button><div>' + html + '</div><button type="button" class="linkbtn" data-go="monthly-budget" data-act="1">See budget</button>';
     t.hidden = false; clearTimeout(t._h); t._h = setTimeout(function () { t.hidden = true; }, 12000);
   }
+  /* ---------- + Log: add money spent or received in two taps (amount, then category) ---------- */
+  var logS = { dir: "out", amt: "", d: "", note: "", s: null, busy: false };
+  function logOpen() {
+    var n = new Date(); logS = { dir: "out", amt: "", d: iso(n), note: "", s: null, busy: false };
+    $("logBody").innerHTML = '<p class="sub">Loading your categories…</p>'; $("logDlg").showModal();
+    logLoad();
+  }
+  function logLoad() {
+    var d = parseD(logS.d) || new Date();
+    return Promise.all([spendLoad(), rcMonthState(d.getFullYear(), d.getMonth())]).then(function (a) { logS.s = a[1]; logDraw(true); }).catch(function () { $("logBody").innerHTML = '<p class="sub">Couldn’t load your budget. Try again.</p><div class="wizbtns"><button class="btn ghost" type="button" data-lg="close">Close</button></div>'; });
+  }
+  function logList() {
+    var s = logS.s; if (!s) return [];
+    var L = logS.dir === "in" ? activeEntries(s.Lm, s.st).income : s.cats;
+    // the ones you've logged most lately come first
+    var seen = {}; spend.slice(0, 200).forEach(function (e, i) { if (e.cat && !seen[nk(e.cat)]) seen[nk(e.cat)] = 200 - i; });
+    return L.map(function (e, i) { return { name: e.name, r: (seen[nk(e.name)] || 0) * 1000 - i }; }).sort(function (a, b) { return b.r - a.r; }).map(function (x) { return x.name; });
+  }
+  function logDraw(focus) {
+    var d = parseD(logS.d) || new Date(), names = logList(), ok = +logS.amt > 0;
+    var h = '<button type="button" class="dlgx" data-lg="close" aria-label="Close">×</button><h2 id="logTitle">Log money</h2>' +
+      '<div class="wizseg logseg" role="group" aria-label="Spent or received"><button type="button" data-dir="out" class="' + (logS.dir === "out" ? "on" : "") + '">I spent</button><button type="button" data-dir="in" class="' + (logS.dir === "in" ? "on" : "") + '">I received</button></div>' +
+      '<label class="logamt"><span class="sr">Amount</span><i>$</i><input id="logAmt" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + esc(logS.amt) + '"></label>' +
+      '<div class="logrow"><label>Date<input id="logD" type="date" value="' + esc(logS.d) + '"></label><label><span>What was it? <small>(optional)</small></span><input id="logNote" maxlength="60" placeholder="' + (logS.dir === "in" ? "Paycheck, refund…" : "Coffee, Target…") + '" value="' + esc(logS.note) + '"></label></div>' +
+      '<h3 class="wizh3">' + (logS.dir === "in" ? "Which income?" : "Which category?") + ' <small id="logHint">' + (ok ? "Tap one to save." : "Enter an amount first.") + "</small></h3>" +
+      '<div class="chips logchips">' + (names.length ? names.map(function (n) { return '<button type="button" class="chip" data-cat="' + esc(n) + '"' + (ok ? "" : " disabled") + ">" + esc(n) + "</button>"; }).join("") : '<p class="sub">No ' + (logS.dir === "in" ? "income" : "categories") + " in " + MONTHS[d.getMonth()] + "’s budget yet.</p>") + "</div>" +
+      '<p class="sub" style="margin-top:10px;font-size:13px">Goes into <b>' + MONTHS[d.getMonth()] + " " + d.getFullYear() + "</b> Actual, " + (d.getDate() <= 15 ? "1st" : "2nd") + " paycheck, and your spending record.</p>";
+    $("logBody").innerHTML = h;
+    if (focus && $("logAmt")) $("logAmt").focus();
+  }
+  function logSave(cat) {
+    if (logS.busy) return; var amt = Math.round((parseFloat(String(logS.amt).replace(/[^0-9.]/g, "")) || 0) * 100) / 100; if (!(amt > 0) || !logS.s) return;
+    logS.busy = true; flushSave();
+    var s = logS.s, d = parseD(logS.d) || new Date(), col = d.getDate() <= 15 ? 0 : 1, isIn = logS.dir === "in", where = null;
+    if (isIn) {
+      var e = activeEntries(s.Lm, s.st).income.filter(function (c) { return nk(c.name) === nk(cat); })[0];
+      if (e) { where = e.addrs[Math.min(col, e.addrs.length - 1)]; var cur = typeof s.doc["a:" + where] === "number" ? s.doc["a:" + where] : 0; s.doc["a:" + where] = Math.round((cur + amt) * 100) / 100; }
+    } else where = rcApply(s, cat, col, amt, 1);
+    if (where === null) { logS.busy = false; return; }
+    delete s.doc.__filled;
+    spendPut({ id: "m-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), d: iso(d), s: logS.note || cat, raw: "", dir: isIn ? "in" : "out", a: amt, key: s.key, col: col, src: "manual", kind: isIn ? "in" : "ex", cat: cat });
+    Promise.all([doSave(s.key, s.doc), spendSave()]).then(function () {
+      $("logDlg").close();
+      if (tool && (tool.type === "home" || (tool.id === "monthly-budget" && storageKey() === s.key))) openTool();
+      toast("<b>Logged " + money.format(amt) + "</b><br>" + (isIn ? "Added to " : "Spent on ") + esc(cat) + ", " + MONTHS[d.getMonth()] + " " + d.getDate() + ".", "logged");
+      if (!isIn) setTimeout(budgetAlert, 800);
+    }, function () { logS.busy = false; });
+  }
+  $("logFab").addEventListener("click", logOpen);
+  $("logDlg").addEventListener("input", function (e) {
+    if (e.target.id === "logAmt") { logS.amt = e.target.value; var ok = parseFloat(String(logS.amt).replace(/[^0-9.]/g, "")) > 0; $("logDlg").querySelectorAll("[data-cat]").forEach(function (b) { b.disabled = !ok; }); $("logHint").textContent = ok ? "Tap one to save." : "Enter an amount first."; }
+    if (e.target.id === "logNote") logS.note = e.target.value.trim();
+  });
+  $("logDlg").addEventListener("change", function (e) {
+    if (e.target.id === "logD" && e.target.value) { var was = parseD(logS.d), now = parseD(e.target.value); logS.d = e.target.value; if (!was || !now || was.getMonth() !== now.getMonth() || was.getFullYear() !== now.getFullYear()) logLoad(); else logDraw(); }
+  });
+  $("logDlg").addEventListener("click", function (e) {
+    if (e.target === $("logDlg")) { $("logDlg").close(); return; }   // tap outside
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.getAttribute("data-lg") === "close") $("logDlg").close();
+    else if (b.getAttribute("data-dir")) { logS.dir = b.getAttribute("data-dir"); logDraw(); if (!(+logS.amt > 0)) $("logAmt").focus(); }
+    else if (b.getAttribute("data-cat")) logSave(b.getAttribute("data-cat"));
+  });
+  $("logDlg").addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "logAmt") { e.preventDefault(); var c = $("logDlg").querySelector("[data-cat]"); if (c && !c.disabled) c.focus(); } });
   // after you log in: quietly pull in anything new from linked banks
   function quietBankImport() {
     if (!session || CFG.devMode) return;
@@ -3668,7 +3828,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" || e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>";
     };
@@ -4263,70 +4423,143 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (setupLoaded) return Promise.resolve();
     return loadSaved("setup").then(function (saved) { setup = saved && saved.__setup ? saved.__setup : null; setupLoaded = true; }).catch(function () { setupLoaded = true; });
   }
-  function startWizard() {
-    wiz = { step: 0, income: setup && setup.income ? setup.income.slice() : [], expense: setup && setup.expense ? setup.expense.slice() : [], q: "" };
-    drawWizard();
-  }
   function wizPool(group) {
     var base = POOL[group].slice();
     if (group === "income") return [{ g: "Pay", items: ["Paycheck 1", "Paycheck 2", "Paycheck"] }].concat(base);
     return [{ g: "Everyday", items: BUILTIN_EXPENSE.slice() }].concat(base);
   }
   function wizHas(list, name) { return list.some(function (x) { return x.toLowerCase() === name.toLowerCase(); }); }
+  /* ---------- 90-second setup: pay, bills, everyday + savings target, then a budget that's already filled in ---------- */
+  var BILL_FIELDS = [["Rent", "Rent or mortgage"], ["Utilities", "Utilities (power, water)"], ["Cell Phone", "Cell phone"], ["Internet", "Internet"], ["Car Payment", "Car payment"], ["Auto Insurance", "Car insurance"], ["Credit Cards", "Debt minimums (cards, loans)"]];
+  var EVERY_FIELDS = [["Groceries", "Groceries"], ["Gasoline", "Gas"], ["Restaurants", "Eating out"], ["Entertainment", "Fun & entertainment"], ["Shopping", "Shopping & personal"]];
+  var PAY_N = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
+  var PAY_TXT = { weekly: "Every week", biweekly: "Every 2 weeks", semimonthly: "Twice a month (like the 1st & 15th)", monthly: "Once a month" };
+  // numbers someone typed into a free calculator before signing up
+  function readHandoff() {
+    try { var h = JSON.parse(localStorage.getItem("monerem-start") || "null"); if (h && h.at && Date.now() - h.at < 14 * 864e5 && h.per > 0) return h; } catch (e) {}
+    return null;
+  }
+  function clearHandoff() { try { localStorage.removeItem("monerem-start"); } catch (e) {} }
+  function wizMonthly(per, freq) { return Math.round((+per || 0) * (PAY_N[freq] || 12) / 12 * 100) / 100; }
+  function wizNumbers() {
+    var inc = wizMonthly(wiz.per, wiz.freq) + (wiz.has2 ? wizMonthly(wiz.per2, wiz.freq) : 0);
+    var bills = BILL_FIELDS.reduce(function (t, f) { return t + (+wiz.bills[f[0]] || 0); }, 0);
+    var every = EVERY_FIELDS.reduce(function (t, f) { return t + (+wiz.every[f[0]] || 0); }, 0);
+    var save = wiz.target === "20" ? inc * 0.2 : wiz.target === "10" ? inc * 0.1 : wiz.target === "custom" ? (+wiz.custom || 0) : Math.max(0, inc - bills - every);
+    save = Math.round(save * 100) / 100;
+    return { inc: inc, bills: bills, every: every, save: save, left: Math.round((inc - bills - every - save) * 100) / 100 };
+  }
+  function startWizard() {
+    var h = readHandoff();
+    wiz = { step: 0, income: setup && setup.income ? setup.income.slice() : [], expense: setup && setup.expense ? setup.expense.slice() : [], q: "",
+      freq: h ? h.freq : "biweekly", per: h ? h.per : "", has2: false, name2: "", per2: "", bills: {}, every: {}, target: "20", custom: h && h.save ? h.save : "", from: h ? h.src : "" };
+    if (h && h.save > 0) wiz.target = "custom";
+    drawWizard();
+  }
+  function wizMoney(id, val, label, hint) {
+    return '<label class="wizfld"><span>' + label + '</span><span class="wizmoney"><i>$</i><input id="' + id + '" inputmode="decimal" autocomplete="off" placeholder="0" value="' + (+val ? (+val).toFixed(2).replace(/\.00$/, "") : "") + '"></span>' + (hint ? "<small>" + hint + "</small>" : "") + "</label>";
+  }
+  function wizSumHtml() {
+    var n = wizNumbers(), row = function (a, b, c) { return '<div class="kv' + (c ? " " + c : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
+    return '<div class="wizsum">' + row("Coming in each month", money.format(n.inc)) + row("Bills", "− " + money.format(n.bills)) + row("Everyday spending", "− " + money.format(n.every)) + row("Savings", "− " + money.format(n.save)) +
+      row(n.left >= 0 ? "Left to plan" : "Over by", money.format(Math.abs(n.left)), n.left < -0.5 ? "bad" : "tot") + "</div>" +
+      (n.left < -0.5 ? '<p class="wizwarn">Your plan spends more than comes in. Lower a number or the savings target. Rough numbers are fine for now.</p>' : n.left > 0.5 ? '<p class="sub" style="margin-top:6px">Tip: choose <b>“Whatever’s left”</b> to send the rest to savings so every dollar has a job.</p>' : '<p class="sub" style="margin-top:6px">Every dollar has a job. Nice.</p>');
+  }
   function drawWizard() {
-    var h = "", st = wiz.step, el = $("wizard");
+    var h = "", st = wiz.step, el = $("wizard"), steps = 4;
+    var head = function (n, t, sub) { return '<div class="wizsteps">Step ' + n + " of " + steps + '</div><div class="wizbar"><i style="width:' + (n / steps * 100) + '%"></i></div><h2>' + t + "</h2>" + (sub ? '<p class="sub" style="margin-top:4px">' + sub + "</p>" : ""); };
     if (st === 0) {
       h = '<div class="wizsteps">Welcome</div><h2>Let’s build your budget</h2>' +
-        '<p class="sub" style="margin-top:6px">Answer two quick questions and Monerem builds a table with only the categories you care about.</p>' +
-        '<ol style="margin:10px 0 0 20px;line-height:1.8"><li>Choose where your money comes from</li><li>Choose what you spend it on</li><li>Review, and your tables are ready</li></ol>' +
-        '<div class="wizbtns"><button class="btn" data-w="next">Start</button><button class="btn ghost" data-w="standard">Use the standard set</button>' + (setup ? "" : '<button class="btn ghost" data-w="skip">Skip for now</button>') + "</div>";
-    } else if (st === 1 || st === 2) {
-      var g = st === 1 ? "income" : "expense", sel = wiz[g], max = g === "income" ? WIZ_INCOME_MAX : WIZ_EXPENSE_MAX, q = wiz.q.toLowerCase();
-      h = '<div class="wizsteps">Step ' + st + " of 3</div><h2>" + (st === 1 ? "Where does your money come from?" : "What do you spend money on?") + "</h2>" +
-        '<p class="sub" style="margin-top:4px">Tap everything that applies. You can change this later. <b>' + sel.length + " of " + max + " picked</b></p>" +
-        '<input class="wiztxt" id="wizSearch" type="search" placeholder="Search" autocomplete="off" value="' + esc(wiz.q) + '" aria-label="Search categories"><div class="wizlist">';
-      wizPool(g).forEach(function (grp) {
-        var items = grp.items.filter(function (n) { return !q || n.toLowerCase().indexOf(q) >= 0 || grp.g.toLowerCase().indexOf(q) >= 0; });
-        if (items.length) h += "<h3>" + esc(grp.g) + '</h3><div class="chips">' + items.map(function (n) { return '<button type="button" class="chip' + (wizHas(sel, n) ? " on" : "") + '" aria-pressed="' + wizHas(sel, n) + '" data-wp="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
-      });
-      var own = sel.filter(function (n) { return !wizPool(g).some(function (grp) { return wizHas(grp.items, n); }); });
-      if (own.length) h += "<h3>Your own</h3><div class=\"chips\">" + own.map(function (n) { return '<button type="button" class="chip on" aria-pressed="true" data-wp="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") + "</div>";
-      h += '</div><div class="wizown"><input class="wiztxt" id="wizOwn" maxlength="40" placeholder="Not listed? Type your own" autocomplete="off" aria-label="Your own category"><button type="button" class="btn" data-w="own">Add</button></div>' +
-        '<p class="pickmsg" id="wizMsg" role="status"></p><div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="next"' + (sel.length ? "" : " disabled") + ">" + (st === 1 ? "Next: expenses" : "Next: review") + "</button></div>";
+        (wiz.from ? '<p class="wiznote">✓ Your numbers from the ' + (wiz.from === "paycheck" ? "paycheck" : "50/30/20") + " calculator are already filled in.</p>" : "") +
+        '<p class="sub" style="margin-top:6px">About 90 seconds. Rough numbers are fine: you can change anything later.</p>' +
+        '<ol style="margin:10px 0 0 20px;line-height:1.8"><li>How you get paid</li><li>Your main bills</li><li>Everyday spending and a savings goal</li><li>Check it, and your budget is ready</li></ol>' +
+        '<div class="wizbtns"><button class="btn" data-w="next">Start</button><button class="btn ghost" data-w="standard">Skip the numbers, just give me the standard categories</button>' + (setup ? "" : '<button class="btn ghost" data-w="skip">Skip for now</button>') + "</div>";
+    } else if (st === 1) {
+      h = head(1, "How do you get paid?", "Use your take-home pay: what lands in your bank account.") +
+        '<div class="wizseg" role="group" aria-label="How often you are paid">' + Object.keys(PAY_TXT).map(function (k) { return '<button type="button" data-freq="' + k + '" class="' + (wiz.freq === k ? "on" : "") + '">' + PAY_TXT[k] + "</button>"; }).join("") + "</div>" +
+        wizMoney("wzPer", wiz.per, "Take-home pay per paycheck", wiz.per ? "≈ " + money.format(wizMonthly(wiz.per, wiz.freq)) + " a month" : 'Not sure? <a href="paycheck-calculator.html" target="_blank" rel="noopener">Work it out here</a>.') +
+        '<label class="wizchk"><input type="checkbox" id="wzHas2"' + (wiz.has2 ? " checked" : "") + "> Someone else’s pay goes into this budget too</label>" +
+        (wiz.has2 ? '<div class="wiz2"><label class="wizfld"><span>Their name</span><input id="wzName2" class="wiztxt" maxlength="24" placeholder="Partner" value="' + esc(wiz.name2) + '"></label>' + wizMoney("wzPer2", wiz.per2, "Their take-home per paycheck", "") + "</div>" : "") +
+        '<div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="next"' + (+wiz.per > 0 ? "" : " disabled") + ">Next: bills</button></div>";
+    } else if (st === 2) {
+      h = head(2, "What are your main monthly bills?", "Leave blank anything you don’t have.") + '<div class="wizgrid">' +
+        BILL_FIELDS.map(function (f) { return wizMoney("wzB_" + nk(f[0]), wiz.bills[f[0]], f[1]); }).join("") + "</div>" +
+        '<div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="next">Next: everyday spending</button></div>';
+    } else if (st === 3) {
+      h = head(3, "Everyday spending and savings", "Your best guess for a month. Then pick a savings goal.") + '<div class="wizgrid">' +
+        EVERY_FIELDS.map(function (f) { return wizMoney("wzE_" + nk(f[0]), wiz.every[f[0]], f[1]); }).join("") + "</div>" +
+        '<h3 class="wizh3">Savings goal</h3><div class="wizseg" role="group" aria-label="Savings goal">' +
+        [["20", "20% (the 50/30/20 rule)"], ["10", "10%"], ["custom", "An amount I choose"], ["rest", "Whatever’s left"]].map(function (o) { return '<button type="button" data-target="' + o[0] + '" class="' + (wiz.target === o[0] ? "on" : "") + '">' + o[1] + "</button>"; }).join("") + "</div>" +
+        (wiz.target === "custom" ? wizMoney("wzCustom", wiz.custom, "Save each month", "") : "") +
+        '<div id="wizSum">' + wizSumHtml() + "</div>" +
+        '<div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="next">Next: check it</button></div>';
     } else {
-      h = '<div class="wizsteps">Step 3 of 3</div><h2>Looks good?</h2>' +
-        '<h3 style="margin-top:10px;font-size:14px">Income (' + wiz.income.length + ")</h3><p>" + wiz.income.map(esc).join(", ") + "</p>" +
-        '<h3 style="margin-top:10px;font-size:14px">Expenses (' + wiz.expense.length + ")</h3><p>" + wiz.expense.map(esc).join(", ") + "</p>" +
-        (setup && setup.done ? '<p class="sub" style="margin-top:10px">Building replaces your Annual table and this month’s Monthly table with these categories, and clears the amounts in them. Other months you’ve already filled in aren’t changed.</p>' : "") +
-        '<div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="build">Build my tables</button></div>';
+      var n = wizNumbers(), list = wizCats();
+      h = head(4, "Here’s your budget", "This fills in your Monthly and Annual budgets. Change anything later.") + wizSumHtml() +
+        '<details class="wizmore"><summary>Add more categories (optional)</summary><input class="wiztxt" id="wizSearch" type="search" placeholder="Search" autocomplete="off" value="' + esc(wiz.q) + '" aria-label="Search categories"><div class="wizlist">';
+      var q = wiz.q.toLowerCase();
+      wizPool("expense").forEach(function (grp) {
+        var items = grp.items.filter(function (x) { return !q || x.toLowerCase().indexOf(q) >= 0 || grp.g.toLowerCase().indexOf(q) >= 0; });
+        if (items.length) h += "<h3>" + esc(grp.g) + '</h3><div class="chips">' + items.map(function (x) { var on = wizHas(list.names, x); return '<button type="button" class="chip' + (on ? " on" : "") + '" aria-pressed="' + on + '" data-wp="' + esc(x) + '">' + esc(x) + "</button>"; }).join("") + "</div>";
+      });
+      h += '</div><p class="pickmsg" id="wizMsg" role="status"></p></details>' +
+        (setup && setup.done ? '<p class="sub" style="margin-top:10px">This replaces this month’s Monthly table and your Annual table with these categories and amounts. Months you’ve already filled in aren’t changed.</p>' : "") +
+        '<div class="wizbtns"><button class="btn ghost" data-w="back">Back</button><button class="btn" data-w="build"' + (n.inc > 0 ? "" : " disabled") + ">Build my budget</button></div>";
     }
     el.innerHTML = h;
   }
-  $("wizard").addEventListener("input", function (e) { if (e.target.id === "wizSearch") { wiz.q = e.target.value; var pos = e.target.selectionStart; drawWizard(); var s2 = $("wizSearch"); s2.focus(); s2.setSelectionRange(pos, pos); } });
-  $("wizard").addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "wizOwn") { e.preventDefault(); wizAddOwn(); } });
-  function wizAddOwn() {
-    var inp = $("wizOwn"), n = inp.value.trim().slice(0, 40), g = wiz.step === 1 ? "income" : "expense", max = g === "income" ? WIZ_INCOME_MAX : WIZ_EXPENSE_MAX;
-    if (!n) return;
-    if (wiz[g].length >= max) { $("wizMsg").textContent = "That’s the limit of " + max + "."; return; }
-    if (!wizHas(wiz[g], n)) wiz[g].push(n);
-    wiz.q = ""; drawWizard(); $("wizOwn").focus();
+  // the categories and monthly amounts the answers add up to
+  function wizCats() {
+    var amt = {}, names = [];
+    var add = function (nm, v) { if (!wizHas(names, nm)) names.push(nm); if (v > 0) amt[nm] = Math.round(v * 100) / 100; };
+    BILL_FIELDS.forEach(function (f) { if (+wiz.bills[f[0]] > 0) add(f[0], +wiz.bills[f[0]]); });
+    EVERY_FIELDS.forEach(function (f) { if (+wiz.every[f[0]] > 0) add(f[0], +wiz.every[f[0]]); });
+    var n = wizNumbers(); if (n.save > 0) add("Emergency Fund", n.save);
+    (wiz.expense || []).forEach(function (x) { if (!wizHas(names, x)) names.push(x); });
+    if (!names.length) names = BUILTIN_EXPENSE.slice();
+    var inc = [{ n: "My paycheck", v: wizMonthly(wiz.per, wiz.freq) }];
+    if (wiz.has2 && +wiz.per2 > 0) inc.push({ n: (wiz.name2 ? wiz.name2.replace(/\b\w/, function (c) { return c.toUpperCase(); }) + "’s" : "Second") + " paycheck", v: wizMonthly(wiz.per2, wiz.freq) });
+    return { names: names, amt: amt, income: inc };
   }
+  function wizRead() {   // keep what's typed when moving between steps
+    var g = function (id) { var e = $(id); return e ? Math.max(0, parseFloat(String(e.value).replace(/[^0-9.]/g, "")) || 0) : null; };
+    var v = g("wzPer"); if (v !== null) wiz.per = v;
+    v = g("wzPer2"); if (v !== null) wiz.per2 = v;
+    if ($("wzName2")) wiz.name2 = $("wzName2").value.trim().slice(0, 24);
+    BILL_FIELDS.forEach(function (f) { var x = g("wzB_" + nk(f[0])); if (x !== null) wiz.bills[f[0]] = x; });
+    EVERY_FIELDS.forEach(function (f) { var x = g("wzE_" + nk(f[0])); if (x !== null) wiz.every[f[0]] = x; });
+    v = g("wzCustom"); if (v !== null) wiz.custom = v;
+  }
+  $("wizard").addEventListener("input", function (e) {
+    var id = e.target.id || "";
+    if (id === "wizSearch") { wiz.q = e.target.value; var pos = e.target.selectionStart, open = true; drawWizard(); var d = $("wizard").querySelector(".wizmore"); if (d) d.open = open; var s2 = $("wizSearch"); s2.focus(); s2.setSelectionRange(pos, pos); return; }
+    if (/^wz/.test(id)) {
+      wizRead();
+      if (id === "wzPer") { var sm = e.target.closest(".wizfld").querySelector("small"); if (sm) sm.textContent = wiz.per ? "≈ " + money.format(wizMonthly(wiz.per, wiz.freq)) + " a month" : ""; var nb = $("wizard").querySelector('[data-w="next"]'); if (nb) nb.disabled = !(+wiz.per > 0); }
+      if ($("wizSum")) $("wizSum").innerHTML = wizSumHtml();
+    }
+  });
+  $("wizard").addEventListener("change", function (e) { if (e.target.id === "wzHas2") { wizRead(); wiz.has2 = e.target.checked; drawWizard(); if (wiz.has2 && $("wzName2")) $("wzName2").focus(); } });
+  $("wizard").addEventListener("keydown", function (e) { if (e.key === "Enter" && /^wz/.test(e.target.id || "")) { e.preventDefault(); var b = $("wizard").querySelector('[data-w="next"],[data-w="build"]'); if (b && !b.disabled) b.click(); } });
   $("wizard").addEventListener("click", function (e) {
-    var t = e.target, w = t.getAttribute && t.getAttribute("data-w"), p = t.getAttribute && t.getAttribute("data-wp");
-    if (p !== null && p !== undefined && p !== "") {
-      var g = wiz.step === 1 ? "income" : "expense", max = g === "income" ? WIZ_INCOME_MAX : WIZ_EXPENSE_MAX, list = wiz[g];
-      if (wizHas(list, p)) wiz[g] = list.filter(function (x) { return x.toLowerCase() !== p.toLowerCase(); });
-      else if (list.length < max) list.push(p);
-      else { var keep = $("wizard").querySelector(".wizlist").scrollTop; drawWizard(); $("wizMsg").textContent = "That’s the limit of " + max + ". Tap one to unselect it first."; $("wizard").querySelector(".wizlist").scrollTop = keep; return; }
-      var sc = $("wizard").querySelector(".wizlist").scrollTop; drawWizard(); $("wizard").querySelector(".wizlist").scrollTop = sc; return;
+    var t = e.target.closest ? e.target.closest("button") : null; if (!t) return;
+    var w = t.getAttribute("data-w"), p = t.getAttribute("data-wp"), f = t.getAttribute("data-freq"), tg = t.getAttribute("data-target");
+    if (f) { wizRead(); wiz.freq = f; drawWizard(); return; }
+    if (tg) { wizRead(); wiz.target = tg; drawWizard(); if (tg === "custom" && $("wzCustom")) $("wzCustom").focus(); return; }
+    if (p) {
+      var list = wizCats().names, sc = $("wizard").querySelector(".wizlist").scrollTop;
+      if (wizHas(wiz.expense, p)) wiz.expense = wiz.expense.filter(function (x) { return x.toLowerCase() !== p.toLowerCase(); });
+      else if (wizHas(list, p)) { /* came from a bill or everyday amount: clear that amount instead */ BILL_FIELDS.concat(EVERY_FIELDS).forEach(function (fl) { if (nk(fl[0]) === nk(p)) { delete wiz.bills[fl[0]]; delete wiz.every[fl[0]]; } }); }
+      else if (list.length < WIZ_EXPENSE_MAX) wiz.expense.push(p);
+      drawWizard(); var d = $("wizard").querySelector(".wizmore"); if (d) d.open = true; $("wizard").querySelector(".wizlist").scrollTop = sc; return;
     }
     if (!w) return;
-    if (w === "next") { wiz.step++; wiz.q = ""; drawWizard(); window.scrollTo(0, 0); }
+    wizRead();
+    if (w === "next") { wiz.step++; wiz.q = ""; drawWizard(); window.scrollTo(0, 0); var first = $("wizard").querySelector("input"); if (first && window.innerWidth > 700) first.focus(); }
     else if (w === "back") { wiz.step--; wiz.q = ""; drawWizard(); window.scrollTo(0, 0); }
-    else if (w === "own") wizAddOwn();
-    else if (w === "standard") { wiz.income = ["Paycheck 1", "Paycheck 2"]; wiz.expense = BUILTIN_EXPENSE.slice(); wiz.step = 3; drawWizard(); }
+    else if (w === "standard") { wiz.income = ["Paycheck 1", "Paycheck 2"]; wiz.expense = BUILTIN_EXPENSE.slice(); buildFromWizard(true); }
     else if (w === "skip") { setup = { skipped: true }; doSave("setup", { __setup: setup }); goHome(); }
-    else if (w === "build") buildFromWizard();
+    else if (w === "build") buildFromWizard(false);
   });
   function goHome() { tool = TOOLS[0]; navPush("home"); makeTabs(); openTool(); }
 
@@ -4616,18 +4849,35 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     });
   });
 
-  function buildFromWizard() {
-    setup = { done: true, income: wiz.income.slice(), expense: wiz.expense.slice() };
+  function buildFromWizard(standard) {
+    var C = standard ? { names: wiz.expense.slice(), amt: {}, income: [] } : wizCats();
+    var incNames = standard ? wiz.income.slice() : C.income.map(function (x) { return x.n; });
+    var incAmt = {}; if (!standard) C.income.forEach(function (x) { incAmt[x.n] = x.v; });
+    var monthlyPay = !standard && wiz.freq === "monthly";
+    setup = { done: true, income: incNames, expense: C.names.slice() };
+    if (!standard) setup.pay = { freq: wiz.freq, per: +wiz.per || 0, per2: wiz.has2 ? +wiz.per2 || 0 : 0, target: wiz.target };
     var now = new Date(), mm = pad(now.getMonth() + 1), jobs = [doSave("setup", { __setup: setup })];
+    var split2 = function (v) { if (monthlyPay) return [v, 0]; var a = Math.round(v / 2 * 100) / 100; return [a, Math.round((v - a) * 100) / 100]; };
     ["yearly-projection", "monthly-budget"].forEach(function (id) {
       jobs.push(fetch(id + ".layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (L) {
         var r = metaFromSetup(L, setup), doc = { __meta: r.meta };
         Object.keys(r.toggles).forEach(function (a) { doc[a] = r.toggles[a]; });
+        // fill in the amounts from the answers
+        var ent = activeEntries(L, { labels: r.meta.labels, custom: r.meta.custom, removed: r.meta.removed });
+        ["income", "expense"].forEach(function (g) {
+          ent[g].forEach(function (e) {
+            var v = g === "income" ? incAmt[e.name] : C.amt[e.name]; if (!(v > 0) || !e.addrs.length) return;
+            if (L.months) { var s2 = split2(v); doc[e.addrs[0]] = s2[0]; if (e.addrs[1]) doc[e.addrs[1]] = s2[1]; }
+            else e.addrs.forEach(function (a) { doc[a] = v; });          // Annual: the same amount every month
+          });
+        });
         return doSave(L.months ? L.id + ":" + now.getFullYear() + "-" + mm : L.id, doc);
       }));
     });
-    $("wizard").innerHTML = '<h2>Building your tables…</h2>';
+    $("wizard").innerHTML = '<h2>Building your budget…</h2>';
     Promise.all(jobs).then(function () {
+      clearHandoff();
+      if (!standard) { var n = wizNumbers(); setTimeout(function () { toast("<b>Your budget is ready.</b><br>" + money.format(n.inc) + " coming in, " + money.format(n.bills + n.every) + " planned for bills and spending, " + money.format(n.save) + " to savings" + (n.left > 0.5 ? ", " + money.format(n.left) + " left to plan." : "."), "logged"); }, 600); }
       tool = TOOLS.filter(function (t) { return t.id === "monthly-budget"; })[0]; navPush("monthly-budget"); makeTabs(); openTool();
     });
   }
@@ -5364,11 +5614,35 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       setStatus("Projected " + done + (done === 1 ? " month" : " months") + " from " + MONTHS[mo] + (skipped ? ". Left " + skipped + " already filled-in " + (skipped === 1 ? "month as it was" : "months as they were") : "") + ". Open Annual budget to see your year.");
     }).catch(function () { $("projGo").disabled = false; $("projMsg").textContent = "Couldn’t finish projecting. Try again."; });
   });
+  /* a new month: offer last month's plan in one tap */
+  var copyQuiet = false;
+  function copyOffer(fresh, mine) {
+    var el = $("copyOffer"); el.hidden = true;
+    if (!fresh || !layout || !layout.months || view !== "plan") return;
+    var y = Number($("selYear").value), mo = Number($("selMonth").value) - 1, now = new Date();
+    if (y * 12 + mo < now.getFullYear() * 12 + now.getMonth()) return;            // only this month or later
+    var py = mo ? y : y - 1, pm = mo ? mo - 1 : 11, dk = "monerem-copyoff:" + y + "-" + pad(mo + 1);
+    try { if (localStorage.getItem(dk)) return; } catch (e) {}
+    loadSaved(layout.id + ":" + py + "-" + pad(pm + 1)).then(function (prev) {
+      if (mine !== loadSeq || isBlank(prev)) return;
+      var any = Object.keys(prev).some(function (k) { return k.indexOf("a:") !== 0 && k.indexOf("__") !== 0 && typeof prev[k] === "number" && prev[k] > 0; });
+      if (!any) return;
+      el.innerHTML = '<span><b>' + MONTHS[mo] + ' is a new month.</b> Copy your bills and plan from ' + MONTHS[pm] + '?</span><span class="cobtns"><button type="button" class="btn" data-co="yes">Copy ' + MONTHS[pm] + '’s plan</button><button type="button" class="btn ghost" data-co="no">Not now</button></span>';
+      el.hidden = false; el._dk = dk;
+    }).catch(function () {});
+  }
+  $("copyOffer").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var el = $("copyOffer"); try { localStorage.setItem(el._dk, "1"); } catch (x) {}
+    el.hidden = true;
+    if (b.getAttribute("data-co") === "yes") { copyQuiet = true; $("copyPrev").click(); }
+  });
   $("copyPrev").addEventListener("click", function () {
     var y = Number($("selYear").value), mo = Number($("selMonth").value) - 1; mo--; if (mo < 0) { mo = 11; y--; }
     var key = layout.id + ":" + y + "-" + pad(mo + 1), name = MONTHS[mo] + " " + y;
     var hasData = Object.keys(inputs).some(function (k) { return inputs[k] !== 0; });
-    if (hasData && !window.confirm("Replace this month’s amounts with " + name + "’s?")) return;
+    var fromOffer = copyQuiet; copyQuiet = false;
+    if (hasData && !fromOffer && !window.confirm("Replace this month’s amounts with " + name + "’s?")) return;
     loadSaved(key).then(function (saved) {
       if (!saved) { setStatus("Nothing saved for " + name + " yet.", true); return; }
       var oldGone = (meta.gone || []).slice(), oldActual = actual;

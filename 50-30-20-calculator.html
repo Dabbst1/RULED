@@ -232,7 +232,7 @@ footer a{margin-left:20px}
         </ul>
       </div>
       <div class="cta">
-        <a class="btn" href="app.html#signup">Start 14 days free</a>
+        <a class="btn" id="startCta" href="app.html#signup">Start 14 days free</a>
         <span class="fine">Then $9/month or $79/year. Cancel anytime.</span>
       </div>
     </div>
@@ -297,8 +297,15 @@ footer a{margin-left:20px}
     el.hidden = false;
   }
 
+  // take these numbers into the app, so setup starts already filled in
+  document.getElementById('startCta').addEventListener('click', function(){
+    var inc = num($('income')); if (!(inc > 0)) return;
+    var F = { 52: 'weekly', 26: 'biweekly', 24: 'semimonthly', 12: 'monthly' }, f = F[freq] || 'monthly', per = F[freq] ? inc : inc * freq / 12;
+    try { localStorage.setItem('monerem-start', JSON.stringify({ src: '503020', per: Math.round(per * 100) / 100, freq: f, save: Math.round(inc * freq / 12 * 0.2 * 100) / 100, at: Date.now() })); } catch (e) {}
+  });
   function update(){
     var monthly = num($('income')) * freq / 12;
+    var cta = document.getElementById('startCta'); if (cta) cta.textContent = monthly > 0 ? 'Save my numbers and start 14-day free trial' : 'Start 14 days free';
     var t = { n: monthly * .5, w: monthly * .3, s: monthly * .2 };
     $('monthlyLine').textContent = 'Based on ' + fmt(monthly) + ' per month';
     $('tNeeds').firstChild.nodeValue = fmt(t.n); $('yNeeds').textContent = fmt(t.n * 12) + ' / year';

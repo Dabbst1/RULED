@@ -195,7 +195,7 @@ select{width:100%;font:500 17px 'Public Sans',sans-serif;padding:10px 12px;borde
       <p>Monerem drops your take-home pay straight into a monthly budget, then helps with the rest: checking if you can afford an apartment or car, finding subscriptions you forgot, and a step-by-step money roadmap built for your first years out of school.</p>
       <ul><li>Paycheck to budget in one tap</li><li>&ldquo;Can I afford it?&rdquo; checks before you sign</li><li>Plain-English help on every money word</li></ul>
     </div>
-    <div class="cta"><a class="btn" href="app.html#signup">Start your free 14-day trial</a><a class="btn ghost" href="50-30-20-calculator.html">Try the 50/30/20 calculator</a></div>
+    <div class="cta"><a class="btn" id="startCta" href="app.html#signup">Start your free 14-day trial</a><a class="btn ghost" href="50-30-20-calculator.html">Try the 50/30/20 calculator</a></div>
   </section>
 
   <section>
@@ -222,7 +222,7 @@ select{width:100%;font:500 17px 'Public Sans',sans-serif;padding:10px 12px;borde
     var mode = $("mode").value, st = $("state").value;
     $("salBox").hidden = mode !== "salary"; $("hrBox").hidden = mode !== "hourly"; $("rateBox").hidden = st !== "other";
     var gross = mode === "hourly" ? num($("hourly").value) * (num($("hours").value) || 40) * 52 : num($("gross").value);
-    if (!(gross > 0)) { $("res").hidden = true; $("empty").hidden = false; return; }
+    if (!(gross > 0)) { $("res").hidden = true; $("empty").hidden = false; hand = null; $("startCta").textContent = "Start your free 14-day trial"; return; }
     var r = MoneremPay.calc({ gross: gross, status: $("status").value, freq: $("freq").value, k401Pct: num($("k401").value), insPerCheck: num($("ins").value), stateRate: st === "other" ? num($("rate").value) : 0 }), C = r.check;
     var parts = [["Take-home pay", C.take, "#1D4ED8"], ["Federal income tax", C.fed, "#E34948"], ["Social Security & Medicare", C.ss + C.med, "#EB6834"], ["State income tax", C.state, "#EDA100"], ["401(k) (yours to keep)", C.k401, "#16A34A"], ["Insurance", C.ins, "#6250D6"]].filter(function (x) { return x[1] > 0.004; });
     $("empty").hidden = true; $("res").hidden = false;
@@ -232,8 +232,12 @@ select{width:100%;font:500 17px 'Public Sans',sans-serif;padding:10px 12px;borde
     $("stack").innerHTML = parts.map(function (x) { return '<i style="flex:' + x[1] + ";background:" + x[2] + '"></i>'; }).join("");
     $("rows").innerHTML = parts.map(function (x) { return '<div class="bucket"><span class="dot" style="background:' + x[2] + '"></span><div><b>' + x[0] + '</b></div><div class="amt">' + money.format(x[1]) + "</div></div>"; }).join("");
     var m = r.month.take;
+    hand = { src: "paycheck", per: Math.round(C.take * 100) / 100, freq: $("freq").value, at: Date.now() }; $("startCta").textContent = "Save my numbers and start 14-day free trial";
     $("sum").innerHTML = "Your tax bracket is " + Math.round(r.bracket * 100) + "%, but only " + Math.round(r.effective * 100) + "% of your pay goes to taxes overall. With the 50/30/20 rule, that&rsquo;s about <b>" + money.format(m * .5).replace(".00", "") + "</b> for needs, <b>" + money.format(m * .3).replace(".00", "") + "</b> for wants and <b>" + money.format(m * .2).replace(".00", "") + "</b> for savings. Keep rent under about <b>" + money.format(m * .3).replace(".00", "") + "</b>.";
   }
+  var hand = null;
+  // take these numbers into the app, so setup starts already filled in
+  $("startCta").addEventListener("click", function () { if (hand && hand.per > 0) try { localStorage.setItem("monerem-start", JSON.stringify(hand)); } catch (e) {} });
   $("f").addEventListener("input", run); $("f").addEventListener("change", run); run();
 })();
 </script>
