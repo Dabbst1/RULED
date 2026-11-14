@@ -4141,9 +4141,28 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       });
       var sum = function (L) { return L.reduce(function (t, e) { return t + e.a; }, 0); };
       var held = Math.round((cur - avail) * 100) / 100, heldUnknown = Math.max(0, Math.round((held - pendOut) * 100) / 100);
-      var start = typeof reconStart[ym] === "number" ? reconStart[ym] : null;
+      // your balance on the 1st: what you entered, or carried forward from the last month you entered one,
+      // adding every transaction in or out of these accounts since then (late ones included as they arrive)
+      var start = typeof reconStart[ym] === "number" ? reconStart[ym] : null, carried = false, fromMon = "";
+      if (start === null) {
+        var y0 = n.getFullYear(), m0 = n.getMonth(), back = null;
+        for (var k = 1; k <= 12; k++) { var d0 = new Date(y0, m0 - k, 1), y1 = d0.getFullYear() + "-" + pad(d0.getMonth() + 1); if (typeof reconStart[y1] === "number") { back = { d: d0, ym: y1 }; break; } }
+        if (back) {
+          var bal0 = reconStart[back.ym], dd = new Date(back.d);
+          while (dd.getFullYear() * 12 + dd.getMonth() < y0 * 12 + m0) {
+            var kk = monthKeyOf(dd);
+            spend.forEach(function (e) {
+              var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);   // older entries without an account: only one kind is linked
+              if (e.key !== kk || e.src !== "bank" || !isCash || (e.kind === "skip" && e.why === "canceled by the bank")) return;
+              bal0 += (e.kind === "in" || (e.dir === "in" && e.kind !== "ex")) ? e.a : -e.a;
+            });
+            dd.setMonth(dd.getMonth() + 1);
+          }
+          start = Math.round(bal0 * 100) / 100; carried = true; fromMon = MONTHS[(m0 + 11) % 12];
+        }
+      }
       var items = [
-        [start !== null ? "Your balance on " + mon + " 1 (you entered it)" : null, start || 0, []],
+        [start !== null ? "Your balance on " + mon + " 1 (" + (carried ? "carried over from " + fromMon + "’s bank activity" : "you entered it") + ")" : null, start || 0, []],
         ["Money into your account that isn’t income (transfers in, refunds, Zelle)", sum(G.skipIn), G.skipIn],
         ["Money out of your account that isn’t spending (transfers, card payments, ATM)", -sum(G.skipOut), G.skipOut],
         ["Waiting for a category, so not in Actual yet (pick one below)", sum(G.waitIn) - sum(G.waitOut), G.waitIn.concat(G.waitOut)],
@@ -4155,7 +4174,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
-      return { avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+      return { carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
     });
   }
   function reconFill() {
@@ -4175,7 +4194,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
       } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
-      h += '<form class="rstart" id="reconStartF"><label>Your balance on ' + mon + ' 1<span class="wizmoney"><i>$</i><input id="reconStartIn" inputmode="decimal" autocomplete="off" placeholder="from your statement" value="' + (start !== null ? start.toFixed(2) : "") + '"></span></label><button class="btn ghost" type="submit">Save</button>' + (start !== null ? '<button class="linkbtn" type="button" id="reconStartClear">Clear</button>' : "") + "</form>";
+      h += '<form class="rstart" id="reconStartF"><label>Your balance on ' + mon + ' 1<span class="wizmoney"><i>$</i><input id="reconStartIn" inputmode="decimal" autocomplete="off" value="' + (start !== null && !R.carried ? start.toFixed(2) : "") + '" placeholder="' + (R.carried ? "carried over: " + start.toFixed(2) : "from your statement") + '"></span></label><button class="btn ghost" type="submit">Save</button>' + (start !== null && !R.carried ? '<button class="linkbtn" type="button" id="reconStartClear">Clear</button>' : "") + "</form>";
       box.innerHTML = h;
     }).catch(function () { box.innerHTML = ""; });
   }
