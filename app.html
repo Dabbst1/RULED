@@ -896,6 +896,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .rwarn{margin:10px 0 0;color:#B45309;font-weight:600;font-size:14px}
 @media (max-width:700px){.rtop b{font-size:17px}}
 #sheet .autocell{display:none}#sheet.actualview .autocell{display:table-cell}#sheet.actualview .autocalc{display:none}
+.rstart{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;margin-top:12px}.rstart label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}.rstart .wizmoney{height:40px;max-width:200px}.rstart .btn{margin:0;height:40px}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -4087,16 +4088,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     }).then(function () { refreshOpenMonth([e.key, m.key]); toast("<b>Counted once</b><br>Kept your bank’s exact amount, " + money.format(e.a) + ".", "logged"); renderBank(); });
   }
   /* ---------- check against my bank: why your bank balance and your Net in Actual differ, item by item ---------- */
+  var reconStart = null;   // { "2026-11": 266.14 } balances you typed in for the 1st of the month
   function reconFill() {
     var box = $("recon"); if (!box || !bankData) return;
     var accts = (bankData.accounts || []).filter(function (a) { return a.status !== "disconnected"; });
-    var cash = accts.filter(function (a) { return (a.balance || {}).kind === "cash"; }), credit = {};
+    var cash = accts.filter(function (a) { return (a.balance || {}).kind === "cash"; }), credit = {}, cashIds = {};
     accts.forEach(function (a) { if ((a.balance || {}).kind === "credit" || a.category === "credit") credit[a.id] = 1; });
-    var bal = 0, haveBal = false; cash.forEach(function (a) { var b = a.balance || {}, v = typeof b.available === "number" ? b.available : b.current; if (typeof v === "number") { bal += v; haveBal = true; } });
-    if (!haveBal) { box.innerHTML = ""; return; }
-    var n = new Date(), key = monthKeyOf(n), mon = MONTHS[n.getMonth()];
-    rcMonthState(n.getFullYear(), n.getMonth()).then(function (st) {
-      // the same numbers the Monthly table uses in its Actual view: your actual amounts, your plan's switches (like Tithe), hidden rows left out
+    cash.forEach(function (a) { cashIds[a.id] = 1; });
+    var avail = 0, cur = 0, have = false;
+    cash.forEach(function (a) { var b = a.balance || {}, c = typeof b.current === "number" ? b.current : null, v = typeof b.available === "number" ? b.available : c; if (v !== null) { avail += v; cur += c === null ? v : c; have = true; } });
+    if (!have) { box.innerHTML = ""; return; }
+    var n = new Date(), key = monthKeyOf(n), mon = MONTHS[n.getMonth()], ym = n.getFullYear() + "-" + pad(n.getMonth() + 1), st = null;
+    Promise.all([reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; }).catch(function () { reconStart = {}; }), rcMonthState(n.getFullYear(), n.getMonth())]).then(function (a2) {
+      st = a2[1];
       var o = {}, ins = [], hid = ((st.doc.__meta || {}).hidden || []).map(Number);
       Object.keys(st.doc).forEach(function (k) { if (k.indexOf("a:") !== 0 && k.indexOf("__") !== 0 && typeof st.doc[k] === "number") o[k] = st.doc[k]; });
       (function walk(x) { if (!x || typeof x !== "object") return; if (x.k === "input" && x.a) ins.push(x.a); Object.keys(x).forEach(function (k) { walk(x[k]); }); })(st.Lm.rows);
@@ -4106,22 +4110,35 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return calcMonthly(o).then(function (v) { return actualAdjust(v, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : st.doc["a:" + a] || 0; }, st.Lm, function (t) { return !!st.doc[t]; }); });
     }).then(function (v) {
       if (!v || typeof v.D35 !== "number") { box.innerHTML = ""; return; }
-      var net = v.D35, tithe = 0;   // tithe in Actual is only what you recorded, so it's in the record like any purchase
+      var net = v.D35, hid = ((st.doc.__meta || {}).hidden || []).map(Number);
       var rows = spend.filter(function (e) { return e.key === key; });
-      var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, recNet = 0;
+      var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, pendOut = 0, recBy = {};
       rows.forEach(function (e) {
         var isIn = e.kind === "in" || (e.dir === "in" && e.kind !== "ex");
-        if (e.kind === "in") recNet += e.a; else if (e.kind === "ex") recNet -= e.a;
+        if ((e.kind === "in" || e.kind === "ex") && e.cat) recBy[nk(e.cat)] = (recBy[nk(e.cat)] || 0) + e.a;
         if (e.src === "bank") {
           if (e.kind === "skip" && e.why === "canceled by the bank") return;
+          if (e.pend && !isIn && !credit[e.acct]) pendOut += e.a;
           if (credit[e.acct]) { if (e.kind === "ex") G.card.push(e); else if (e.kind === "in") G.cardIn.push(e); return; }
           if (e.kind === "skip") (isIn ? G.skipIn : G.skipOut).push(e);
           else if (e.kind === "none") (isIn ? G.waitIn : G.waitOut).push(e);
         } else if (e.kind === "ex") G.handOut.push(e); else if (e.kind === "in") G.handIn.push(e);
       });
+      // which categories hold amounts that didn't come from your bank, + Log, or a receipt
+      var typedList = [], typedSum = 0, ents = activeEntries(st.Lm, st.st), inc = {};
+      ents.income.forEach(function (e) { inc[e.row] = 1; });
+      ents.income.concat(st.cats).forEach(function (e) {
+        if (hid.indexOf(e.row) >= 0) return;
+        var act = e.addrs.reduce(function (t, ad) { return t + (typeof st.doc["a:" + ad] === "number" ? st.doc["a:" + ad] : 0); }, 0), rec = recBy[nk(e.name)] || 0, d = Math.round((act - rec) * 100) / 100;
+        if (Math.abs(d) < 0.005) return;
+        var isInc = !!inc[e.row]; typedSum += isInc ? d : -d;
+        typedList.push({ n: e.name, act: act, rec: rec, d: d, inc: isInc });
+      });
       var sum = function (L) { return L.reduce(function (t, e) { return t + e.a; }, 0); };
-      var typed = Math.round((net - (recNet - tithe)) * 100) / 100;
+      var held = Math.round((cur - avail) * 100) / 100, heldUnknown = Math.max(0, Math.round((held - pendOut) * 100) / 100);
+      var start = typeof reconStart[ym] === "number" ? reconStart[ym] : null;
       var items = [
+        [start !== null ? "Your balance on " + mon + " 1 (you entered it)" : null, start || 0, []],
         ["Money into your account that isn’t income (transfers in, refunds, Zelle)", sum(G.skipIn), G.skipIn],
         ["Money out of your account that isn’t spending (transfers, card payments, ATM)", -sum(G.skipOut), G.skipOut],
         ["Waiting for a category, so not in Actual yet (pick one below)", sum(G.waitIn) - sum(G.waitOut), G.waitIn.concat(G.waitOut)],
@@ -4129,24 +4146,36 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Refunds to a credit card", -sum(G.cardIn), G.cardIn],
         ["Spending you logged by hand or from a receipt that your bank hasn’t matched", sum(G.handOut), G.handOut],
         ["Income you logged by hand that your bank hasn’t matched", -sum(G.handIn), G.handIn],
-        ["Tithe your table works out from your pay (counted in Net even before it leaves your account)", tithe, []],
-        ["Amounts typed straight into the Actual table (not in the record)", -typed, []]
-      ].filter(function (x) { return Math.abs(x[1]) >= 0.005; });
-      var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((bal - net - explained) * 100) / 100, gap = Math.round((bal - net) * 100) / 100;
+        ["Typed straight into the Actual table, not from your bank, + Log or a receipt", -typedSum, null],
+        ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
+      ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
+      var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
       var sgn = function (x) { return (x < 0 ? "− " : "+ ") + money.format(Math.abs(x)); };
-      var names = function (L) { return L.length ? '<small>' + L.slice(0, 4).map(function (e) { return esc(e.s) + " " + money.format(e.a); }).join(" · ") + (L.length > 4 ? " · and " + (L.length - 4) + " more" : "") + "</small>" : ""; };
+      var names = function (L) { return L && L.length ? "<small>" + L.slice(0, 4).map(function (e) { return esc(e.s) + " " + money.format(e.a); }).join(" · ") + (L.length > 4 ? " · and " + (L.length - 4) + " more" : "") + "</small>" : ""; };
+      var typedHtml = "<small>" + typedList.map(function (t) { return esc(t.n) + ": " + money.format(t.act) + " in Actual, " + money.format(t.rec) + " from your bank or Log"; }).join("<br>") + "</small>";
       var dups = rows.filter(function (e) { return e.maybeDup && spendFind(e.maybeDup) && spendFind(e.maybeDup).src !== "bank"; }).length;
-      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank' + (cash.length > 1 ? " (" + cash.length + " accounts)" : "") + '</small><b>' + money.format(bal) + "</b></div><div><small>Net in Actual, " + mon + "</small><b>" + money.format(net) + "</b></div><div><small>Difference</small><b>" + (Math.abs(gap) < 0.005 ? "None" : money.format(Math.abs(gap))) + "</b></div></div>";
+      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank, available</small><b>' + money.format(avail) + "</b></div><div><small>Net in Actual, " + mon + "</small><b>" + money.format(net) + "</b></div><div><small>Difference</small><b>" + (Math.abs(gap) < 0.005 ? "None" : money.format(Math.abs(gap))) + "</b></div></div>";
       if (dups) h += '<p class="rwarn">' + dups + (dups === 1 ? " purchase might be" : " purchases might be") + " counted twice. Answer the “Same purchase?” question" + (dups === 1 ? "" : "s") + " below.</p>";
       if (Math.abs(gap) >= 0.005) {
         h += '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
-          items.map(function (x) { return '<div class="rrow"><span>' + x[0] + names(x[2]) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
-          (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>Not in ' + mon + "’s records<small>Usually money you had before " + mon + " 1, or something your bank hasn’t sent to Monerem yet.</small></span><b>" + sgn(rest) + "</b></div>" : "") +
-          '<div class="rrow tot"><span>Your bank balance</span><b>' + money.format(bal) + "</b></div></div>";
+          items.map(function (x) { return '<div class="rrow"><span>' + x[0] + (x[2] === null ? typedHtml : names(x[2])) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
+          (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
+          '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
       } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
+      h += '<form class="rstart" id="reconStartF"><label>Your balance on ' + mon + ' 1<span class="wizmoney"><i>$</i><input id="reconStartIn" inputmode="decimal" autocomplete="off" placeholder="from your statement" value="' + (start !== null ? start.toFixed(2) : "") + '"></span></label><button class="btn ghost" type="submit">Save</button>' + (start !== null ? '<button class="linkbtn" type="button" id="reconStartClear">Clear</button>' : "") + "</form>";
       box.innerHTML = h;
     }).catch(function () { box.innerHTML = ""; });
   }
+  $("bankView").addEventListener("submit", function (e) {
+    if (e.target.id !== "reconStartF") return; e.preventDefault();
+    var raw = String($("reconStartIn").value).replace(/[$,\s]/g, ""), v = parseFloat(raw), n = new Date(), ym = n.getFullYear() + "-" + pad(n.getMonth() + 1);
+    if (raw === "" || isNaN(v)) return;
+    reconStart[ym] = Math.round(v * 100) / 100; doSave("recon", { __start: reconStart }); reconFill();
+  });
+  $("bankView").addEventListener("click", function (e) {
+    if (e.target.id !== "reconStartClear") return;
+    var n = new Date(); delete reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)]; doSave("recon", { __start: reconStart }); reconFill();
+  });
   $("bankView").addEventListener("click", function (e) {
     var dy = e.target.closest && e.target.closest("[data-dupyes],[data-dupno]"); if (!dy) return;
     dy.disabled = true; dupResolve(dy.getAttribute("data-dupyes") || dy.getAttribute("data-dupno"), !!dy.getAttribute("data-dupyes"));
