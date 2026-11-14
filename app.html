@@ -899,6 +899,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .rstart{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;margin-top:12px}.rstart label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}.rstart .wizmoney{height:40px;max-width:200px}.rstart .btn{margin:0;height:40px}
 .actrecon{margin-top:14px}.actrecon h2{margin:0 0 4px}.rok{margin:10px 0 0;color:#15803D;font-weight:700}
 .actrecon[hidden]{display:none}
+#planTip .typedln{display:flex;justify-content:space-between;gap:10px;margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);color:#B45309;font-weight:600}
+.dupask.unm{background:#F1F5FD;border-color:var(--line);color:var(--muted)}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1094,6 +1096,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .dupask{background:#2A1C10;color:#FDBA74}
 :root[data-theme="dark"] .recon{background:#16213A}
 :root[data-theme="dark"] .rok{color:#4ADE80}
+:root[data-theme="dark"] .dupask.unm{background:#16213A}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1289,6 +1292,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .dupask{background:#2A1C10;color:#FDBA74}
 :root:not([data-theme="light"]) .recon{background:#16213A}
 :root:not([data-theme="light"]) .rok{color:#4ADE80}
+:root:not([data-theme="light"]) .dupask.unm{background:#16213A}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1887,6 +1891,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return '<div class="tipused ' + (lv ? lv.k : "") + '"><span>Spent so far</span><b>' + money.format(b.act) + "</b></div>" +
       (b.plan > 0 ? '<p class="tipnote ' + (lv ? lv.k : "") + '">' + (left >= 0 ? money.format(left) + " left (" + Math.round(b.act / b.plan * 100) + "% used)" : money.format(-left) + " over your plan") + "</p>" : "");
   }
+  // every dollar in a category's Actual: from the record (bank, + Log, receipts) and anything typed straight in
+  function whereFrom(tr, name) {
+    var act = 0; Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) { boxAddrs(el).forEach(function (a) { act += +actual[a] || 0; }); });
+    var L = spend.filter(function (e) { return e.key === storageKey() && (e.kind === "ex" || e.kind === "in") && nk(e.cat) === nk(name); }), rec = L.reduce(function (t, e) { return t + e.a; }, 0);
+    var typed = Math.round((act - rec) * 100) / 100; if (!(act > 0) && !L.length) return "";
+    var src = function (e) { return e.was ? "logged, matched to bank" : e.src === "bank" ? "bank" + (e.pend ? ", pending" : "") : e.src === "receipt" ? "receipt" : "logged by you"; };
+    return '<h4 class="tipspent">Where the ' + money.format(act) + " came from</h4>" +
+      L.slice(0, 6).map(function (e) { return "<div><span>" + esc(e.s.length > 20 ? e.s.slice(0, 19) + "…" : e.s) + " · " + dayLbl(e.d) + " · " + src(e) + "</span><b>" + money.format(e.a) + "</b></div>"; }).join("") +
+      (L.length > 6 ? '<p class="sub" style="margin:4px 0 0">+ ' + (L.length - 6) + " more in Bank → Spending record.</p>" : "") +
+      (Math.abs(typed) >= 0.005 ? '<div class="typedln"><span>Typed straight into this box' + (typed < 0 ? " (less than the record)" : "") + "</span><b>" + money.format(typed) + "</b></div>" : "");
+  }
   function spentHtml(name) {
     var L = spendFor(storageKey(), name, false); if (!L.length) L = spendFor(storageKey(), name, true); if (!L.length) return "";
     var sum = L.reduce(function (t, e) { return t + e.a; }, 0);
@@ -1907,7 +1922,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     });
     var nm = tr.querySelector("input.nm"), name = nm ? nm.value : "";
     $("planTip").innerHTML = '<h4>Plan for ' + esc(name) + "</h4>" + lines + (lines ? '<div class="tot"><span>Total plan</span>' : '<div class="tot" style="border-top:0;margin-top:0;padding-top:0"><span>Planned this month</span>') + "<b>" + money.format(tot) + "</b></div>" +
-      usedHtml(tr) + (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>') + spentHtml(name);
+      usedHtml(tr) + whereFrom(tr, name) + (tot ? '<button type="button" id="tipFill">No change? Use the plan amounts</button>' : '<p class="sub" style="margin:6px 0 0">Nothing planned for this one.</p>');
     var r = (tr.querySelector("td.lab") || tr).getBoundingClientRect(), tip = $("planTip");
     tip.hidden = false;
     // Put it in the empty space to the right of the budget, level with the row, so it never covers a category.
@@ -3814,6 +3829,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   // a hand-logged entry this bank transaction could be. exact = same amount to the cent (merged automatically)
   function handMatch(t, d) {
     var amt = Math.round(Math.abs(t.amount) * 100) / 100, dir = t.amount > 0 ? "in" : "out", best = null;
+    if (NOT_SPENDING.test(t.description || "") || (dir === "in" && !PAYCHECK.test(t.description || ""))) return null;   // a transfer is never the purchase you logged
     spend.forEach(function (e) {
       if ((e.src !== "manual" && e.src !== "receipt") || e.kind === "skip" || e.kind === "none" || (e.dir || "out") !== dir || (e.notDup || []).indexOf(t.id) >= 0) return;
       var ed = parseD(e.d); if (!ed) return;
@@ -4071,6 +4087,20 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* the record on the Bank tab */
   var spendMonth = null;
   // a bank transaction close to something you logged by hand: ask once instead of guessing
+  function unmatchHtml(e) {
+    if (!e.was || !e.mid) return "";
+    return '<div class="dupask unm"><span>Matched to your ' + (e.was === "receipt" ? "receipt" : "logged") + " " + esc(e.s) + " because the amounts are the same.</span>" +
+      '<span class="dupbtns"><button type="button" class="btn ghost" data-unmatch="' + esc(e.id) + '">Not the same, separate them</button></span></div>';
+  }
+  function unmatch(id) {
+    var e = spendFind(id); if (!e || !e.was || !e.mid) return Promise.resolve();
+    var raw = e.raw || e.s, bank = { id: e.id, d: e.d, s: cleanStore(raw).slice(0, 60), raw: raw, dir: e.dir || "out", a: e.a, key: e.key, col: e.col, src: "bank", acct: e.acct || "", pend: e.pend, auto: true,
+      kind: NOT_SPENDING.test(raw) ? "skip" : "none", cat: "" };
+    // your logged entry goes back to being yours (still counted); the bank's entry is separate and not counted until you place it
+    e.id = e.mid; e.src = e.was; delete e.mid; delete e.was; delete e.raw; delete e.pend; delete e.acct; e.notDup = (e.notDup || []).concat(bank.id);
+    spend.push(bank);
+    return spendSave().then(function () { toast("<b>Separated</b><br>Your " + esc(e.s) + " entry stays counted. The bank transaction is listed on its own" + (bank.kind === "skip" ? ", not counted (it’s a transfer)." : ", waiting for a category."), "logged"); renderBank(); });
+  }
   function dupAsk(e) {
     var m = e.maybeDup && spendFind(e.maybeDup); if (!m || m.src === "bank") return "";
     return '<div class="dupask"><span>Same purchase as <b>' + esc(m.s) + "</b> (" + money.format(m.a) + ") you " + (m.src === "receipt" ? "added from a receipt" : "logged") + " on " + dayLbl(m.d) + "? " + (e.kind === "none" ? "If yes, it’s counted once, at your bank’s exact amount." : "Right now both are counted.") + "</span>" +
@@ -4248,6 +4278,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var n = new Date(); delete reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)]; doSave("recon", { __start: reconStart }); reconFill();
   });
   $("bankView").addEventListener("click", function (e) {
+    var um = e.target.closest && e.target.closest("[data-unmatch]"); if (um) { um.disabled = true; unmatch(um.getAttribute("data-unmatch")); return; }
     var dy = e.target.closest && e.target.closest("[data-dupyes],[data-dupno]"); if (!dy) return;
     dy.disabled = true; dupResolve(dy.getAttribute("data-dupyes") || dy.getAttribute("data-dupno"), !!dy.getAttribute("data-dupyes"));
   });
@@ -4272,7 +4303,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
         '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : " · not counted in your budget") : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" || e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
-        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e);
+        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
     var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
       '<p class="sub">New transactions go into your budget’s <b>Actual</b> numbers automatically. Here’s what each one was and where it went. Change a category any time and the budget moves with it.</p>';
