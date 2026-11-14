@@ -897,6 +897,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 @media (max-width:700px){.rtop b{font-size:17px}}
 #sheet .autocell{display:none}#sheet.actualview .autocell{display:table-cell}#sheet.actualview .autocalc{display:none}
 .rstart{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;margin-top:12px}.rstart label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}.rstart .wizmoney{height:40px;max-width:200px}.rstart .btn{margin:0;height:40px}
+.actrecon{margin-top:14px}.actrecon h2{margin:0 0 4px}.rok{margin:10px 0 0;color:#15803D;font-weight:700}
+.actrecon[hidden]{display:none}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1091,6 +1093,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .viewfloat{background:#121B2E}
 :root[data-theme="dark"] .dupask{background:#2A1C10;color:#FDBA74}
 :root[data-theme="dark"] .recon{background:#16213A}
+:root[data-theme="dark"] .rok{color:#4ADE80}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1285,6 +1288,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .viewfloat{background:#121B2E}
 :root:not([data-theme="light"]) .dupask{background:#2A1C10;color:#FDBA74}
 :root:not([data-theme="light"]) .recon{background:#16213A}
+:root:not([data-theme="light"]) .rok{color:#4ADE80}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -2465,7 +2469,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       .then(function (d) {
         if (mine !== seq) return;
         if (view === "actual" && layout.months) { var hid = meta.hidden || []; actualAdjust(d.values, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : actual[a] || 0; }, layout, function (t) { return !!inputs[t]; }); }
-        paint(d.values); paintWarn(); setStatus("Up to date");
+        paint(d.values); paintWarn(); setStatus("Up to date"); setTimeout(drawActRecon, 0);
       })
       .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate (" + (String(err.message).indexOf("fail") === 0 ? "error " + err.message.slice(4) : "can’t reach the server") + "). Try again in a moment.", true); });
   }
@@ -4089,17 +4093,18 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   /* ---------- check against my bank: why your bank balance and your Net in Actual differ, item by item ---------- */
   var reconStart = null;   // { "2026-11": 266.14 } balances you typed in for the 1st of the month
-  function reconFill() {
-    var box = $("recon"); if (!box || !bankData) return;
+  // the numbers behind "Check against my bank" and the reconciliation in Actual
+  function reconCalc() {
+    if (!bankData) return Promise.resolve(null);
     var accts = (bankData.accounts || []).filter(function (a) { return a.status !== "disconnected"; });
     var cash = accts.filter(function (a) { return (a.balance || {}).kind === "cash"; }), credit = {}, cashIds = {};
     accts.forEach(function (a) { if ((a.balance || {}).kind === "credit" || a.category === "credit") credit[a.id] = 1; });
     cash.forEach(function (a) { cashIds[a.id] = 1; });
     var avail = 0, cur = 0, have = false;
     cash.forEach(function (a) { var b = a.balance || {}, c = typeof b.current === "number" ? b.current : null, v = typeof b.available === "number" ? b.available : c; if (v !== null) { avail += v; cur += c === null ? v : c; have = true; } });
-    if (!have) { box.innerHTML = ""; return; }
+    if (!have) return Promise.resolve(null);
     var n = new Date(), key = monthKeyOf(n), mon = MONTHS[n.getMonth()], ym = n.getFullYear() + "-" + pad(n.getMonth() + 1), st = null;
-    Promise.all([reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; }).catch(function () { reconStart = {}; }), rcMonthState(n.getFullYear(), n.getMonth())]).then(function (a2) {
+    return Promise.all([reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; }).catch(function () { reconStart = {}; }), rcMonthState(n.getFullYear(), n.getMonth())]).then(function (a2) {
       st = a2[1];
       var o = {}, ins = [], hid = ((st.doc.__meta || {}).hidden || []).map(Number);
       Object.keys(st.doc).forEach(function (k) { if (k.indexOf("a:") !== 0 && k.indexOf("__") !== 0 && typeof st.doc[k] === "number") o[k] = st.doc[k]; });
@@ -4109,7 +4114,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       autoRows(st.Lm).forEach(function (r) { o[r.toggle] = 0; });
       return calcMonthly(o).then(function (v) { return actualAdjust(v, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : st.doc["a:" + a] || 0; }, st.Lm, function (t) { return !!st.doc[t]; }); });
     }).then(function (v) {
-      if (!v || typeof v.D35 !== "number") { box.innerHTML = ""; return; }
+      if (!v || typeof v.D35 !== "number") return null;
       var net = v.D35, hid = ((st.doc.__meta || {}).hidden || []).map(Number);
       var rows = spend.filter(function (e) { return e.key === key; });
       var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, pendOut = 0, recBy = {};
@@ -4150,6 +4155,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
+      return { avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+    });
+  }
+  function reconFill() {
+    var box = $("recon"); if (!box) return;
+    reconCalc().then(function (R) {
+      if (!R) { box.innerHTML = ""; return; }
+      var avail = R.avail, net = R.net, items = R.items, rest = R.rest, gap = R.gap, typedList = R.typedList, rows = R.rows, mon = R.mon, start = R.start;
       var sgn = function (x) { return (x < 0 ? "− " : "+ ") + money.format(Math.abs(x)); };
       var names = function (L) { return L && L.length ? "<small>" + L.slice(0, 4).map(function (e) { return esc(e.s) + " " + money.format(e.a); }).join(" · ") + (L.length > 4 ? " · and " + (L.length - 4) + " more" : "") + "</small>" : ""; };
       var typedHtml = "<small>" + typedList.map(function (t) { return esc(t.n) + ": " + money.format(t.act) + " in Actual, " + money.format(t.rec) + " from your bank or Log"; }).join("<br>") + "</small>";
@@ -4166,6 +4179,45 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       box.innerHTML = h;
     }).catch(function () { box.innerHTML = ""; });
   }
+  /* ---------- Actual: reconcile with your bank. Each step is real, and the result is what's in your account ---------- */
+  function drawActRecon() {
+    var box = $("actRecon");
+    var n = new Date(), here = layout && layout.months && view === "actual" && storageKey() === monthKeyOf(n);
+    if (!here || !bankData || !(bankData.accounts || []).length) { if (box) box.hidden = true; return; }
+    if (!box) { box = document.createElement("div"); box.id = "actRecon"; box.className = "panel actrecon"; }
+    var sp = $("split"); if (sp && sp.nextSibling !== box) sp.parentNode.insertBefore(box, sp.nextSibling);
+    box.hidden = false; box.innerHTML = '<p class="sub">Checking against your bank…</p>';
+    Promise.all([spendLoad(), reconCalc()]).then(function (a) {
+      var R = a[1]; if (!R) { box.hidden = true; return; }
+      var row = function (lab, v, cls, sub) { return '<div class="rrow' + (cls ? " " + cls : "") + '"><span>' + lab + (sub ? "<small>" + sub + "</small>" : "") + "</span><b>" + v + "</b></div>"; };
+      var sgn = function (x) { return (x < 0 ? "− " : "+ ") + money.format(Math.abs(x)); };
+      var h = '<h2>Your money, reconciled with your bank</h2><p class="sub">Net Income is what came in minus what went out this month. Here’s how it adds up to what’s in your account right now.</p><div class="rlist">';
+      if (R.start === null) h += row("Your balance on " + R.mon + " 1", "?", "", "Not entered yet. Add it below so every dollar is accounted for.");
+      h += R.items.map(function (x) {
+        var lab = x[0].indexOf("Your balance on") === 0 ? "Carried in on " + R.mon + " 1" : x[0];
+        return x[0].indexOf("Your balance on") === 0 ? row(lab, money.format(x[1])) : "";
+      }).join("");
+      h += row("Net Income this month (Actual)", sgn(R.net));
+      h += R.items.filter(function (x) { return x[0].indexOf("Your balance on") !== 0; }).map(function (x) {
+        var sub = x[2] === null ? R.typedList.map(function (t) { return esc(t.n) + " " + money.format(t.act); }).join(" · ") : (x[2] || []).slice(0, 3).map(function (e) { return esc(e.s) + " " + money.format(e.a); }).join(" · ");
+        return row(x[0], sgn(x[1]), "", sub);
+      }).join("");
+      var expect = Math.round((R.avail - R.rest) * 100) / 100;
+      h += row("Should be in your bank", R.start === null ? "—" : money.format(expect), "tot") + row("Your bank says (available)", money.format(R.avail), "tot");
+      h += "</div>";
+      if (Math.abs(R.rest) < 0.005 && R.start !== null) h += '<p class="rok">&#10003; Matches your bank to the cent.</p>';
+      else if (R.start === null) h += '<form class="rstart" id="actStartF"><label>Your balance on ' + R.mon + ' 1<span class="wizmoney"><i>$</i><input id="actStartIn" inputmode="decimal" autocomplete="off" placeholder="from your statement"></span></label><button class="btn" type="submit">Save</button></form>';
+      else h += '<p class="rwarn">Off by ' + money.format(Math.abs(R.rest)) + '. Usually a charge your bank hasn’t sent yet, something counted twice, or a typo. Open <b>Bank</b> → <b>Check against my bank</b> to find it.</p>';
+      box.innerHTML = h;
+    }).catch(function () { box.hidden = true; });
+  }
+  document.addEventListener("submit", function (e) {
+    if (e.target.id !== "actStartF") return; e.preventDefault();
+    var raw = String($("actStartIn").value).replace(/[$,\s]/g, ""), v = parseFloat(raw), n = new Date(); if (raw === "" || isNaN(v)) return;
+    (reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; }).catch(function () { reconStart = {}; })).then(function () {
+      reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)] = Math.round(v * 100) / 100; doSave("recon", { __start: reconStart }); drawActRecon();
+    });
+  });
   $("bankView").addEventListener("submit", function (e) {
     if (e.target.id !== "reconStartF") return; e.preventDefault();
     var raw = String($("reconStartIn").value).replace(/[$,\s]/g, ""), v = parseFloat(raw), n = new Date(), ym = n.getFullYear() + "-" + pad(n.getMonth() + 1);
