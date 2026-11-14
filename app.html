@@ -3567,13 +3567,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[2]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
-      return autoImport(bankData.review).then(function (r) { if (r && r.added) spendMsg = "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers."; }).catch(function () {});
+      return autoImport(bankData.review, true).then(function (r) { if (r && r.added) spendMsg = "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers."; }).catch(function () {});
     }).then(function () {
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
       clearTimeout(bankPoll);
       if (bankData && bankData.refreshing) { var tries = 0; (function again() { bankPoll = setTimeout(function () { if ($("bankView").hidden) return; var sig = function (x) { return JSON.stringify([(x.review || []).map(function (t) { return t.id + t.status; }), (x.accounts || []).map(function (a) { return a.balance_at + (a.balance && a.balance.current); })]); }, before = sig(bankData);
-            bankCall("sync").then(function (d) { var changed = sig(d) !== before; bankData = d; if (changed) { syncCardsToDebt(d.accounts); autoImport(d.review).catch(function () {}).then(renderBank); } else if (!d.refreshing) renderBank(); if (d.refreshing && ++tries < 9) again(); }).catch(function () {}); }, 6000); })(); }
+            bankCall("sync").then(function (d) { var changed = sig(d) !== before; bankData = d; if (changed) { syncCardsToDebt(d.accounts); autoImport(d.review, true).catch(function () {}).then(renderBank); } else if (!d.refreshing) renderBank(); if (d.refreshing && ++tries < 9) again(); }).catch(function () {}); }, 6000); })(); }
     }).catch(function (e) {
       $("bankView").innerHTML = '<h1>Bank accounts</h1><div class="panel"><p>' + (e.status === 404 ? "Bank linking isn’t set up yet. Deploy the <b>bank</b> function in Supabase to turn it on." : "Couldn’t load your bank accounts (" + esc(e.message) + "). Try again in a moment.") + "</p></div>";
     });
@@ -3619,7 +3619,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var P = R.filter(function (t) { return t.status === "pending"; });
       if (bankData.loading) h += '<p class="bmsg">Your bank is still sending transactions. This can take a minute after you link. Tap <b>Refresh</b> shortly.</p>';
       h += spendPanel(C);
-      if (P.length) h += '<div class="panel"><h2>Pending (' + P.length + ')</h2><p class="sub">These are added automatically once they finish posting.</p>' + P.map(function (t) { return '<div class="srow off"><span class="sd">' + txDay(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span><span class="ss"><b>' + esc(t.description || "Transaction") + '</b><small>pending</small></span><span class="sa">' + (t.amount > 0 ? "+" : "") + money.format(Math.abs(t.amount)) + '</span><span class="sc"></span></div>'; }).join("") + "</div>";
+      if (P.length) h += '<div class="panel"><h2>Pending (' + P.length + ')</h2><p class="sub">Already counted in your Actual numbers. If the amount changes when it posts (like a tip or a gas hold), Monerem updates it. If the bank cancels it, it’s taken back out.</p>' + P.map(function (t) { return '<div class="srow"><span class="sd">' + txDay(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span><span class="ss"><b>' + esc(t.description || "Transaction") + '</b><small>pending</small></span><span class="sa">' + (t.amount > 0 ? "+" : "") + money.format(Math.abs(t.amount)) + '</span><span class="sc"></span></div>'; }).join("") + "</div>";
       h += rulesPanel();
       v.innerHTML = h;
     });
@@ -3754,12 +3754,52 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (!tool || tool.id !== "monthly-budget" || !layout || !layout.months || pendingSave) return;
     if (keys.indexOf(storageKey()) >= 0) openTool();
   }
+  /* a pending purchase was counted right away; now it posted (maybe for a different amount) or the bank dropped it */
+  function settlePending(list, full) {
+    var byId = {}, out = { posted: [], voided: [], touched: [] }; (list || []).forEach(function (t) { if (t && t.id) byId[t.id] = t; });
+    var months = {}, now = Date.now();
+    spend.forEach(function (e) {
+      if (!e.pend || e.src !== "bank") return;
+      var t = byId[e.id], act = null;
+      if (t) {
+        if (t.status === "void") act = { v: true };
+        else if (typeof t.amount === "number") { var na = Math.round(Math.abs(t.amount) * 100) / 100; if (Math.abs(na - e.a) > 0.004 || t.status !== "pending") act = { na: na, post: t.status !== "pending" }; }
+      } else if (full && now - (parseD(e.d) || new Date()).getTime() > 3 * 864e5) act = { v: true };   // gone from the bank's list: the hold was dropped
+      if (act) (months[e.key] = months[e.key] || []).push({ e: e, act: act });
+    });
+    var keys = Object.keys(months); if (!keys.length) return Promise.resolve(out);
+    var chain = Promise.resolve();
+    keys.forEach(function (k) {
+      chain = chain.then(function () {
+        var m = /(\d{4})-(\d{2})$/.exec(k); if (!m) return;
+        return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+          var inc = activeEntries(s.Lm, s.st).income, changed = false;
+          var apply = function (e, amt, sign) {
+            if (!(amt > 0)) return;
+            if (e.kind === "ex") { if (rcApply(s, e.cat, e.col || 0, amt, sign) !== null) changed = true; }
+            else if (e.kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (c) { var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + sign * amt) * 100) / 100; changed = true; } }
+          };
+          months[k].forEach(function (x) {
+            var e = x.e, act = x.act;
+            if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = "canceled by the bank"; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
+            if (act.v) { apply(e, e.a, -1); e.pend = false; e.kind = "skip"; e.cat = ""; e.why = "canceled by the bank"; out.voided.push(e.id); return; }
+            var d = Math.round((act.na - e.a) * 100) / 100; if (d) apply(e, Math.abs(d), d > 0 ? 1 : -1);
+            e.a = act.na; if (act.post) { e.pend = false; out.posted.push(e.id); }
+          });
+          if (changed) { out.touched.push(k); delete s.doc.__filled; return doSave(s.key, s.doc); }
+        });
+      });
+    });
+    return chain.then(function () { return out; });
+  }
   /* add new bank transactions to Actual without asking */
-  function autoImport(list) {
+  function autoImport(list, full) {
     if (autoBusy) return autoBusy;
-    var fresh = (list || []).filter(function (t) { return t && t.id && t.status !== "pending" && typeof t.amount === "number"; });
-    if (!fresh.length) return Promise.resolve(null);
-    autoBusy = Promise.all([spendLoad(), rcLoad()]).then(function () {
+    var settled = { posted: [], voided: [], touched: [] };
+    // pending purchases count right away; when they post (or the bank drops them) settlePending fixes the amount
+    var fresh = (list || []).filter(function (t) { return t && t.id && t.status !== "void" && typeof t.amount === "number"; });
+    autoBusy = Promise.all([spendLoad(), rcLoad()]).then(function () { return settlePending(list, full); }).then(function (S) {
+      settled = S;
       fresh = fresh.filter(function (t) { var e = spendFind(t.id); return !e || e.kind === "none"; });
       var months = {};
       fresh.forEach(function (t) { var k = monthKeyOf(txDay(t)); (months[k] = months[k] || []).push(t); });
@@ -3770,7 +3810,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
             var inc = activeEntries(s.Lm, s.st).income, changed = false;
             months[k].forEach(function (t) {
-              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
+              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), pend: t.status === "pending" || undefined, dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
               if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
               if (g === "" || g.indexOf("ex:") === 0) {
                 var pl = bankPlace(t, s);
@@ -3788,13 +3828,16 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       });
       return chain.then(function () {
         var jobs = [spendSave()];
-        if (added.length) jobs.push(bankCall("mark", { ids: added, state: "imported" }).catch(function () {}));
+        // pending ones stay on the bank's list so we see them post; posted ones are done
+        var done = added.filter(function (id) { var e = spendFind(id); return !(e && e.pend); }).concat(settled.posted);
+        if (done.length) jobs.push(bankCall("mark", { ids: done, state: "imported" }).catch(function () {}));
+        skipped = skipped.concat(settled.voided);
         if (skipped.length) jobs.push(bankCall("mark", { ids: skipped, state: "skipped" }).catch(function () {}));
         return Promise.all(jobs);
       }).then(function () {
         if (bankData && bankData.review) bankData.review = bankData.review.filter(function (t) { return added.indexOf(t.id) < 0 && skipped.indexOf(t.id) < 0; });
-        refreshOpenMonth(touched);
-        if (added.length) budgetAlert();
+        refreshOpenMonth(touched.concat(settled.touched));
+        if (added.length || settled.touched.length) { budgetAlert(); if (tool && tool.type === "home") openTool(); }
         return { added: added.length, skipped: skipped.length, waiting: waiting };
       });
     }).then(function (r) { autoBusy = null; return r; }, function (e) { autoBusy = null; throw e; });
@@ -3878,10 +3921,29 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   });
   $("logDlg").addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "logAmt") { e.preventDefault(); var c = $("logDlg").querySelector("[data-cat]"); if (c && !c.disabled) c.focus(); } });
   // after you log in: quietly pull in anything new from linked banks
-  function quietBankImport() {
-    if (!session || CFG.devMode) return;
-    bankCall("list").then(function (d) { if (d && (d.accounts || []).length) { bankData = d; return autoImport(d.review); } }).catch(function () {});
+  // ask the bank for anything new as soon as you open Monerem or come back to it, and every few minutes while it's open
+  var quietAt = 0, quietBusy = false;
+  function quietBankImport(force) {
+    if (!session || CFG.devMode || quietBusy) return;
+    if (!force && Date.now() - quietAt < 90 * 1000) return;
+    quietBusy = true; quietAt = Date.now();
+    var tries = 0, last = "";
+    var sig = function (d) { return JSON.stringify((d.review || []).map(function (t) { return t.id + t.status + t.amount; })); };
+    var pull = function (action) {
+      return bankCall(action).then(function (d) {
+        if (!d || !(d.accounts || []).length) { quietBusy = false; return; }
+        bankData = d; var sg = sig(d), go = sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve(); last = sg;
+        return go.then(function () {
+          if (d.refreshing && ++tries < 10) setTimeout(function () { pull("sync"); }, 6000);   // the bank is still sending; check again shortly
+          else quietBusy = false;
+        });
+      }).catch(function () { quietBusy = false; });
+    };
+    pull("sync");
   }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) quietBankImport(); });
+  window.addEventListener("focus", function () { quietBankImport(); });
+  setInterval(function () { if (!document.hidden) quietBankImport(); }, 5 * 60 * 1000);
   /* move a recorded transaction to another category (or out of the budget), and remember it for that store */
   function spendRecat(id, pick) {
     var e = spendFind(id); if (!e) return Promise.resolve();
@@ -3925,7 +3987,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : "Bank") + (e.kind === "skip" ? " · not counted in your budget" : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : " · not counted in your budget") : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" || e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>";
     };
