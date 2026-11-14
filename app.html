@@ -895,6 +895,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .rrow.rest span{color:var(--muted)}.rrow.tot{border-bottom:0;font-weight:700}
 .rwarn{margin:10px 0 0;color:#B45309;font-weight:600;font-size:14px}
 @media (max-width:700px){.rtop b{font-size:17px}}
+#sheet .autocell{display:none}#sheet.actualview .autocell{display:table-cell}#sheet.actualview .autocalc{display:none}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1576,6 +1577,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         if (cell.k === "input") {
           inputs[cell.a] = cell.v;
           h += '<td><input class="in" type="text" inputmode="decimal" autocomplete="off" data-a="' + cell.a + '" aria-label="' + esc(label + " " + c) + '" placeholder="$0.00"></td>';
+        } else if (cell.k === "calc" && layout.months && (c === "B" || c === "C" || (fullPay && c === "D")) && autoRows(layout).some(function (r) { return r.row === rowNo; })) {
+          // Plan: worked out for you. Actual: what you really paid, typed or logged
+          var inBox = fullPay ? '<input class="in fullin autoin" type="text" inputmode="decimal" autocomplete="off" data-fb="' + cells.B.a + '" data-fc="' + cells.C.a + '" aria-label="' + esc(label + " paid this month") + '" placeholder="$0.00">'
+            : '<input class="in autoin" type="text" inputmode="decimal" autocomplete="off" data-a="' + cell.a + '" aria-label="' + esc(label + " paid " + c) + '" placeholder="$0.00">';
+          h += '<td class="num calc autocalc" data-c="' + cell.a + '" data-col="' + c + '" data-row="' + rowNo + '">…</td><td class="autocell">' + inBox + "</td>";
         } else if (cell.k === "calc") {
           h += '<td class="num calc" data-c="' + cell.a + '" data-col="' + c + '" data-row="' + rowNo + '">…</td>';
         } else if (cell.k === "static") {
@@ -1883,7 +1889,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       (L.length > 5 ? '<p class="sub" style="margin:4px 0 0">+ ' + (L.length - 5) + " more · " + money.format(sum) + " total. See them all in Bank.</p>" : "");
   }
   function showTip(tr) {
-    if (view !== "actual" || !tr || tr.hidden || !tr.querySelector("input.in") || tr.closest("thead")) return;
+    if (view !== "actual" || !tr || tr.hidden || !tr.querySelector("input.in") || tr.closest("thead") || tr.querySelector(".autoin")) return;
     keepTip(); if (tipRow === tr && !$("planTip").hidden) return; tipRow = tr;
     var table = tr.closest("table"), heads = table ? table.querySelectorAll("thead th") : [], tot = 0, lines = "";
     Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) {
@@ -2423,11 +2429,27 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var out = []; customBlocks().forEach(function (b) { b.slots.forEach(function (sl) { if (sl.row === rn) out = inAddrs(sl.cells); }); });
     return out;
   }
+  /* Rows the plan works out by itself (like Tithe, a share of your pay). In Actual they're never assumed paid:
+     they count only what you record, by typing it here, logging it, or from your bank. */
+  function autoRows(L) { return ((L && L.rows) || []).filter(function (r) { return r.type === "data" && r.toggle && r.cells && Object.keys(r.cells).every(function (c) { return r.cells[c].k === "calc"; }); }); }
+  function actualAdjust(values, getA, L, togOn) {
+    if (!values || !L || !L.months || !L.rules) return values;
+    var ex = L.rows.filter(function (r) { return r.label === L.rules.expenseTotalLabel; })[0], ne = L.rows.filter(function (r) { return r.label === L.rules.netIncomeLabel; })[0];
+    var add = function (row, c, v) { if (row && row.cells[c]) values[row.cells[c].a] = Math.round(((values[row.cells[c].a] || 0) + v) * 100) / 100; };
+    autoRows(L).forEach(function (r) {
+      if (!togOn(r.toggle)) return;
+      var tot = 0;
+      ["B", "C"].forEach(function (c) { var cell = r.cells[c]; if (!cell) return; var p = +getA(cell.a) || 0; values[cell.a] = p; tot += p; add(ex, c, p); add(ne, c, -p); });
+      if (r.cells.D) values[r.cells.D.a] = tot; add(ex, "D", tot); add(ne, "D", -tot);
+    });
+    return values;
+  }
   function calcInputs() {
     var o = Object.assign({}, inputs);
     if (view === "actual") Array.prototype.forEach.call(document.querySelectorAll("input.in"), function (el) { boxAddrs(el).forEach(function (a) { o[a] = actual[a] || 0; }); });
     // hidden rows are left out of every total until they're shown again (their amounts stay saved)
     (meta.hidden || []).forEach(function (rn) { rowAddrsAll(rn).forEach(function (a) { o[a] = 0; }); });
+    if (view === "actual" && layout.months) autoRows(layout).forEach(function (r) { o[r.toggle] = 0; });   // not worked out for you in Actual: added back from what you paid
     return o;
   }
   function run() {
@@ -2439,7 +2461,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         if (!res.ok) return res.text().then(function (t) { var c = ""; try { c = JSON.parse(t).error || ""; } catch (x) {} throw new Error("fail" + res.status + (c ? " " + c : "")); });
         return res.json();
       })
-      .then(function (d) { if (mine === seq) { paint(d.values); paintWarn(); setStatus("Up to date"); } })
+      .then(function (d) {
+        if (mine !== seq) return;
+        if (view === "actual" && layout.months) { var hid = meta.hidden || []; actualAdjust(d.values, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : actual[a] || 0; }, layout, function (t) { return !!inputs[t]; }); }
+        paint(d.values); paintWarn(); setStatus("Up to date");
+      })
       .catch(function (err) { if (err.name === "AbortError" || err.message === "stop") return; setStatus("Couldn’t calculate (" + (String(err.message).indexOf("fail") === 0 ? "error " + err.message.slice(4) : "can’t reach the server") + "). Try again in a moment.", true); });
   }
   // On a computer, use the largest number size that still shows every digit without sideways scrolling.
@@ -2561,6 +2587,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var WARN_AT = 0.8;
   function rowBudget(tr) {
     var plan = 0, act = 0;
+    if (tr.querySelector(".autoin")) return { plan: 0, act: 0 };   // Tithe and the like: no over/under warning
     Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) { boxAddrs(el).forEach(function (a) { plan += +inputs[a] || 0; act += +actual[a] || 0; }); });
     return { plan: Math.round(plan * 100) / 100, act: Math.round(act * 100) / 100 };
   }
@@ -3009,7 +3036,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return monthlyDefaults(Lm, mi).then(function (dd) { return { key: key, Lm: Lm, doc: Object.assign({}, dd.toggles, dd.inputs, { __meta: dd.meta, __filled: true }) }; });
     }).then(function (s) {
       var dm = s.doc.__meta || {}; s.st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] };
-      s.cats = activeEntries(s.Lm, s.st).expense; return s;
+      s.cats = activeEntries(s.Lm, s.st).expense;
+      var rm = (s.st.removed || []).map(Number), lab = s.st.labels || {};
+      autoRows(s.Lm).forEach(function (r) { if (s.doc[r.toggle] && rm.indexOf(r.row) < 0) s.cats.push({ row: r.row, def: r, name: lab[r.row] || r.label, addrs: [r.cells.B.a, r.cells.C.a], auto: true }); });
+      return s;
     });
   }
   function rcApply(s, cat, col, amt, sign) {
@@ -4072,10 +4102,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       (function walk(x) { if (!x || typeof x !== "object") return; if (x.k === "input" && x.a) ins.push(x.a); Object.keys(x).forEach(function (k) { walk(x[k]); }); })(st.Lm.rows);
       ins.forEach(function (a) { o[a] = typeof st.doc["a:" + a] === "number" ? st.doc["a:" + a] : 0; });
       Object.keys(o).forEach(function (a) { if (hid.indexOf(+String(a).replace(/^[A-Z]+/, "")) >= 0) o[a] = 0; });
-      return calcMonthly(o);
+      autoRows(st.Lm).forEach(function (r) { o[r.toggle] = 0; });
+      return calcMonthly(o).then(function (v) { return actualAdjust(v, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : st.doc["a:" + a] || 0; }, st.Lm, function (t) { return !!st.doc[t]; }); });
     }).then(function (v) {
       if (!v || typeof v.D35 !== "number") { box.innerHTML = ""; return; }
-      var net = v.D35, tithe = typeof v.D30 === "number" ? v.D30 : 0;
+      var net = v.D35, tithe = 0;   // tithe in Actual is only what you recorded, so it's in the record like any purchase
       var rows = spend.filter(function (e) { return e.key === key; });
       var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, recNet = 0;
       rows.forEach(function (e) {
@@ -5957,7 +5988,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var hasAct = srcDoc && Object.keys(srcDoc).some(function (k) { return k.slice(0, 2) === "a:" && srcDoc[k]; });
         if (!hasAct) return v;
         var ai = {}; Object.keys(ins).forEach(function (k) { ai[k] = srcDoc["a:" + k] || 0; });
-        return calcMonthly(ai).then(function (va) { homeActV = va; return v; }).catch(function (e) { if (e.message === "stop") throw e; return v; });
+        autoRows(Lref).forEach(function (r) { ai[r.toggle] = 0; });
+        return calcMonthly(ai).then(function (va) { homeActV = actualAdjust(va, function (a) { return srcDoc["a:" + a] || 0; }, Lref, function (t) { return !!srcDoc[t]; }); return v; }).catch(function (e) { if (e.message === "stop") throw e; return v; });
       });
     }).then(function (v) {
       try { if (Lref && srcDoc) homeCmp = buildCompare(Lref, srcDoc); } catch (e) { homeCmp = null; }
