@@ -4755,7 +4755,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("goalList").addEventListener("change", function (e) {
     var t = e.target, v, p;
     if ((v = t.getAttribute("data-step"))) { p = v.split(":"); var g = goalById(p[0]); if (g) g.steps.forEach(function (x) { if (x.id === p[1]) x.done = t.checked; }); saveGoals(); renderGoals(); }
-    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = num(g2.kind, t.value); if (g2.kind === "save") g2.base = g2.current - (g2.fromBudget || 0); if (g2.kind === "debt") pushGoalToDebt(g2); saveGoals(); renderGoals(); } }
+    else if ((v = t.getAttribute("data-cur"))) { var g2 = goalById(v); if (g2) { g2.current = goalNum(g2.kind, t.value); if (g2.kind === "save") g2.base = g2.current - (g2.fromBudget || 0); if (g2.kind === "debt") pushGoalToDebt(g2); saveGoals(); renderGoals(); } }
   });
 
   /* ---------- account ---------- */
