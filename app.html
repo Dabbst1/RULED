@@ -884,6 +884,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .viewfloat{cursor:pointer}.viewfloat[hidden]{display:none}
 .viewfloat button{min-width:72px;height:42px;border-radius:99px;font-weight:700}
 @media (max-width:700px){.viewfloat{right:96px;bottom:calc(79px + env(safe-area-inset-bottom))}.viewfloat button{min-width:62px;height:40px;padding:0 12px}}
+.dupask{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:2px 0 10px;padding:10px 12px;border:1px solid #F5C2A8;border-radius:12px;background:#FFF7ED;color:#7C2D12;font-size:14px}
+.dupask[hidden]{display:none}.dupask p{margin:0}.dupbtns{display:flex;gap:8px;flex-wrap:wrap}.dupask .btn{margin:0;height:36px;padding:0 12px;font-size:13px}
+.recon{margin:12px 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#F7FAFF}
+.recon .dh3{margin:0 0 8px}.rtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rtop small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}.rtop b{font-size:20px;font-variant-numeric:tabular-nums}
+.rlist{margin-top:10px;border-top:1px solid var(--line)}
+.rrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #E4ECFA;font-size:14px}
+.rrow b{white-space:nowrap;font-variant-numeric:tabular-nums}.rrow small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.rrow.rest span{color:var(--muted)}.rrow.tot{border-bottom:0;font-weight:700}
+.rwarn{margin:10px 0 0;color:#B45309;font-weight:600;font-size:14px}
+@media (max-width:700px){.rtop b{font-size:17px}}
 /* ==== DARK MODE: automatic safety net ==== */
 :root[data-theme="dark"] td.calc{background:#16213A}
 :root[data-theme="dark"] td.pend{background:#16213A}
@@ -1076,6 +1087,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root[data-theme="dark"] .greal{background:#2A1C10;color:#FDBA74}
 :root[data-theme="dark"] .emailsw{background:#121B2E}
 :root[data-theme="dark"] .viewfloat{background:#121B2E}
+:root[data-theme="dark"] .dupask{background:#2A1C10;color:#FDBA74}
+:root[data-theme="dark"] .recon{background:#16213A}
 @media (prefers-color-scheme:dark){
 :root:not([data-theme="light"]) td.calc{background:#16213A}
 :root:not([data-theme="light"]) td.pend{background:#16213A}
@@ -1268,6 +1281,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 :root:not([data-theme="light"]) .greal{background:#2A1C10;color:#FDBA74}
 :root:not([data-theme="light"]) .emailsw{background:#121B2E}
 :root:not([data-theme="light"]) .viewfloat{background:#121B2E}
+:root:not([data-theme="light"]) .dupask{background:#2A1C10;color:#FDBA74}
+:root:not([data-theme="light"]) .recon{background:#16213A}
 }
 :root[data-theme="dark"] .dplan .seg button.on small,:root[data-theme="dark"] button.on small{color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dplan .seg button.on small,:root:not([data-theme="light"]) button.on small{color:#0B1220}}
@@ -1277,6 +1292,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .safe{background:#1D4ED8!important;color:#fff!important}:root:not([data-theme="light"]) .safe.neg{background:#991B1B!important}:root:not([data-theme="light"]) .safe b,:root:not([data-theme="light"]) .safe small,:root:not([data-theme="light"]) .safe span{color:#fff!important}:root:not([data-theme="light"]) .ov span.warnt{color:#FBBF24}:root:not([data-theme="light"]) .ovbar{background:#22304D}}
 :root[data-theme="dark"] .spwarn,:root[data-theme="dark"] .greal{background:#2A1D10!important;color:#FED7AA!important;border-color:#B45309!important}:root[data-theme="dark"] .spstats b.bad{color:#F87171}:root[data-theme="dark"] .gok{color:#4ADE80}:root[data-theme="dark"] .gwarnt{color:#FBBF24}:root[data-theme="dark"] .gplan.good{color:#4ADE80}:root[data-theme="dark"] .spmove{background:#16213A;border-color:#2A3A5C}:root[data-theme="dark"] .efsug{background:#121B2E;border-color:#2A3A5C}:root[data-theme="dark"] .spnow{background:#60A5FA;color:#0B1220}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .spwarn,:root:not([data-theme="light"]) .greal{background:#2A1D10!important;color:#FED7AA!important;border-color:#B45309!important}:root:not([data-theme="light"]) .spstats b.bad{color:#F87171}:root:not([data-theme="light"]) .gok{color:#4ADE80}:root:not([data-theme="light"]) .gwarnt{color:#FBBF24}:root:not([data-theme="light"]) .gplan.good{color:#4ADE80}:root:not([data-theme="light"]) .spmove{background:#16213A;border-color:#2A3A5C}:root:not([data-theme="light"]) .efsug{background:#121B2E;border-color:#2A3A5C}:root:not([data-theme="light"]) .spnow{background:#60A5FA;color:#0B1220}}
+:root[data-theme="dark"] .dupask{background:#2A1D10!important;color:#FED7AA!important;border-color:#B45309!important}:root[data-theme="dark"] .recon{background:#121B2E;border-color:#22304D}:root[data-theme="dark"] .rrow{border-color:#22304D}:root[data-theme="dark"] .rwarn{color:#FBBF24}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dupask{background:#2A1D10!important;color:#FED7AA!important;border-color:#B45309!important}:root:not([data-theme="light"]) .recon{background:#121B2E;border-color:#22304D}:root:not([data-theme="light"]) .rrow{border-color:#22304D}:root:not([data-theme="light"]) .rwarn{color:#FBBF24}}
 /* ==== end safety net ==== */
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
@@ -3079,6 +3096,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       if (!(amt > 0)) { fm.textContent = "Type the total as a number, like 24.50."; return; }
       if (isNaN(dt)) { fm.textContent = "Pick the date on the receipt."; return; }
       if (!cat) { fm.textContent = "Choose which category this belongs to."; return; }
+      var dupKey = amt + "|" + $("rcD").value, bm = rcDupOk === dupKey ? null : bankMatch(amt, dt, "out");
+      if (bm) { rcDupOk = dupKey; fm.innerHTML = "<b>Your bank already brought this in:</b> " + esc(bm.e.s) + " · " + money.format(bm.e.a) + " on " + dayLbl(bm.e.d) + ". If it’s the same purchase, tap <b>Skip</b>. If it’s a different one, tap <b>Add</b> again."; return; }
       btn.disabled = true; fm.textContent = "Adding…";
       rcMonthState(dt.getFullYear(), dt.getMonth()).then(function (s) {
         var addr = rcApply(s, cat, col, amt, 1);
@@ -3103,6 +3122,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       }).join("") + "</div>";
   }
   function renderReceiptsOpen() { renderReceipts(); }
+  var rcDupOk = "";
   function rcAdd(files) { rcQueue = rcQueue.concat(Array.prototype.slice.call(files)); rcNext(); }
   $("rcFile").addEventListener("change", function (e) { var f = e.target.files; if (f && f.length) rcAdd(f); e.target.value = ""; });
   ["dragover", "dragenter"].forEach(function (n) { $("rcDrop").addEventListener(n, function (e) { e.preventDefault(); $("rcDrop").classList.add("over"); }); });
@@ -3567,7 +3587,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[2]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
-      return autoImport(bankData.review, true).then(function (r) { if (r && r.added) spendMsg = "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers."; }).catch(function () {});
+      return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {});
     }).then(function () {
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
@@ -3754,6 +3774,35 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (!tool || tool.id !== "monthly-budget" || !layout || !layout.months || pendingSave) return;
     if (keys.indexOf(storageKey()) >= 0) openTool();
   }
+  /* ---------- one purchase, one entry: match bank transactions to things you logged by hand or from a receipt ---------- */
+  function daysApart(a, b) { return Math.round((a.getTime() - b.getTime()) / 864e5); }
+  // a hand-logged entry this bank transaction could be. exact = same amount to the cent (merged automatically)
+  function handMatch(t, d) {
+    var amt = Math.round(Math.abs(t.amount) * 100) / 100, dir = t.amount > 0 ? "in" : "out", best = null;
+    spend.forEach(function (e) {
+      if ((e.src !== "manual" && e.src !== "receipt") || e.kind === "skip" || e.kind === "none" || (e.dir || "out") !== dir || (e.notDup || []).indexOf(t.id) >= 0) return;
+      var ed = parseD(e.d); if (!ed) return;
+      var dd = daysApart(d, ed); if (dd < -2 || dd > 5) return;          // the bank usually shows it the same day or a few days after
+      var diff = Math.abs(amt - e.a), exact = diff < 0.005, near = !exact && diff <= Math.max(1, e.a * 0.25) && Math.abs(dd) <= 3;
+      if (!exact && !near) return;
+      var sc = (exact ? 0 : 1000) + Math.abs(dd) * 10 + diff; if (!best || sc < best.sc) best = { e: e, exact: exact, sc: sc };
+    });
+    return best;
+  }
+  // a bank entry this hand-logged amount could be (checked before adding by hand)
+  function bankMatch(amt, d, dir) {
+    var best = null;
+    spend.forEach(function (e) {
+      if (e.src !== "bank" || e.kind === "skip" || e.mid || (e.dir || "out") !== dir) return;
+      var ed = parseD(e.d); if (!ed) return;
+      var dd = daysApart(ed, d); if (dd < -5 || dd > 2) return;
+      var diff = Math.abs(amt - e.a), exact = diff < 0.005, near = !exact && diff <= Math.max(1, amt * 0.25) && Math.abs(dd) <= 3;
+      if (!exact && !near) return;
+      var sc = (exact ? 0 : 1000) + Math.abs(dd) * 10 + diff; if (!best || sc < best.sc) best = { e: e, exact: exact, sc: sc };
+    });
+    return best;
+  }
+  var dayLbl = function (iso) { var d = parseD(iso); return d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""; };
   /* a pending purchase was counted right away; now it posted (maybe for a different amount) or the bank dropped it */
   function settlePending(list, full) {
     var byId = {}, out = { posted: [], voided: [], touched: [] }; (list || []).forEach(function (t) { if (t && t.id) byId[t.id] = t; });
@@ -3803,14 +3852,20 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       fresh = fresh.filter(function (t) { var e = spendFind(t.id); return !e || e.kind === "none"; });
       var months = {};
       fresh.forEach(function (t) { var k = monthKeyOf(txDay(t)); (months[k] = months[k] || []).push(t); });
-      var added = [], skipped = [], waiting = 0, touched = [], chain = Promise.resolve();
+      var added = [], skipped = [], waiting = 0, touched = [], matched = [], chain = Promise.resolve();
       Object.keys(months).forEach(function (k) {
         chain = chain.then(function () {
           var m = /(\d{4})-(\d{2})$/.exec(k);
           return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
             var inc = activeEntries(s.Lm, s.st).income, changed = false;
             months[k].forEach(function (t) {
-              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1, g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), pend: t.status === "pending" || undefined, dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, src: "bank", acct: t.account || "", auto: true };
+              var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1;
+              var hm = spendFind(t.id) ? null : handMatch(t, d);
+              if (hm && hm.exact) {          // you already logged this one: it becomes the bank's entry, counted once
+                var me = hm.e; me.mid = me.id; me.was = me.src; me.id = t.id; me.src = "bank"; me.raw = String(t.description || "").slice(0, 80); me.pend = t.status === "pending" || undefined; me.acct = t.account || "";
+                matched.push(t.id); added.push(t.id); return;
+              }
+              var g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), pend: t.status === "pending" || undefined, dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, maybeDup: hm ? hm.e.id : undefined, src: "bank", acct: t.account || "", auto: true };
               if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
               if (g === "" || g.indexOf("ex:") === 0) {
                 var pl = bankPlace(t, s);
@@ -3838,7 +3893,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         if (bankData && bankData.review) bankData.review = bankData.review.filter(function (t) { return added.indexOf(t.id) < 0 && skipped.indexOf(t.id) < 0; });
         refreshOpenMonth(touched.concat(settled.touched));
         if (added.length || settled.touched.length) { budgetAlert(); if (tool && tool.type === "home") openTool(); }
-        return { added: added.length, skipped: skipped.length, waiting: waiting };
+        return { added: added.length - matched.length, matched: matched.length, skipped: skipped.length, waiting: waiting };
       });
     }).then(function (r) { autoBusy = null; return r; }, function (e) { autoBusy = null; throw e; });
     return autoBusy;
@@ -3878,7 +3933,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var d = parseD(logS.d) || new Date(), names = logList(), ok = +logS.amt > 0;
     var h = '<button type="button" class="dlgx" data-lg="close" aria-label="Close">×</button><h2 id="logTitle">Log money</h2>' +
       '<div class="wizseg logseg" role="group" aria-label="Spent or received"><button type="button" data-dir="out" class="' + (logS.dir === "out" ? "on" : "") + '">I spent</button><button type="button" data-dir="in" class="' + (logS.dir === "in" ? "on" : "") + '">I received</button></div>' +
-      '<label class="logamt"><span class="sr">Amount</span><i>$</i><input id="logAmt" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + esc(logS.amt) + '"></label>' +
+      '<div class="dupask" id="logDup" hidden></div><label class="logamt"><span class="sr">Amount</span><i>$</i><input id="logAmt" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + esc(logS.amt) + '"></label>' +
       '<div class="logrow"><label>Date<input id="logD" type="date" value="' + esc(logS.d) + '"></label><label><span>What was it? <small>(optional)</small></span><input id="logNote" maxlength="60" placeholder="' + (logS.dir === "in" ? "Paycheck, refund…" : "Coffee, Target…") + '" value="' + esc(logS.note) + '"></label></div>' +
       '<h3 class="wizh3">' + (logS.dir === "in" ? "Which income?" : "Which category?") + ' <small id="logHint">' + (ok ? "Tap one to save." : "Enter an amount first.") + "</small></h3>" +
       '<div class="chips logchips">' + (names.length ? names.map(function (n) { return '<button type="button" class="chip" data-cat="' + esc(n) + '"' + (ok ? "" : " disabled") + ">" + esc(n) + "</button>"; }).join("") : '<p class="sub">No ' + (logS.dir === "in" ? "income" : "categories") + " in " + MONTHS[d.getMonth()] + "’s budget yet.</p>") + "</div>" +
@@ -3888,8 +3943,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   function logSave(cat) {
     if (logS.busy) return; var amt = Math.round((parseFloat(String(logS.amt).replace(/[^0-9.]/g, "")) || 0) * 100) / 100; if (!(amt > 0) || !logS.s) return;
-    logS.busy = true; flushSave();
     var s = logS.s, d = parseD(logS.d) || new Date(), col = d.getDate() <= 15 ? 0 : 1, isIn = logS.dir === "in", where = null;
+    if (!logS.force) {
+      var bm = bankMatch(amt, d, isIn ? "in" : "out");
+      if (bm) {
+        logS.cat = cat; var b = bm.e;
+        $("logDup").innerHTML = '<p><b>Your bank already brought this in.</b> ' + esc(b.s) + " · " + money.format(b.a) + " on " + dayLbl(b.d) + (b.kind === "none" ? ", waiting for a category" : ", counted in " + esc(b.cat)) + ". Is it the same " + (isIn ? "money" : "purchase") + "?</p>" +
+          '<div class="dupbtns"><button type="button" class="btn" data-lgdup="same">Yes, it’s already counted</button><button type="button" class="btn ghost" data-lgdup="add">No, add it</button></div>';
+        $("logDup").hidden = false; return;
+      }
+    }
+    logS.busy = true; flushSave();
     if (isIn) {
       var e = activeEntries(s.Lm, s.st).income.filter(function (c) { return nk(c.name) === nk(cat); })[0];
       if (e) { where = e.addrs[Math.min(col, e.addrs.length - 1)]; var cur = typeof s.doc["a:" + where] === "number" ? s.doc["a:" + where] : 0; s.doc["a:" + where] = Math.round((cur + amt) * 100) / 100; }
@@ -3906,6 +3970,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   $("logFab").addEventListener("click", logOpen);
   $("logDlg").addEventListener("input", function (e) {
+    if (e.target.id === "logAmt" || e.target.id === "logD") { logS.force = false; var ld = $("logDup"); if (ld) ld.hidden = true; }
     if (e.target.id === "logAmt") { logS.amt = e.target.value; var ok = parseFloat(String(logS.amt).replace(/[^0-9.]/g, "")) > 0; $("logDlg").querySelectorAll("[data-cat]").forEach(function (b) { b.disabled = !ok; }); $("logHint").textContent = ok ? "Tap one to save." : "Enter an amount first."; }
     if (e.target.id === "logNote") logS.note = e.target.value.trim();
   });
@@ -3918,6 +3983,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (b.getAttribute("data-lg") === "close") $("logDlg").close();
     else if (b.getAttribute("data-dir")) { logS.dir = b.getAttribute("data-dir"); logDraw(); if (!(+logS.amt > 0)) $("logAmt").focus(); }
     else if (b.getAttribute("data-cat")) logSave(b.getAttribute("data-cat"));
+    else if (b.getAttribute("data-lgdup") === "add") { logS.force = true; logSave(logS.cat); }
+    else if (b.getAttribute("data-lgdup") === "same") { $("logDlg").close(); toast("<b>Not added</b><br>It’s already counted from your bank, so it stays counted once.", "logged"); }
   });
   $("logDlg").addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "logAmt") { e.preventDefault(); var c = $("logDlg").querySelector("[data-cat]"); if (c && !c.disabled) c.focus(); } });
   // after you log in: quietly pull in anything new from linked banks
@@ -3968,6 +4035,91 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   /* the record on the Bank tab */
   var spendMonth = null;
+  // a bank transaction close to something you logged by hand: ask once instead of guessing
+  function dupAsk(e) {
+    var m = e.maybeDup && spendFind(e.maybeDup); if (!m || m.src === "bank") return "";
+    return '<div class="dupask"><span>Same purchase as <b>' + esc(m.s) + "</b> (" + money.format(m.a) + ") you " + (m.src === "receipt" ? "added from a receipt" : "logged") + " on " + dayLbl(m.d) + "? " + (e.kind === "none" ? "If yes, it’s counted once, at your bank’s exact amount." : "Right now both are counted.") + "</span>" +
+      '<span class="dupbtns"><button type="button" class="btn" data-dupyes="' + esc(e.id) + '">Yes, same purchase</button><button type="button" class="btn ghost" data-dupno="' + esc(e.id) + '">No, keep both</button></span></div>';
+  }
+  function dupResolve(id, same) {
+    var e = spendFind(id), m = e && e.maybeDup && spendFind(e.maybeDup); if (!e || !m) return Promise.resolve();
+    if (!same) { m.notDup = (m.notDup || []).concat(e.id); delete e.maybeDup; return spendSave().then(renderBank); }
+    var mm = /(\d{4})-(\d{2})$/.exec(m.key || "");
+    return rcMonthState(+mm[1], +mm[2] - 1).then(function (s) {
+      if (m.kind === "ex") rcApply(s, m.cat, m.col || 0, m.a, -1);       // take the hand-logged amount back out; the bank's exact amount stays
+      else if (m.kind === "in") { var c = activeEntries(s.Lm, s.st).income.filter(function (x) { return nk(x.name) === nk(m.cat); })[0]; if (c) { var a = c.addrs[Math.min(m.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur - m.a) * 100) / 100; } }
+      delete s.doc.__filled; return doSave(s.key, s.doc);
+    }).then(function () {
+      // your category choice wins, and a bank charge that was still waiting for one goes there, so it's counted exactly once
+      var keepCat = (m.kind === "ex" || m.kind === "in") && m.cat && (e.kind === "none" || e.kind !== m.kind || nk(m.cat) !== nk(e.cat)) ? m.kind + ":" + m.cat : null;
+      spend = spend.filter(function (x) { return x !== m; }); e.mid = m.id; e.was = m.src; delete e.maybeDup;
+      return (keepCat ? spendRecat(e.id, keepCat).catch(function () {}) : Promise.resolve()).then(spendSave);
+    }).then(function () { refreshOpenMonth([e.key, m.key]); toast("<b>Counted once</b><br>Kept your bank’s exact amount, " + money.format(e.a) + ".", "logged"); renderBank(); });
+  }
+  /* ---------- check against my bank: why your bank balance and your Net in Actual differ, item by item ---------- */
+  function reconFill() {
+    var box = $("recon"); if (!box || !bankData) return;
+    var accts = (bankData.accounts || []).filter(function (a) { return a.status !== "disconnected"; });
+    var cash = accts.filter(function (a) { return (a.balance || {}).kind === "cash"; }), credit = {};
+    accts.forEach(function (a) { if ((a.balance || {}).kind === "credit" || a.category === "credit") credit[a.id] = 1; });
+    var bal = 0, haveBal = false; cash.forEach(function (a) { var b = a.balance || {}, v = typeof b.available === "number" ? b.available : b.current; if (typeof v === "number") { bal += v; haveBal = true; } });
+    if (!haveBal) { box.innerHTML = ""; return; }
+    var n = new Date(), key = monthKeyOf(n), mon = MONTHS[n.getMonth()];
+    rcMonthState(n.getFullYear(), n.getMonth()).then(function (st) {
+      // the same numbers the Monthly table uses in its Actual view: your actual amounts, your plan's switches (like Tithe), hidden rows left out
+      var o = {}, ins = [], hid = ((st.doc.__meta || {}).hidden || []).map(Number);
+      Object.keys(st.doc).forEach(function (k) { if (k.indexOf("a:") !== 0 && k.indexOf("__") !== 0 && typeof st.doc[k] === "number") o[k] = st.doc[k]; });
+      (function walk(x) { if (!x || typeof x !== "object") return; if (x.k === "input" && x.a) ins.push(x.a); Object.keys(x).forEach(function (k) { walk(x[k]); }); })(st.Lm.rows);
+      ins.forEach(function (a) { o[a] = typeof st.doc["a:" + a] === "number" ? st.doc["a:" + a] : 0; });
+      Object.keys(o).forEach(function (a) { if (hid.indexOf(+String(a).replace(/^[A-Z]+/, "")) >= 0) o[a] = 0; });
+      return calcMonthly(o);
+    }).then(function (v) {
+      if (!v || typeof v.D35 !== "number") { box.innerHTML = ""; return; }
+      var net = v.D35, tithe = typeof v.D30 === "number" ? v.D30 : 0;
+      var rows = spend.filter(function (e) { return e.key === key; });
+      var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, recNet = 0;
+      rows.forEach(function (e) {
+        var isIn = e.kind === "in" || (e.dir === "in" && e.kind !== "ex");
+        if (e.kind === "in") recNet += e.a; else if (e.kind === "ex") recNet -= e.a;
+        if (e.src === "bank") {
+          if (e.kind === "skip" && e.why === "canceled by the bank") return;
+          if (credit[e.acct]) { if (e.kind === "ex") G.card.push(e); else if (e.kind === "in") G.cardIn.push(e); return; }
+          if (e.kind === "skip") (isIn ? G.skipIn : G.skipOut).push(e);
+          else if (e.kind === "none") (isIn ? G.waitIn : G.waitOut).push(e);
+        } else if (e.kind === "ex") G.handOut.push(e); else if (e.kind === "in") G.handIn.push(e);
+      });
+      var sum = function (L) { return L.reduce(function (t, e) { return t + e.a; }, 0); };
+      var typed = Math.round((net - (recNet - tithe)) * 100) / 100;
+      var items = [
+        ["Money into your account that isn’t income (transfers in, refunds, Zelle)", sum(G.skipIn), G.skipIn],
+        ["Money out of your account that isn’t spending (transfers, card payments, ATM)", -sum(G.skipOut), G.skipOut],
+        ["Waiting for a category, so not in Actual yet (pick one below)", sum(G.waitIn) - sum(G.waitOut), G.waitIn.concat(G.waitOut)],
+        ["Bought on a credit card (your account pays for it later)", sum(G.card), G.card],
+        ["Refunds to a credit card", -sum(G.cardIn), G.cardIn],
+        ["Spending you logged by hand or from a receipt that your bank hasn’t matched", sum(G.handOut), G.handOut],
+        ["Income you logged by hand that your bank hasn’t matched", -sum(G.handIn), G.handIn],
+        ["Tithe your table works out from your pay (counted in Net even before it leaves your account)", tithe, []],
+        ["Amounts typed straight into the Actual table (not in the record)", -typed, []]
+      ].filter(function (x) { return Math.abs(x[1]) >= 0.005; });
+      var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((bal - net - explained) * 100) / 100, gap = Math.round((bal - net) * 100) / 100;
+      var sgn = function (x) { return (x < 0 ? "− " : "+ ") + money.format(Math.abs(x)); };
+      var names = function (L) { return L.length ? '<small>' + L.slice(0, 4).map(function (e) { return esc(e.s) + " " + money.format(e.a); }).join(" · ") + (L.length > 4 ? " · and " + (L.length - 4) + " more" : "") + "</small>" : ""; };
+      var dups = rows.filter(function (e) { return e.maybeDup && spendFind(e.maybeDup) && spendFind(e.maybeDup).src !== "bank"; }).length;
+      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank' + (cash.length > 1 ? " (" + cash.length + " accounts)" : "") + '</small><b>' + money.format(bal) + "</b></div><div><small>Net in Actual, " + mon + "</small><b>" + money.format(net) + "</b></div><div><small>Difference</small><b>" + (Math.abs(gap) < 0.005 ? "None" : money.format(Math.abs(gap))) + "</b></div></div>";
+      if (dups) h += '<p class="rwarn">' + dups + (dups === 1 ? " purchase might be" : " purchases might be") + " counted twice. Answer the “Same purchase?” question" + (dups === 1 ? "" : "s") + " below.</p>";
+      if (Math.abs(gap) >= 0.005) {
+        h += '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
+          items.map(function (x) { return '<div class="rrow"><span>' + x[0] + names(x[2]) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
+          (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>Not in ' + mon + "’s records<small>Usually money you had before " + mon + " 1, or something your bank hasn’t sent to Monerem yet.</small></span><b>" + sgn(rest) + "</b></div>" : "") +
+          '<div class="rrow tot"><span>Your bank balance</span><b>' + money.format(bal) + "</b></div></div>";
+      } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
+      box.innerHTML = h;
+    }).catch(function () { box.innerHTML = ""; });
+  }
+  $("bankView").addEventListener("click", function (e) {
+    var dy = e.target.closest && e.target.closest("[data-dupyes],[data-dupno]"); if (!dy) return;
+    dy.disabled = true; dupResolve(dy.getAttribute("data-dupyes") || dy.getAttribute("data-dupno"), !!dy.getAttribute("data-dupyes"));
+  });
   function spendPanel(C) {
     var keys = {}; spend.forEach(function (e) { keys[e.key] = 1; });
     var cur = monthKeyOf(new Date()); keys[cur] = 1;
@@ -3987,13 +4139,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : " · not counted in your budget") : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : " · not counted in your budget") : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" || e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
-        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>";
+        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e);
     };
     var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
       '<p class="sub">New transactions go into your budget’s <b>Actual</b> numbers automatically. Here’s what each one was and where it went. Change a category any time and the budget moves with it.</p>';
     if (spendMsg) h += '<p class="bmsg">' + spendMsg + "</p>";
+    if (spendMonth === cur && bankData && (bankData.accounts || []).some(function (a) { return (a.balance || {}).kind === "cash"; })) { h += '<div class="recon" id="recon"><p class="sub">Checking against your bank…</p></div>'; setTimeout(reconFill, 0); }
     if (wait.length) h += '<h3 class="dh3" style="margin-top:12px">Needs a category (' + wait.length + ")</h3>" + wait.map(row).join("");
     if (!rows.length) h += '<p class="sub" style="margin-top:10px">Nothing recorded for ' + mLabel(spendMonth) + " yet.</p>";
     else {
