@@ -217,6 +217,7 @@ dialog input{height:42px;padding:0 10px;font:inherit;border:2px solid var(--ink)
 .acform input{width:100%;max-width:380px;height:42px;margin-top:3px;padding:0 10px;font:inherit;border:2px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink)}
 .acform .btn{margin-top:14px}
 #who{font:inherit;color:var(--muted);background:none;border:0;text-decoration:underline;cursor:pointer}
+#who:empty{display:none}   /* no empty pill on the login screen: the name only appears once someone is logged in */
 .lw{display:flex;align-items:center}.lw input.nm{flex:1;min-width:0}td.lab .rm{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:32px}td.lab .rm[data-swap]{font-size:17px}
 tr.addrow td{padding:6px}
 .add{font:600 14px/1 inherit;padding:9px 14px;border:2px dashed var(--blue);border-radius:4px;background:#fff;color:var(--blue);cursor:pointer;position:sticky;left:8px}
