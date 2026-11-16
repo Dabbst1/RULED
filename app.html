@@ -360,6 +360,9 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .tips .tip{display:block;color:#51638f;font-size:13px;margin-top:2px}
 .tips{position:relative}.tipsx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;color:#9A3412;cursor:pointer;padding:4px}
 .tips > b{padding-right:28px}.tipsoff{margin:10px 0 0;font-size:13px}.tipsoff .linkbtn,.tipshide{background:none;border:0;padding:0;color:var(--blue);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}.tipshide{font-size:13px;margin-left:4px}
+.wsbanner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 auto 12px;max-width:1100px;padding:10px 16px;border-radius:12px;background:#FFF4D6;border:1px solid #F2C14E;color:#5B4100;font-size:14px}
+.wsbanner b{font-size:15px}.wsbanner button{margin-left:auto;font:inherit;font-weight:600;padding:6px 12px;border-radius:99px;border:1px solid #D9A62E;background:#fff;color:#5B4100;cursor:pointer}
+.wsrow{margin:12px 0 4px;padding-bottom:12px;border-bottom:1px solid var(--line,#D6E3F8)}.wsrow-t{font-size:15px}.wsrow .wizseg{margin:8px 0}.wsrow .sub{margin:0;font-size:13px}
 .admtabs{display:flex;gap:6px;margin:14px 0 12px;overflow-x:auto;border-bottom:1px solid var(--line,#D6E3F8);padding-bottom:0}
 .admtabs button{flex:0 0 auto;border:0;background:none;font:inherit;font-weight:600;font-size:15px;color:#51638f;padding:10px 14px;border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
 .admtabs button.on{color:var(--blue,#1d4ed8);border-bottom-color:var(--blue,#1d4ed8)}
@@ -1327,6 +1330,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   <a class="logo" id="logo" href="index.html">Monerem<span>.</span></a>
   <div class="top-right"><span id="saved"></span><button type="button" id="who" title="My account"></button><button id="signout" hidden>Log out</button></div>
 </header>
+<div id="wsBanner" class="wsbanner" hidden><b>Testing budget</b><span>Separate from your main budget. Nothing you do here touches it.</span><button type="button" data-ws="main">Back to my main budget</button></div>
 
 <section id="login" class="card" hidden>
   <h2 id="loginTitle">Log in</h2>
@@ -1419,6 +1423,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       </form></div>
     <div class="panel"><button class="btn ghost" type="button" id="acOut">Log out</button></div>
     <details class="panel admintools" id="adminTools" hidden><summary>Admin tools</summary>
+      <div class="wsrow" id="wsRow" hidden>
+        <div class="wsrow-t"><b>Budget you’re working in</b></div>
+        <div class="wizseg" role="group" aria-label="Budget"><button type="button" data-ws="main" id="wsMain">Main budget</button><button type="button" data-ws="test" id="wsTest">Testing budget</button></div>
+        <p class="sub">The testing budget is its own set of budgets, goals, bills, receipts and debts, so you can try anything without touching your real numbers. Bank linking and bill emails stay with your main budget.</p>
+      </div>
       <div class="admtabs" role="tablist" aria-label="Admin sections">
         <button type="button" role="tab" class="on" data-admtab="overview" aria-selected="true">Overview</button>
         <button type="button" role="tab" data-admtab="members" aria-selected="false">Members</button>
@@ -2034,7 +2043,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var hist = [], redoS = [], histLast = null, histBusy = false, editFlag = false, dragFlag = false;
   function canon(o) { return Array.isArray(o) ? o.map(canon) : o && typeof o === "object" ? Object.keys(o).sort().reduce(function (r, k) { r[k] = canon(o[k]); return r; }, {}) : o; }
   function snapState() { return JSON.stringify(canon({ i: inputs, a: actual, m: meta })); }
-  function histKey() { return "monerem-hist:" + (typeof session !== "undefined" && session && session.user ? session.user.id : "dev") + ":" + storageKey(); }
+  function histKey() { return "monerem-hist:" + (typeof session !== "undefined" && session && session.user ? session.user.id : "dev") + (testWs() ? ":test" : "") + ":" + storageKey(); }
   function histSave() { try { localStorage.setItem(histKey(), JSON.stringify({ h: hist, r: redoS, last: histLast })); } catch (e) {} }
   function updateUndoBtn() { $("undoBtn").disabled = !hist.length; $("redoBtn").disabled = !redoS.length; $("undoBtn").textContent = "\u21B6 Undo" + (hist.length ? " (" + hist.length + ")" : ""); $("redoBtn").textContent = "\u21B7 Redo" + (redoS.length ? " (" + redoS.length + ")" : ""); }
   function histReset() {
@@ -2583,8 +2592,23 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 
   /* ---------- saving ---------- */
   function payload() { var o = {}; Object.keys(inputs).forEach(function (k) { o[k] = inputs[k]; }); o.__meta = meta; if (layout.months) { o.__filled = true; Object.keys(actual).forEach(function (k) { if (actual[k]) o["a:" + k] = actual[k]; }); } return o; }
+  /* ---------- two budgets for the owner: "main" and "testing" ----------
+     Only the admin emails in CFG.admins can switch (never test accounts or members). The testing budget keeps its own copy of
+     every saved item under a "t~" prefix, so it never touches the main budget. Account preferences are shared. */
+  function canTestWs() {
+    if (CFG.devMode) return true;
+    var u = typeof session !== "undefined" && session && session.user, em = u && u.email ? String(u.email).toLowerCase() : "";
+    return !!em && (CFG.admins || []).some(function (a) { return String(a).toLowerCase() === em; });
+  }
+  function testWs() { try { return localStorage.getItem("monerem-ws") === "test" && canTestWs(); } catch (e) { return false; } }
+  function wsKey(k) { return testWs() && k !== "prefs" ? "t~" + k : k; }
+  function wsRows(rows) {   // only this budget's saved items, with the prefix removed
+    var t = testWs();
+    return rows.filter(function (r) { return (String(r.sheet_id).indexOf("t~") === 0) === t; }).map(function (r) { return { sheet_id: String(r.sheet_id).replace(/^t~/, ""), inputs: r.inputs }; });
+  }
   var pendingSave = null;
   function doSave(key, data) {
+    key = wsKey(key);
     if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return Promise.resolve(); }
     var ck = session.user.id + "|" + key; savedCache[ck] = { t: Date.now(), v: cloneData(data) };
     return supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
@@ -2601,6 +2625,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   function flushSave() { clearTimeout(saveTimer); var f = pendingSave; pendingSave = null; if (f) f(); }
   function loadSaved(key) {
+    key = wsKey(key);
     if (CFG.devMode) { try { return Promise.resolve(JSON.parse(localStorage.getItem("moneres-dev-" + key) || "null")); } catch (e) { return Promise.resolve(null); } }
     // always ask for THIS member's row only (never rely on the database alone to filter)
     var ck = session.user.id + "|" + key, hit = savedCache[ck];
@@ -3639,6 +3664,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* ---------- bank linking (Stripe Financial Connections, read-only) ---------- */
   var bankData = { accounts: [], review: [], loading: false }, bankBusy = false, bankMsg = "", bankChoice = {};
   function bankCall(action, extra) {
+    if (testWs()) { var e0 = new Error("testing_budget"); e0.status = 404; return Promise.reject(e0); }   // bank linking belongs to the main budget only
     var h = authHeaders(); if (session) { h.Authorization = "Bearer " + session.access_token; h.apikey = CFG.supabaseAnonKey; }
     return fetch(fnUrl("bank"), { method: "POST", headers: h, body: JSON.stringify(Object.assign({ action: action }, extra || {})) })
       .then(function (r) { return r.text().then(function (t) { var j = {}; try { j = JSON.parse(t); } catch (x) {} if (!r.ok) { var e = new Error(j.error || ("error " + r.status)); e.status = r.status; throw e; } return j; }); });
@@ -4821,7 +4847,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var listP = CFG.devMode
         ? Promise.resolve(Object.keys(localStorage).filter(function (k) { return k.indexOf("moneres-dev-") === 0; }).map(function (k) { return { sheet_id: k.slice(12), inputs: JSON.parse(localStorage.getItem(k) || "null") }; }))
         : supa.from("member_inputs").select("sheet_id,inputs").eq("user_id", session.user.id).then(function (r) { if (r.error) throw r.error; return r.data || []; });
-      return listP;
+      return listP.then(wsRows);
     }).then(function (rows) {
       var jobs = [], n = 0;
       rows.forEach(function (row) {
@@ -4847,6 +4873,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return (CFG.devMode
       ? Promise.resolve(Object.keys(localStorage).filter(function (k) { return k.indexOf("moneres-dev-") === 0; }).map(function (k) { return { sheet_id: k.slice(12), inputs: JSON.parse(localStorage.getItem(k) || "null") }; }))
       : supa.from("member_inputs").select("sheet_id,inputs").eq("user_id", session.user.id).then(function (r) { if (r.error) throw r.error; return r.data || []; }))
+      .then(wsRows)
       .then(function (rows) { return rows.filter(function (r) { return r.inputs && (r.sheet_id === "yearly-projection" || r.sheet_id.indexOf("monthly-budget:") === 0); }); });
   }
   function rowAddr(L, label, col) { var r = L.rows.filter(function (x) { return x.type === "data" && x.label === label; })[0]; return r && r.cells[col] && r.cells[col].k === "input" ? r.cells[col].a : null; }
@@ -5038,6 +5065,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("exitPreview").addEventListener("click", function () { $("previewNote").hidden = true; show("app"); openTool(); });
   function renderAccount() {
     $("adminTools").hidden = !isAdmin(); $("clearMsg").textContent = ""; admMsg("");
+    $("wsRow").hidden = !canTestWs(); $("wsMain").classList.toggle("on", !testWs()); $("wsTest").classList.toggle("on", testWs());
     var u = currentUser(); if (!u) return;
     $("acName").value = displayName(u); $("acEmail").value = u.email || ""; $("acMsg").textContent = ""; $("pwMsg").textContent = "";
     $("pwForm").reset();
@@ -6422,8 +6450,21 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     });
   });
 
+  function renderWsBanner() {
+    var b = $("wsBanner"); if (!b) return;
+    b.hidden = !testWs();
+    document.title = testWs() ? "Testing budget · Monerem" : document.title.replace(/^Testing budget · /, "");
+  }
+  function setWs(w) { try { if (w === "test") localStorage.setItem("monerem-ws", "test"); else localStorage.removeItem("monerem-ws"); } catch (e) {} try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} location.reload(); }   // land on the start page, so a fresh budget opens its first-time setup
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-ws]"); if (!b || !canTestWs()) return;
+    var w = b.getAttribute("data-ws");
+    if ((w === "test") === testWs()) return;
+    flushSave(); setTimeout(function () { setWs(w); }, 400);   // let any last save finish, then reload clean
+  });
   function makeTabs() {
-    $("tabs").innerHTML = TOOLS.filter(function (t) { return !t.hidden; }).map(function (t) {
+    renderWsBanner();
+    $("tabs").innerHTML = TOOLS.filter(function (t) { return !t.hidden && !(t.id === "bank" && testWs()); }).map(function (t) {
       return '<button class="tab" role="tab" data-t="' + t.id + '" aria-selected="' + (t.id === tool.id) + '"><span class="ti" aria-hidden="true">' + (TAB_ICONS[t.id] || "") + '</span><span class="tl">' + (window.innerWidth <= 700 && TAB_SHORT[t.id] || t.name) + "</span></button>";
     }).join("");
     scrollTab();
