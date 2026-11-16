@@ -1566,7 +1566,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function vals() { return view === "actual" ? actual : inputs; }
   var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
 
-  function show(which) { ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; }); }
+  function show(which) { ["login", "inactive", "app"].forEach(function (id) { $(id).hidden = id !== which; }); if (which === "login") document.title = "Log in | Monerem."; else if (which === "inactive") document.title = "Membership | Monerem."; }
   function setStatus(t, err) { var s = $("status"); s.textContent = t || ""; s.className = "status" + (err ? " err" : ""); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
@@ -2709,7 +2709,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* ---------- open a tool / month ---------- */
   function openTool() {
     var mine = ++loadSeq; flushSave();
-    show("app");
+    show("app"); setTitle();
     scrollTab();
     var tp = tool.type;
     $("sheetView").hidden = !!tp; $("accountView").hidden = tp !== "account"; $("billsView").hidden = tp !== "bills"; $("homeView").hidden = tp !== "home"; $("moneyView").hidden = tp !== "money"; $("goalsView").hidden = tp !== "goals"; $("setupView").hidden = tp !== "setup"; $("receiptsView").hidden = tp !== "receipts"; $("debtView").hidden = tp !== "debt"; $("bankView").hidden = tp !== "bank"; $("calendarView").hidden = tp !== "calendar";
@@ -6450,10 +6450,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     });
   });
 
+  function setTitle(t) { document.title = (testWs() ? "Testing · " : "") + (t || (tool && tool.name) || "Your tools") + " | Monerem."; }   // browser tab names the page you're on
   function renderWsBanner() {
     var b = $("wsBanner"); if (!b) return;
     b.hidden = !testWs();
-    document.title = testWs() ? "Testing budget · Monerem" : document.title.replace(/^Testing budget · /, "");
   }
   function setWs(w) { try { if (w === "test") localStorage.setItem("monerem-ws", "test"); else localStorage.removeItem("monerem-ws"); } catch (e) {} try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} location.reload(); }   // land on the start page, so a fresh budget opens its first-time setup
   document.addEventListener("click", function (e) {
