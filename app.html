@@ -365,6 +365,11 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .admtabs button:hover{color:var(--ink)}
 .admpane[hidden]{display:none}.admintro{margin:0 0 4px}
 .dangerbox{margin-top:22px;padding:14px 16px;border:1px solid #F3C4C4;background:#FFF6F6;border-radius:12px}
+.admlist{border-bottom:1px solid var(--line,#D6E3F8)}
+.admitem{display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--line,#D6E3F8)}
+.admitem > .btn,.admctl{flex:0 0 300px;margin:0}.admitem .sub{margin:0;font-size:13px;line-height:1.4}
+.admctl{display:flex;flex-direction:column;gap:6px}.admctl select{height:40px;border:1px solid var(--line,#D6E3F8);border-radius:10px;padding:0 10px;font:inherit;background:#fff;width:100%}.admctl .btn{margin:0;align-self:flex-start}
+@media (max-width:700px){.admitem{flex-direction:column;align-items:flex-start;gap:6px}.admitem > .btn,.admctl{flex:none;width:100%}}
 .admintools summary{cursor:pointer;font-weight:700;color:var(--muted)}
 .admh{margin:22px 0 8px;font-size:17px}.admh .sub{font-weight:400;font-size:13px}.admh4{margin:16px 0 6px;font-size:15px}
 .admgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.admgrid .sub{font-size:13px;margin:6px 0 0}
@@ -1436,22 +1441,22 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       <section class="admpane" data-admpane="demo" role="tabpanel" hidden>
         <p class="sub admintro">These only change <b>your own</b> account. Handy for demos and screenshots.</p>
         <h4 class="admh4">Fill with sample data</h4>
-        <div class="admgrid">
-          <div><button class="btn ghost" type="button" data-adm="sample">Load sample month</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal.</p></div>
-          <div><button class="btn ghost" type="button" data-adm="sampleyear">Load sample annual budget</button><p class="sub">Fills all 12 months: seasonal bills, holidays, a summer trip and three savings goals.</p></div>
-          <div><label class="sub" for="debtEx" style="display:block;margin-bottom:4px">Debt example</label><select id="debtEx" class="admsel">
+        <div class="admlist">
+          <div class="admitem"><button class="btn ghost" type="button" data-adm="sample">Load sample month</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal.</p></div>
+          <div class="admitem"><button class="btn ghost" type="button" data-adm="sampleyear">Load sample annual budget</button><p class="sub">Fills all 12 months: seasonal bills, holidays, a summer trip and three savings goals.</p></div>
+          <div class="admitem"><span class="admctl"><select id="debtEx" class="admsel" aria-label="Debt example">
             <option value="mixed">Mixed: 2 cards, car, student loan, medical</option>
             <option value="cards">Credit card trouble: 4 maxed-out cards</option>
             <option value="grad">New grad: student loans + a first car</option>
             <option value="family">Family: mortgage, 2 cars, card, daycare loan</option>
             <option value="growing">Warning case: minimums don’t cover interest</option>
             <option value="almost">Almost there: 2 small debts left</option>
-          </select><button class="btn ghost" type="button" data-adm="sampledebts" style="margin-top:8px">Load debt example</button><p class="sub">Replaces your debts with the example, plus six months of progress.</p></div>
+          </select><button class="btn ghost" type="button" data-adm="sampledebts">Load debt example</button></span><p class="sub">Replaces your debts with the chosen example, plus six months of progress.</p></div>
         </div>
         <h4 class="admh4">Preview what members see</h4>
-        <div class="admgrid">
-          <div><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
-          <div><button class="btn ghost" type="button" data-adm="previewinactive">Preview &ldquo;membership inactive&rdquo;</button><p class="sub">See what an expired member sees.</p></div>
+        <div class="admlist">
+          <div class="admitem"><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
+          <div class="admitem"><button class="btn ghost" type="button" data-adm="previewinactive">Preview &ldquo;membership inactive&rdquo;</button><p class="sub">See what an expired member sees.</p></div>
         </div>
       </section>
       <section class="admpane" data-admpane="danger" role="tabpanel" hidden>
