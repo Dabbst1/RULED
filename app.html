@@ -359,6 +359,12 @@ tr.savehint td{background:#F3FBF5;border-left:4px solid var(--save);height:auto;
 .tips .tip{display:block;color:#51638f;font-size:13px;margin-top:2px}
 .tips{position:relative}.tipsx{position:absolute;top:6px;right:8px;border:0;background:none;font-size:20px;line-height:1;color:#9A3412;cursor:pointer;padding:4px}
 .tips > b{padding-right:28px}.tipsoff{margin:10px 0 0;font-size:13px}.tipsoff .linkbtn,.tipshide{background:none;border:0;padding:0;color:var(--blue);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}.tipshide{font-size:13px;margin-left:4px}
+.admtabs{display:flex;gap:6px;margin:14px 0 12px;overflow-x:auto;border-bottom:1px solid var(--line,#D6E3F8);padding-bottom:0}
+.admtabs button{flex:0 0 auto;border:0;background:none;font:inherit;font-weight:600;font-size:15px;color:#51638f;padding:10px 14px;border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
+.admtabs button.on{color:var(--blue,#1d4ed8);border-bottom-color:var(--blue,#1d4ed8)}
+.admtabs button:hover{color:var(--ink)}
+.admpane[hidden]{display:none}.admintro{margin:0 0 4px}
+.dangerbox{margin-top:22px;padding:14px 16px;border:1px solid #F3C4C4;background:#FFF6F6;border-radius:12px}
 .admintools summary{cursor:pointer;font-weight:700;color:var(--muted)}
 .admh{margin:22px 0 8px;font-size:17px}.admh .sub{font-weight:400;font-size:13px}.admh4{margin:16px 0 6px;font-size:15px}
 .admgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.admgrid .sub{font-size:13px;margin:6px 0 0}
@@ -1407,32 +1413,64 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       </form></div>
     <div class="panel"><button class="btn ghost" type="button" id="acOut">Log out</button></div>
     <details class="panel admintools" id="adminTools" hidden><summary>Admin tools</summary>
-      <h3 class="admh">Business</h3>
-      <div id="bizPanel" class="sub">Open this section to load your numbers.</div>
-      <p class="pickmsg" id="bizMsg" role="status"></p>
-      <h3 class="admh">Testing <span class="sub">(your account only)</span></h3>
-      <div class="admgrid">
-        <div><button class="btn ghost" type="button" data-adm="sample">Load sample month</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal. Good for demos and screenshots.</p></div>
-        <div><label class="sub" for="debtEx" style="display:block;margin-bottom:4px">Debt example</label><select id="debtEx" class="admsel">
+      <div class="admtabs" role="tablist" aria-label="Admin sections">
+        <button type="button" role="tab" class="on" data-admtab="overview" aria-selected="true">Overview</button>
+        <button type="button" role="tab" data-admtab="members" aria-selected="false">Members</button>
+        <button type="button" role="tab" data-admtab="demo" aria-selected="false">Demo data</button>
+        <button type="button" role="tab" data-admtab="danger" aria-selected="false">Reset &amp; clear</button>
+      </div>
+      <div id="bizWrap">
+        <section class="admpane" data-admpane="overview" role="tabpanel">
+          <div id="bizPanel" class="sub">Open this section to load your numbers.</div>
+        </section>
+        <section class="admpane" data-admpane="members" role="tabpanel" hidden>
+          <h4 class="admh4" style="margin-top:0">Look up a member</h4>
+          <form id="bizFind" class="admrow"><input id="bizEmail" placeholder="Email (or a tester name)" autocomplete="off" style="flex:1;min-width:200px"><button class="btn" type="submit">Look up</button></form>
+          <div id="bizMember"></div>
+          <h4 class="admh4">Export members</h4>
+          <div class="admrow"><select id="bizFilter"><option value="all">Everyone</option><option value="paying">Paying</option><option value="trial">On free trial</option><option value="free">Free access</option><option value="inactive">Signed up, not active</option></select><button class="btn ghost" type="button" id="bizExport">Download CSV</button></div>
+          <p class="sub">Test accounts are left out. Only send marketing emails to people who agreed to hear from you, and include a way to unsubscribe.</p>
+          <p class="pickmsg" id="bizMsg" role="status"></p>
+        </section>
+      </div>
+      <section class="admpane" data-admpane="demo" role="tabpanel" hidden>
+        <p class="sub admintro">These only change <b>your own</b> account. Handy for demos and screenshots.</p>
+        <h4 class="admh4">Fill with sample data</h4>
+        <div class="admgrid">
+          <div><button class="btn ghost" type="button" data-adm="sample">Load sample month</button><p class="sub">Fills this month with a realistic example, plus a Vacation Fund goal.</p></div>
+          <div><button class="btn ghost" type="button" data-adm="sampleyear">Load sample annual budget</button><p class="sub">Fills all 12 months: seasonal bills, holidays, a summer trip and three savings goals.</p></div>
+          <div><label class="sub" for="debtEx" style="display:block;margin-bottom:4px">Debt example</label><select id="debtEx" class="admsel">
             <option value="mixed">Mixed: 2 cards, car, student loan, medical</option>
             <option value="cards">Credit card trouble: 4 maxed-out cards</option>
             <option value="grad">New grad: student loans + a first car</option>
             <option value="family">Family: mortgage, 2 cars, card, daycare loan</option>
             <option value="growing">Warning case: minimums don’t cover interest</option>
             <option value="almost">Almost there: 2 small debts left</option>
-          </select><button class="btn ghost" type="button" data-adm="sampledebts" style="margin-top:8px">Load debt example</button><p class="sub">Replaces your debts with the example, plus six months of progress, for demos of the Debt tab.</p></div>
-        <div><button class="btn ghost" type="button" data-adm="sampleyear">Load sample annual budget</button><p class="sub">Fills all 12 months with a realistic year: seasonal bills, holidays, a summer trip and three savings goals.</p></div>
-        <div><button class="btn ghost" type="button" data-adm="resetcats">Reset categories</button><p class="sub">Puts back the starter categories everywhere and runs first-time setup again.</p></div>
-        <div><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
-        <div><button class="btn ghost" type="button" data-adm="previewinactive">Preview &ldquo;membership inactive&rdquo;</button><p class="sub">See what an expired member sees.</p></div>
-      </div>
-      <div class="admrow"><button class="btn ghost" type="button" data-adm="cleargoals">Clear goals</button><button class="btn ghost" type="button" data-adm="clearbills">Clear bills</button><button class="btn ghost" type="button" data-adm="clearreceipts">Clear receipts</button></div>
+          </select><button class="btn ghost" type="button" data-adm="sampledebts" style="margin-top:8px">Load debt example</button><p class="sub">Replaces your debts with the example, plus six months of progress.</p></div>
+        </div>
+        <h4 class="admh4">Preview what members see</h4>
+        <div class="admgrid">
+          <div><button class="btn ghost" type="button" data-adm="previewsetup">Preview first-time setup</button><p class="sub">Nothing changes unless you finish setup.</p></div>
+          <div><button class="btn ghost" type="button" data-adm="previewinactive">Preview &ldquo;membership inactive&rdquo;</button><p class="sub">See what an expired member sees.</p></div>
+        </div>
+      </section>
+      <section class="admpane" data-admpane="danger" role="tabpanel" hidden>
+        <p class="sub admintro">These delete data from <b>your own</b> account. Each one asks you to confirm.</p>
+        <h4 class="admh4">Reset</h4>
+        <div class="admgrid">
+          <div><button class="btn ghost" type="button" data-adm="resetcats">Reset categories</button><p class="sub">Puts back the starter categories everywhere and runs first-time setup again.</p></div>
+        </div>
+        <h4 class="admh4">Clear saved items</h4>
+        <div class="admrow"><button class="btn ghost" type="button" data-adm="cleargoals">Clear goals</button><button class="btn ghost" type="button" data-adm="clearbills">Clear bills</button><button class="btn ghost" type="button" data-adm="clearreceipts">Clear receipts</button></div>
+        <div class="dangerbox">
+          <h4 class="admh4" style="margin-top:0">Clear all numbers</h4>
+          <p class="sub" style="margin:0 0 10px">Clears every amount in your Monthly budget (all months, Plan and Actual) and your Annual budget. Your categories, savings goals, bills and receipts stay.</p>
+          <label for="clearConfirm" class="sub">Type <b>CLEAR</b> to confirm</label>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><input id="clearConfirm" autocomplete="off" style="max-width:180px"><button class="btn danger" type="button" id="clearAll" disabled>Clear all numbers</button></div>
+          <p class="pickmsg" id="clearMsg" role="status"></p>
+        </div>
+      </section>
       <p class="pickmsg" id="admMsg" role="status"></p>
-      <h3 class="admh">Clear all numbers</h3>
-      <p class="sub" style="margin:10px 0">Clears every amount in your Monthly budget (all months, Plan and Actual) and your Annual budget. Your categories, savings goals, bills and receipts stay.</p>
-      <label for="clearConfirm" class="sub">Type <b>CLEAR</b> to confirm</label>
-      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><input id="clearConfirm" autocomplete="off" style="max-width:180px"><button class="btn danger" type="button" id="clearAll" disabled>Clear all numbers</button></div>
-      <p class="pickmsg" id="clearMsg" role="status"></p>
     </details>
   </section>
   <section id="setupView" hidden>
@@ -4911,6 +4949,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     else if (a === "clearbills") { if (window.confirm("Delete all your bills and reminders?")) loadBills().then(function () { bills = []; renderBanner(); return doSave(billsKey(), { __bills: [] }); }).then(function () { admMsg("Bills cleared."); }); }
     else if (a === "clearreceipts") { if (window.confirm("Delete all your saved receipts? Amounts they already added to your budget stay.")) rcLoad().then(function () { receipts = []; return doSave("receipts", { __receipts: [], __rules: rcRules }); }).then(function () { admMsg("Receipts cleared."); }); }
   });
+  $("adminTools").addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest("[data-admtab]"); if (!t) return;
+    var id = t.getAttribute("data-admtab");
+    Array.prototype.forEach.call($("adminTools").querySelectorAll("[data-admtab]"), function (b) { var on = b === t; b.classList.toggle("on", on); b.setAttribute("aria-selected", on ? "true" : "false"); });
+    Array.prototype.forEach.call($("adminTools").querySelectorAll("[data-admpane]"), function (p) { p.hidden = p.getAttribute("data-admpane") !== id; });
+    admMsg("");
+  });
   $("adminTools").addEventListener("toggle", function () { if ($("adminTools").open) loadBiz(); });
   /* ---------- admin: business tools (the "admin" server function checks you're an admin) ---------- */
   function adminCall(action, extra) {
@@ -4930,14 +4975,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         stat(d.mrr === null ? "—" : money.format(d.mrr), "Monthly revenue", "wide") + stat(d.mrr === null ? "—" : money.format(d.mrr * 12), "Yearly run rate", "wide") + "</div>" +
         '<p class="sub" style="margin:8px 0 0">' + c.accounts + " accounts total &middot; " + d.newThisWeek + " new this week &middot; " + d.monthlyPlans + " monthly and " + d.annualPlans + " annual plans &middot; Stripe " + d.stripeMode + " mode</p>";
       h += '<h4 class="admh4">Trials ending in the next 7 days</h4>' + (d.trialsEnding.length ? '<ul class="blist">' + d.trialsEnding.map(function (t) { return "<li><span>" + esc(t.email) + "</span><span>" + fmtD(t.ends) + "</span></li>"; }).join("") + "</ul>" : '<p class="sub">None right now.</p>');
-      h += '<h4 class="admh4">Look up a member</h4><form id="bizFind" class="admrow"><input id="bizEmail" placeholder="Email (or a tester name)" autocomplete="off" style="flex:1;min-width:200px"><button class="btn" type="submit">Look up</button></form><div id="bizMember"></div>';
-      h += '<h4 class="admh4">Export members</h4><div class="admrow"><select id="bizFilter"><option value="all">Everyone</option><option value="paying">Paying</option><option value="trial">On free trial</option><option value="free">Free access</option><option value="inactive">Signed up, not active</option></select><button class="btn ghost" type="button" id="bizExport">Download CSV</button></div>' +
-        '<p class="sub">Test accounts are left out. Only send marketing emails to people who agreed to hear from you, and include a way to unsubscribe.</p>' +
-        '<p style="margin-top:10px"><button type="button" class="linkbtn" id="bizRefresh">Refresh numbers</button></p>';
+      h += '<p style="margin-top:10px"><button type="button" class="linkbtn" id="bizRefresh">Refresh numbers</button></p>';
       el.innerHTML = h;
     }).catch(function (e) {
       bizLoaded = false;
-      el.innerHTML = e.status === 404 ? "Business tools aren’t set up yet. Deploy the <b>admin</b> function in Supabase to turn them on."
+      el.innerHTML = !e.status ? "Couldn’t reach the admin function (" + esc(e.message) + "). Check you’re online and that the <b>admin</b> function is deployed in Supabase. <button type=\"button\" class=\"linkbtn\" id=\"bizRefresh\">Try again</button>"
+        : e.status === 404 ? "Business tools aren’t set up yet. Deploy the <b>admin</b> function in Supabase to turn them on."
         : e.status === 403 ? "This account isn’t on the admin list. Add its email to the <b>ADMIN_EMAILS</b> secret in Supabase."
         : "Couldn’t load your numbers (" + esc(e.message) + "). <button type=\"button\" class=\"linkbtn\" id=\"bizRefresh\">Try again</button>";
     });
@@ -4956,8 +4999,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       box.setAttribute("data-email", m.email);
     }).catch(function (e) { box.innerHTML = '<p class="sub">' + (e.message === "no_such_member" ? "No account with that email." : "Couldn’t look that up (" + esc(e.message) + ").") + "</p>"; });
   }
-  $("bizPanel").addEventListener("submit", function (e) { if (e.target.id !== "bizFind") return; e.preventDefault(); var v = $("bizEmail").value.trim(); if (v) showMember(v); });
-  $("bizPanel").addEventListener("click", function (e) {
+  $("bizWrap").addEventListener("submit", function (e) { if (e.target.id !== "bizFind") return; e.preventDefault(); var v = $("bizEmail").value.trim(); if (v) showMember(v); });
+  $("bizWrap").addEventListener("click", function (e) {
     var t = e.target; if (t.id === "bizRefresh") { loadBiz(true); return; }
     if (t.id === "bizExport") {
       $("bizMsg").textContent = "Preparing…";
@@ -5069,7 +5112,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   function startWizard() {
     var h = readHandoff();
-    wiz = { step: 0, income: setup && setup.income ? setup.income.slice() : [], expense: setup && setup.expense ? setup.expense.slice() : [], q: "",
+    // Always start from a blank slate: categories from an earlier setup must never be carried in as pre-picks,
+    // or the budget fills with rows the member didn't choose this time.
+    wiz = { step: 0, income: [], expense: [], q: "",
       freq: h ? h.freq : "biweekly", per: h ? h.per : "", has2: false, name2: "", per2: "", bills: {}, every: {}, target: "20", custom: h && h.save ? h.save : "", from: h ? h.src : "" };
     if (h && h.save > 0) wiz.target = "custom";
     drawWizard();
@@ -5134,7 +5179,6 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     EVERY_FIELDS.forEach(function (f) { if (+wiz.every[f[0]] > 0) add(f[0], +wiz.every[f[0]]); });
     var n = wizNumbers(); if (n.save > 0) add("Emergency Fund", n.save);
     (wiz.expense || []).forEach(function (x) { if (!wizHas(names, x)) names.push(x); });
-    if (!names.length) names = BUILTIN_EXPENSE.slice();
     var inc = [{ n: "My paycheck", v: wizMonthly(wiz.per, wiz.freq) }];
     if (wiz.has2 && +wiz.per2 > 0) inc.push({ n: (wiz.name2 ? wiz.name2.replace(/\b\w/, function (c) { return c.toUpperCase(); }) + "’s" : "Second") + " paycheck", v: wizMonthly(wiz.per2, wiz.freq) });
     return { names: names, amt: amt, income: inc };
