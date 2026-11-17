@@ -2565,7 +2565,39 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var y = Number($("selYear").value), m = Number($("selMonth").value) - 1, now = new Date();
     return y < now.getFullYear() || (y === now.getFullYear() && m < now.getMonth());
   }
+  // Total Income, Total Expense and Net Income come only from the rows on screen (not hidden or removed), so a number saved
+  // somewhere you can't see can never change them. The server's per-row results are used; its three totals are recomputed here.
+  function incomeRowEls() {
+    var groups = rowGroups(), blk = customBlocks().filter(function (b) { return b.group === "income"; })[0], ids = {};
+    if (blk) blk.slots.forEach(function (sl) { ids[sl.row] = 1; });
+    return Array.prototype.filter.call(document.querySelectorAll("#sheet tr[data-row], #sheet tr[data-slot]"), function (tr) {
+      if (tr.hasAttribute("data-slot")) return !!ids[tr.getAttribute("data-slot")];
+      return groups[Number(tr.getAttribute("data-row"))] === "income" && !tr.classList.contains("total") && !tr.classList.contains("net");
+    });
+  }
+  function exactTotals(values) {
+    try {
+      if (!values || !layout || !layout.months || !layout.rules || !SPLIT[layout.id]) return values;
+      var R = layout.rules, byLabel = function (l) { return layout.rows.filter(function (r) { return r.label === l; })[0]; };
+      var ex = byLabel(R.expenseTotalLabel), ne = byLabel(R.netIncomeLabel), inc = layout.rows.filter(function (r) { return r.row === R.incomeRow; })[0];
+      if (!ex || !ne) return values;
+      var live = function (tr) { return !tr.hidden && rowActive(tr); }, exR = expenseRows().filter(live), inR = incomeRowEls().filter(live), keep = lastValues, out = Object.assign({}, values);
+      lastValues = values;
+      ["B", "C", "D"].forEach(function (c) {
+        if (!ex.cells[c]) return;
+        var e = 0, i = 0;
+        exR.forEach(function (tr) { var v = cellValue(tr, c); if (v !== null) e += v; });
+        inR.forEach(function (tr) { var v = cellValue(tr, c); if (v !== null) i += v; });
+        e = Math.round(e * 100) / 100; i = Math.round(i * 100) / 100;
+        out[ex.cells[c].a] = e;
+        if (inc && inc.cells && inc.cells[c] && inR.length) out[inc.cells[c].a] = i; else i = values[(inc && inc.cells && inc.cells[c] ? inc.cells[c].a : c + R.incomeRow)] || 0;
+        if (ne.cells[c]) out[ne.cells[c].a] = Math.round((i - e) * 100) / 100;
+      });
+      lastValues = keep; return out;
+    } catch (x) { try { lastValues = keep; } catch (y) {} return values; }
+  }
   function paint(values) {
+    values = exactTotals(values);
     var r = layout.rows.length && layout.rules, over = monthOver();
     Array.prototype.forEach.call(document.querySelectorAll("td[data-c]"), function (td) {
       var v = values[td.getAttribute("data-c")];
@@ -4244,7 +4276,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return calcMonthly(o).then(function (v) { return actualAdjust(v, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : st.doc["a:" + a] || 0; }, st.Lm, function (t) { return !!st.doc[t]; }); });
     }).then(function (v) {
       if (!v || typeof v.D35 !== "number") return null;
-      var net = v.D35, hid = ((st.doc.__meta || {}).hidden || []).map(Number);
+      var net = v.D35, hid = ((st.doc.__meta || {}).hidden || []).map(Number);   // net is recomputed below from the rows themselves
       var rows = spend.filter(function (e) { return e.key === key; });
       var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, pendOut = 0, recBy = {};
       rows.forEach(function (e) {
@@ -4259,16 +4291,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         } else if (e.kind === "ex") G.handOut.push(e); else if (e.kind === "in") G.handIn.push(e);
       });
       // which categories hold amounts that didn't come from your bank, + Log, or a receipt
-      var typedList = [], typedSum = 0, acts = {}, ents = activeEntries(st.Lm, st.st), inc = {};
+      var typedList = [], typedSum = 0, incSum = 0, expSum = 0, acts = {}, ents = activeEntries(st.Lm, st.st), inc = {};
       ents.income.forEach(function (e) { inc[e.row] = 1; });
       ents.income.concat(st.cats).forEach(function (e) {
         if (hid.indexOf(e.row) >= 0) return;
         var act = e.addrs.reduce(function (t, ad) { return t + (typeof st.doc["a:" + ad] === "number" ? st.doc["a:" + ad] : 0); }, 0), rec = recBy[nk(e.name)] || 0, d = Math.round((act - rec) * 100) / 100;
-        acts[e.name] = act;
+        acts[e.name] = act; if (inc[e.row]) incSum += act; else expSum += act;
         if (Math.abs(d) < 0.005) return;
         var isInc = !!inc[e.row]; typedSum += isInc ? d : -d;
         typedList.push({ n: e.name, act: act, rec: rec, d: d, inc: isInc });
       });
+      net = Math.round((incSum - expSum) * 100) / 100;   // only the categories that are there
       var sum = function (L) { return L.reduce(function (t, e) { return t + e.a; }, 0); };
       var held = Math.round((cur - avail) * 100) / 100, heldUnknown = Math.max(0, Math.round((held - pendOut) * 100) / 100);
       // your balance on the 1st: what you entered, or carried forward from the last month you entered one,
