@@ -2639,8 +2639,38 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return rows.filter(function (r) { return (String(r.sheet_id).indexOf("t~") === 0) === t; }).map(function (r) { return { sheet_id: String(r.sheet_id).replace(/^t~/, ""), inputs: r.inputs }; });
   }
   var pendingSave = null;
+  /* ---------- live: a change saved anywhere (another device, a bank import, "I paid it" in an email) shows up here within seconds ---------- */
+  var ownSave = {}, liveTimer = null, liveKeys = {};
+  function liveStart() {
+    if (CFG.devMode || !session || liveStart.on || !supa.channel) return; liveStart.on = true;
+    try {
+      supa.channel("mi-" + session.user.id).on("postgres_changes", { event: "*", schema: "public", table: "member_inputs", filter: "user_id=eq." + session.user.id }, function (p) {
+        var row = p.new || p.old || {}, key = row.sheet_id; if (!key) return;
+        var ck = session.user.id + "|" + key;
+        if (p.new && p.new.inputs !== undefined) savedCache[ck] = { t: Date.now(), v: cloneData(p.new.inputs) }; else delete savedCache[ck];
+        if (ownSave[key] && Date.now() - ownSave[key] < 5000) return;     // our own save coming back: nothing new
+        liveKeys[key] = 1; clearTimeout(liveTimer); liveTimer = setTimeout(liveApply, 500);
+      }).subscribe();
+    } catch (e) {}
+  }
+  function liveApply() {
+    var keys = Object.keys(liveKeys); liveKeys = {};
+    var bare = keys.map(function (k) { return testWs() && k.indexOf("t~") === 0 ? k.slice(2) : k; });
+    bare.forEach(function (k) {
+      if (k === "spendlog") spendLoaded = false; else if (k === "bills") billsLoaded = false; else if (k === "debts") debtLoaded = false;
+      else if (k === "goals") goalsLoaded = false; else if (k === "receipts") rcLoaded = false; else if (k === "growth") growLoaded = false;
+      else if (k === "setup") setupLoaded = false; else if (k === "txhist") txhLoaded = false; else if (k === "recon") reconStart = null;
+    });
+    var ae = document.activeElement, typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.closest && ae.closest("#sheet,#goalsView,#billsView,#debtView,#logDlg");
+    if (pendingSave || typing) { setTimeout(function () { bare.forEach(function (k) { liveKeys[k] = 1; }); liveApply(); }, 3000); return; }   // finish what you're typing first
+    var months = bare.filter(function (k) { return /:\d{4}-\d{2}$/.test(k) || k === "yearly-projection"; });
+    if (!tool) return;
+    if (tool.type === "home" || tool.id === "bank" || tool.id === "goals" || tool.id === "bills" || tool.id === "debt" || tool.id === "calendar") openTool();
+    else if (months.length) refreshOpenMonth(months);
+    else if (bare.indexOf("spendlog") >= 0 && (tool.id === "monthly-budget")) openTool();
+  }
   function doSave(key, data) {
-    key = wsKey(key);
+    key = wsKey(key); ownSave[key] = Date.now();
     if (CFG.devMode) { try { localStorage.setItem("moneres-dev-" + key, JSON.stringify(data)); $("saved").textContent = "Saved"; } catch (e) {} return Promise.resolve(); }
     var ck = session.user.id + "|" + key; savedCache[ck] = { t: Date.now(), v: cloneData(data) };
     return supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: data, updated_at: new Date().toISOString() })
@@ -6309,6 +6339,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return h + '<p style="margin-top:10px"><button class="linkbtn" data-go="monthly-budget" data-act="1">' + (c.hasAct ? "Update actual spending" : "Enter actual spending") + '</button> <button class="linkbtn" data-go="monthly-budget">Open plan</button></p></div>';
   }
   /* ---------- Safe to spend + month at a glance (top of Home) ---------- */
+  /* ONE set of Actual totals for a month, used by Home, the cards, Safe to spend and the bank check:
+     the categories on your budget (not hidden or removed), exactly like the Monthly table adds them up */
+  function monthActuals(Lm, doc) {
+    var dm = doc.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] };
+    var ent = activeEntries(Lm, st), hid = (dm.hidden || []).map(Number), rm = (dm.removed || []).map(Number);
+    var sumA = function (addrs, pre) { return addrs.reduce(function (t, ad) { return t + (typeof doc[pre + ad] === "number" ? doc[pre + ad] : 0); }, 0); };
+    var R = { inc: 0, exp: 0, planInc: 0 };
+    ent.income.forEach(function (e) { if (hid.indexOf(e.row) >= 0) return; R.inc += sumA(e.addrs, "a:"); R.planInc += sumA(e.addrs, ""); });
+    ent.expense.forEach(function (e) { if (hid.indexOf(e.row) < 0) R.exp += sumA(e.addrs, "a:"); });
+    autoRows(Lm).forEach(function (r) { if (doc[r.toggle] && rm.indexOf(r.row) < 0 && hid.indexOf(r.row) < 0) R.exp += sumA([r.cells.B.a, r.cells.C.a], "a:"); });   // Tithe: only what you paid
+    R.inc = Math.round(R.inc * 100) / 100; R.exp = Math.round(R.exp * 100) / 100; R.net = Math.round((R.inc - R.exp) * 100) / 100;
+    return R;
+  }
   function safeData(Lm, doc, pm) {
     var dm = doc.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] }, ent = activeEntries(Lm, st);
     var t = todayD(), y = t.getFullYear(), mo = t.getMonth(), full = payPref === "full", col = full ? -1 : t.getDate() <= 15 ? 0 : 1;
@@ -6317,6 +6360,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var part = function (e, pre) { return col < 0 ? e.addrs.reduce(function (a, ad) { return a + num(pre + ad); }, 0) : num(pre + e.addrs[Math.min(col, e.addrs.length - 1)]); };
     var whole = function (e, pre) { return e.addrs.reduce(function (a, ad) { return a + num(pre + ad); }, 0); };
     var R = { inc: 0, incGot: 0, bills: 0, billsPaid: 0, billsLeftM: 0, billsPace: 0, spend: 0, spent: 0, save: 0, saved: 0, pInc: 0, pIncGot: 0, pBillsLeft: 0, pSave: 0, pSpent: 0, hot: null, end: end, next: next, full: full };
+    var hidS = (dm.hidden || []).map(Number); ent.income = ent.income.filter(function (e) { return hidS.indexOf(e.row) < 0; }); ent.expense = ent.expense.filter(function (e) { return hidS.indexOf(e.row) < 0; });
     ent.income.forEach(function (e) { R.inc += whole(e, ""); R.incGot += whole(e, "a:"); R.pInc += part(e, ""); R.pIncGot += part(e, "a:"); });
     // Everything builds up in step with your pay: if half of this period's pay is in, half of each bill and of savings is set aside.
     R.estPay = !(R.pIncGot > 0.5);                      // nothing marked received yet: use the plan as a stand-in
@@ -6379,11 +6423,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var net = v ? v.D35 : null, h = "";
     function al(x) { return '<span class="actl">' + (homeActV && typeof x === "number" ? "Actual so far: <i>" + money.format(x) + "</i>" : "Actual: not entered yet") + "</span>"; }
     // Safe to spend starts from the same numbers as your Monthly table's Actual view: what came in minus what went out
-    var pm = homeActV && v && v.D7 > 0 && typeof homeActV.D7 === "number" && homeActV.D7 > 0.5 && typeof homeActV.D35 === "number" ? Math.min(1, homeActV.D7 / v.D7) : null;
+    var MA = null; try { if (homeRef && homeDoc) MA = monthActuals(homeRef, homeDoc); } catch (e) { MA = null; }
+    var pm = MA && MA.inc > 0.5 && MA.planInc > 0 ? Math.min(1, MA.inc / MA.planInc) : null;
     var SD = null; try { if (homeRef && homeDoc) SD = safeData(homeRef, homeDoc, pm === null ? undefined : pm); } catch (e) { SD = null; }
     if (SD && v && typeof v.D35 === "number") SD.net = v.D35;
     if (SD && pm !== null) {
-      SD.cash = true; SD.cin = homeActV.D7; SD.left = homeActV.D35; SD.cout = homeActV.D7 - homeActV.D35; SD.pace = pm;
+      SD.cash = true; SD.cin = MA.inc; SD.left = MA.net; SD.cout = MA.exp; SD.pace = pm;   // same totals as the Monthly table's Actual view
       SD.safe = Math.round((SD.left - SD.mBillsDue - SD.mSaveDue) * 100) / 100;
     } else if (SD && v && typeof v.D35 === "number") {
       SD.cash = false; SD.safe = Math.round((v.D35 + SD.spend - SD.spent) * 100) / 100;   // no pay marked yet: an estimate from the plan
@@ -6673,7 +6718,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function start(h) {
     loadBills(); Promise.all([loadSetup(), loadPlaced(), loadPrefs(), spendLoad()]).then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
-      seedNav(); makeTabs(); openTool(); setTimeout(quietBankImport, 1500);
+      seedNav(); makeTabs(); openTool(); setTimeout(quietBankImport, 1500); liveStart();
     });
   }
 
