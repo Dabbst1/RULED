@@ -3710,6 +3710,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function merchantKey(desc) { return String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(pos|debit|purchase|card|ach|online|www|com|inc|llc|store|sq|tst|pp)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" "); }
   var NOT_SPENDING = /payment|thank you|transfer|xfer|autopay|zelle to|venmo|cash app|withdrawal|atm|credit card|cc pymt/i;
   var PAYCHECK = /payroll|direct dep|dir dep|salary|paycheck|adp|gusto|paychex/i;
+  function payerKey(desc) {
+    return "in|" + String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(direct|dep|deposit|dir|payroll|ppd|id|ach|credit|salary|paycheck|pay|co|corp|inc|llc|des|indn|ref|trace|web|online|from|transfer)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
+  }
   /* where a bank purchase goes. off = it isn't part of this month's plan (we used the closest category, or that category has nothing planned) */
   function bankPlace(t, s) {
     var cats = s.cats, desc = t.description || "", mk = merchantKey(desc), hay = mk + " " + desc;
@@ -3727,7 +3730,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return { cat: near, off: true, want: grp ? grp[2] : "", why: grp ? grp[2] + " isn’t in your budget" : "store not recognized" };
   }
   function bankGuess(t, cats, incs) {
-    if (t.amount > 0) return PAYCHECK.test(t.description) && incs[0] ? "in:" + incs[0].name : "skip";
+    if (t.amount > 0) {
+      // money in: use what you chose last time for this payer; with more than one income, never guess whose pay it is
+      var pr = rcRules[payerKey(t.description)];
+      if (pr === "__skip") return "skip";
+      if (pr && incs.some(function (c) { return nk(c.name) === nk(pr); })) return "in:" + pr;
+      if (!PAYCHECK.test(t.description)) return "skip";
+      return incs.length === 1 ? "in:" + incs[0].name : "";   // "" = waits for you to pick which income it is, once
+    }
     if (NOT_SPENDING.test(t.description)) return "skip";
     if (rcRules[nk(merchantKey(t.description))] === "__skip") return "skip";
     var g = rcGuessCat(t.description, merchantKey(t.description), cats);
@@ -3997,6 +4007,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* add new bank transactions to Actual without asking */
   function autoImport(list, full) {
     if (autoBusy) return autoBusy;
+    try { flushSave(); } catch (e) {}
     var settled = { posted: [], voided: [], touched: [] };
     // pending purchases count right away; when they post (or the bank drops them) settlePending fixes the amount
     var fresh = (list || []).filter(function (t) { return t && t.id && t.status !== "void" && typeof t.amount === "number"; });
@@ -4020,7 +4031,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
               }
               var g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), pend: t.status === "pending" || undefined, dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, maybeDup: hm ? hm.e.id : undefined, src: "bank", acct: t.account || "", auto: true };
               if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
-              if (g === "" || g.indexOf("ex:") === 0) {
+              if ((g === "" && t.amount < 0) || g.indexOf("ex:") === 0) {   // money in never lands in a spending category
                 var pl = bankPlace(t, s);
                 if (pl && rcApply(s, pl.cat, col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: pl.cat, off: pl.off, want: pl.want, why: pl.why })); added.push(t.id); changed = true; return; }
               }
@@ -4180,7 +4191,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       move(e.kind, e.cat, -1);
       var wasWaiting = e.kind === "none";
       e.kind = nk2; e.cat = ncat; e.auto = false; e.want = ""; e.why = ""; e.off = nk2 === "ex" && !(catSum(s.doc, s.cats.filter(function (c) { return nk(c.name) === nk(ncat); })[0] || { addrs: [] }, "") > 0); if (e.off) e.why = "nothing planned";
-      var k = merchantKey(e.s); if (k && nk2 !== "in") { rcRules[nk(k)] = nk2 === "skip" ? "__skip" : ncat; }
+      var k = merchantKey(e.s); if (k && nk2 !== "in" && e.dir !== "in") { rcRules[nk(k)] = nk2 === "skip" ? "__skip" : ncat; }
+      if (e.src === "bank" && (e.dir === "in" || nk2 === "in")) rcRules[payerKey(e.raw || e.s)] = nk2 === "in" ? ncat : "__skip";   // remember whose pay this payer is
       var jobs = [doSave(s.key, s.doc), spendSave(), rcSave()];
       if (wasWaiting && e.src === "bank") jobs.push(bankCall("mark", { ids: [e.id], state: nk2 === "skip" ? "skipped" : "imported" }).catch(function () {}));
       return Promise.all(jobs).then(function () { refreshOpenMonth([s.key]); });
@@ -6165,7 +6177,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function rulesPanel() {
     var ks = Object.keys(rcRules); if (!ks.length) return "";
     return '<details class="panel"><summary><b>Sorting rules (' + ks.length + ")</b></summary><p class=\"sub\">When you pick a category for a store, Monerem remembers it and sorts that store the same way next time. Remove a rule to stop.</p>" +
-      ks.sort().map(function (k) { return '<div class="kv"><span>' + esc(k) + " → " + (rcRules[k] === "__skip" ? "<i>Don’t add</i>" : esc(rcRules[k])) + '</span><button type="button" class="x" data-rmrule="' + esc(k) + '" aria-label="Remove rule">×</button></div>'; }).join("") + "</details>";
+      ks.sort().map(function (k) { return '<div class="kv"><span>' + esc(k.indexOf("in|") === 0 ? "Deposits from " + k.slice(3) : k) + " → " + (rcRules[k] === "__skip" ? "<i>Don’t add</i>" : esc(rcRules[k])) + '</span><button type="button" class="x" data-rmrule="' + esc(k) + '" aria-label="Remove rule">×</button></div>'; }).join("") + "</details>";
   }
   $("bankView").addEventListener("click", function (e) {
     var k = e.target.getAttribute && e.target.getAttribute("data-rmrule"); if (!k) return;
