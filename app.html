@@ -902,7 +902,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .dupask{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:2px 0 10px;padding:10px 12px;border:1px solid #F5C2A8;border-radius:12px;background:#FFF7ED;color:#7C2D12;font-size:14px}
 .dupask[hidden]{display:none}.dupask p{margin:0}.dupbtns{display:flex;gap:8px;flex-wrap:wrap}.dupask .btn{margin:0;height:36px;padding:0 12px;font-size:13px}
 .recon{margin:12px 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#F7FAFF}
-.recon .dh3{margin:0 0 8px}.rtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rhist{margin-top:12px}.rhist summary{cursor:pointer;font-weight:700}.rhist .rrow b small{display:block;font-weight:400;text-align:right}.recon .dh3{margin:0 0 8px}.rtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .rtop small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}.rtop b{font-size:20px;font-variant-numeric:tabular-nums}
 .rlist{margin-top:10px;border-top:1px solid var(--line)}
 .rrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #E4ECFA;font-size:14px}
@@ -4192,8 +4192,37 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     }).then(function () { refreshOpenMonth([e.key, m.key]); toast("<b>Counted once</b><br>Kept your bank’s exact amount, " + money.format(e.a) + ".", "logged"); renderBank(); });
   }
   /* ---------- check against my bank: why your bank balance and your Net in Actual differ, item by item ---------- */
+  var reconHist = [], reconOk = false;   // dated snapshots of this check, so a change can be traced back
   var reconStart = null;   // { "2026-11": 266.14 } balances you typed in for the 1st of the month
   // the numbers behind "Check against my bank" and the reconciliation in Actual
+  function reconSave() { doSave("recon", { __start: reconStart || {}, __hist: reconHist }); }
+  // remember the bank balance, the Actual net and each category's Actual amount whenever any of them changes
+  function reconLog(R) {
+    if (!reconOk || !R) return;
+    var c2 = function (x) { return Math.round(x * 100) / 100; }, acts = {};
+    Object.keys(R.acts || {}).forEach(function (k) { acts[k] = c2(R.acts[k]); });
+    var last = null; for (var i = reconHist.length - 1; i >= 0; i--) if (reconHist[i].m === R.ym) { last = reconHist[i]; break; }
+    if (last && last.bank === c2(R.avail) && last.net === c2(R.net) && JSON.stringify(last.acts) === JSON.stringify(acts)) return;
+    reconHist.push({ t: new Date().toISOString(), m: R.ym, bank: c2(R.avail), net: c2(R.net), acts: acts });
+    if (reconHist.length > 300) reconHist = reconHist.slice(-300);
+    reconSave();
+  }
+  function reconHistHtml(R) {
+    var L = reconHist.filter(function (h) { return h.m === R.ym; });
+    if (!L.length) return "";
+    var m = function (x) { return money.format(x); }, rows = [];
+    for (var i = L.length - 1; i >= 0 && rows.length < 20; i--) {
+      var h = L[i], p = i > 0 ? L[i - 1] : null, ch = [];
+      if (p) {
+        if (p.bank !== h.bank) ch.push("Bank balance " + m(p.bank) + " → " + m(h.bank));
+        Object.keys(Object.assign({}, p.acts, h.acts)).forEach(function (k) { var a = (p.acts || {})[k] || 0, b = (h.acts || {})[k] || 0; if (Math.abs(a - b) >= 0.005) ch.push(esc(k) + " in Actual " + m(a) + " → " + m(b)); });
+      }
+      var gap = Math.round((h.bank - h.net) * 100) / 100;
+      rows.push('<div class="rrow"><span>' + esc(new Date(h.t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) + "<small>" + (p ? (ch.length ? ch.join("<br>") : "No change") : "First record") + "</small></span><b>" + (Math.abs(gap) < 0.005 ? "Even" : m(Math.abs(gap)) + " off") + "<small>bank " + m(h.bank) + " · net " + m(h.net) + "</small></b></div>");
+    }
+    return '<details class="rhist"><summary>History of this check (' + L.length + ")</summary>" +
+      '<p class="sub">Each time your bank balance or an Actual amount changes, Monerem records it here, so you can see what moved and when.</p><div class="rlist">' + rows.join("") + "</div></details>";
+  }
   function reconCalc() {
     if (!bankData) return Promise.resolve(null);
     var accts = (bankData.accounts || []).filter(function (a) { return a.status !== "disconnected"; });
@@ -4204,7 +4233,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     cash.forEach(function (a) { var b = a.balance || {}, c = typeof b.current === "number" ? b.current : null, v = typeof b.available === "number" ? b.available : c; if (v !== null) { avail += v; cur += c === null ? v : c; have = true; } });
     if (!have) return Promise.resolve(null);
     var n = new Date(), key = monthKeyOf(n), mon = MONTHS[n.getMonth()], ym = n.getFullYear() + "-" + pad(n.getMonth() + 1), st = null;
-    return Promise.all([reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; }).catch(function () { reconStart = {}; }), rcMonthState(n.getFullYear(), n.getMonth())]).then(function (a2) {
+    return Promise.all([reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; reconHist = r && Array.isArray(r.__hist) ? r.__hist : []; reconOk = true; }).catch(function () { reconStart = {}; }), rcMonthState(n.getFullYear(), n.getMonth())]).then(function (a2) {
       st = a2[1];
       var o = {}, ins = [], hid = ((st.doc.__meta || {}).hidden || []).map(Number);
       Object.keys(st.doc).forEach(function (k) { if (k.indexOf("a:") !== 0 && k.indexOf("__") !== 0 && typeof st.doc[k] === "number") o[k] = st.doc[k]; });
@@ -4230,11 +4259,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         } else if (e.kind === "ex") G.handOut.push(e); else if (e.kind === "in") G.handIn.push(e);
       });
       // which categories hold amounts that didn't come from your bank, + Log, or a receipt
-      var typedList = [], typedSum = 0, ents = activeEntries(st.Lm, st.st), inc = {};
+      var typedList = [], typedSum = 0, acts = {}, ents = activeEntries(st.Lm, st.st), inc = {};
       ents.income.forEach(function (e) { inc[e.row] = 1; });
       ents.income.concat(st.cats).forEach(function (e) {
         if (hid.indexOf(e.row) >= 0) return;
         var act = e.addrs.reduce(function (t, ad) { return t + (typeof st.doc["a:" + ad] === "number" ? st.doc["a:" + ad] : 0); }, 0), rec = recBy[nk(e.name)] || 0, d = Math.round((act - rec) * 100) / 100;
+        acts[e.name] = act;
         if (Math.abs(d) < 0.005) return;
         var isInc = !!inc[e.row]; typedSum += isInc ? d : -d;
         typedList.push({ n: e.name, act: act, rec: rec, d: d, inc: isInc });
@@ -4274,7 +4304,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
-      return { carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+      var Rr = { acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+      reconLog(Rr); return Rr;
     });
   }
   function reconFill() {
@@ -4295,6 +4326,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
       } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
       h += '<form class="rstart" id="reconStartF"><label>Your balance on ' + mon + ' 1<span class="wizmoney"><i>$</i><input id="reconStartIn" inputmode="decimal" autocomplete="off" value="' + (start !== null && !R.carried ? start.toFixed(2) : "") + '" placeholder="' + (R.carried ? "carried over: " + start.toFixed(2) : "from your statement") + '"></span></label><button class="btn ghost" type="submit">Save</button>' + (start !== null && !R.carried ? '<button class="linkbtn" type="button" id="reconStartClear">Clear</button>' : "") + "</form>";
+      h += reconHistHtml(R);
       box.innerHTML = h;
     }).catch(function () { box.innerHTML = ""; });
   }
@@ -4333,19 +4365,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   document.addEventListener("submit", function (e) {
     if (e.target.id !== "actStartF") return; e.preventDefault();
     var raw = String($("actStartIn").value).replace(/[$,\s]/g, ""), v = parseFloat(raw), n = new Date(); if (raw === "" || isNaN(v)) return;
-    (reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; }).catch(function () { reconStart = {}; })).then(function () {
-      reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)] = Math.round(v * 100) / 100; doSave("recon", { __start: reconStart }); drawActRecon();
+    (reconStart ? Promise.resolve() : loadSaved("recon").then(function (r) { reconStart = (r && r.__start) || {}; reconHist = r && Array.isArray(r.__hist) ? r.__hist : []; reconOk = true; }).catch(function () { reconStart = {}; })).then(function () {
+      reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)] = Math.round(v * 100) / 100; reconSave(); drawActRecon();
     });
   });
   $("bankView").addEventListener("submit", function (e) {
     if (e.target.id !== "reconStartF") return; e.preventDefault();
     var raw = String($("reconStartIn").value).replace(/[$,\s]/g, ""), v = parseFloat(raw), n = new Date(), ym = n.getFullYear() + "-" + pad(n.getMonth() + 1);
     if (raw === "" || isNaN(v)) return;
-    reconStart[ym] = Math.round(v * 100) / 100; doSave("recon", { __start: reconStart }); reconFill();
+    reconStart[ym] = Math.round(v * 100) / 100; reconSave(); reconFill();
   });
   $("bankView").addEventListener("click", function (e) {
     if (e.target.id !== "reconStartClear") return;
-    var n = new Date(); delete reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)]; doSave("recon", { __start: reconStart }); reconFill();
+    var n = new Date(); delete reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)]; reconSave(); reconFill();
   });
   $("bankView").addEventListener("click", function (e) {
     var um = e.target.closest && e.target.closest("[data-unmatch]"); if (um) { um.disabled = true; unmatch(um.getAttribute("data-unmatch")); return; }
