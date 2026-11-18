@@ -1324,6 +1324,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
 #planTip .typedln{align-items:center}#planTip .typedln span{flex:1}
+#planTip button.userec{margin-top:6px;background:#fff;color:#0F766E;border:1.5px solid #0F766E}#planTip button.userec:hover{background:#ecfdf5}
+:root[data-theme="dark"] #planTip button.userec{background:transparent;color:#6EE7A0;border-color:#2f8f6a}
 #planTip button.untype{margin:0 0 0 6px;width:auto;height:auto;padding:0 4px;border:0;border-radius:4px;background:transparent;color:#b45309;font-size:15px;font-weight:700;line-height:1.2;cursor:pointer;flex:0 0 auto}#planTip button.untype:hover{background:#fdeee6}
 :root[data-theme="dark"] #planTip .untype{background:transparent;color:#ffb27a}
 .rsugg{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule,#e6ecf6)}.sugbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.sugbtns .btn{padding:6px 12px;font-size:14px}
@@ -1968,8 +1970,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var switchTimer = null;
   function keepTip() { clearTimeout(tipTimer); clearTimeout(switchTimer); }
   function usedHtml(tr) {
-    if (!tr.hasAttribute("data-sec")) return "";
-    var b = rowBudget(tr); if (!(b.act > 0)) return "";
+    if (!tr.hasAttribute("data-sec")) {   // income rows: what's come in so far
+      var got = 0; Array.prototype.forEach.call(tr.querySelectorAll("input.in"), function (el) { boxAddrs(el).forEach(function (a) { got += +actual[a] || 0; }); });
+      return view === "actual" ? '<div class="tipused"><span>Received so far</span><b>' + money.format(got) + "</b></div>" : "";
+    }
+    var b = rowBudget(tr);
+    if (!(b.act > 0)) return view === "actual" ? '<div class="tipused"><span>Spent so far</span><b>' + money.format(b.act || 0) + "</b></div>" : "";
     var lv = budgetLevel(b.plan, b.act), left = b.plan - b.act;
     return '<div class="tipused ' + (lv ? lv.k : "") + '"><span>Spent so far</span><b>' + money.format(b.act) + "</b></div>" +
       (b.plan > 0 ? '<p class="tipnote ' + (lv ? lv.k : "") + '">' + (left >= 0 ? money.format(left) + " left (" + Math.round(b.act / b.plan * 100) + "% used)" : money.format(-left) + " over your plan") + "</p>" : "");
@@ -1980,10 +1986,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var L = spend.filter(function (e) { return e.key === storageKey() && (e.kind === "ex" || e.kind === "in") && nk(e.cat) === nk(name); }), rec = L.reduce(function (t, e) { return t + e.a; }, 0);
     var typed = Math.round((act - rec) * 100) / 100; if (!(act > 0) && !L.length) return "";
     var src = function (e) { return e.was ? "logged, matched to bank" : e.src === "bank" ? "bank" + (e.pend ? ", pending" : "") : e.src === "receipt" ? "receipt" : "logged by you"; };
-    return '<h4 class="tipspent">Where the ' + money.format(act) + " came from</h4>" +
+    return '<h4 class="tipspent">' + (typed < -0.004 ? "Your bank and Log show " + money.format(rec) : "Where the " + money.format(act) + " came from") + "</h4>" +
       L.slice(0, 6).map(function (e) { return "<div><span>" + esc(e.s.length > 20 ? e.s.slice(0, 19) + "…" : e.s) + " · " + dayLbl(e.d) + " · " + src(e) + "</span><b>" + money.format(e.a) + "</b></div>"; }).join("") +
       (L.length > 6 ? '<p class="sub" style="margin:4px 0 0">+ ' + (L.length - 6) + " more in Bank → Spending record.</p>" : "") +
-      (Math.abs(typed) >= 0.005 ? '<div class="typedln"><span>Typed straight into this box' + (typed < 0 ? " (less than the record)" : "") + "</span><b>" + money.format(typed) + "</b>" + (typed > 0 ? '<button type="button" class="untype" data-untype="' + typed + '" title="Remove the typed amount (Undo brings it back)" aria-label="Remove the ' + money.format(typed) + ' typed into this box">×</button>' : "") + "</div>" : "");
+      (Math.abs(typed) >= 0.005 ? '<div class="typedln"><span>Typed straight into this box' + (typed < 0 ? " (less than the record)" : "") + "</span><b>" + money.format(typed) + "</b>" + (typed > 0 ? '<button type="button" class="untype" data-untype="' + typed + '" title="Remove the typed amount (Undo brings it back)" aria-label="Remove the ' + money.format(typed) + ' typed into this box">×</button>' : "") + "</div>" +
+        (rec > 0 ? '<button type="button" class="userec" data-userec="' + rec + '">Use ' + money.format(rec) + " " + (L.some(function (e) { return e.kind === "in"; }) ? "received" : "spent") + " so far</button>" : "") : "");
   }
   function spentHtml(name) {
     var L = spendFor(storageKey(), name, false); if (!L.length) L = spendFor(storageKey(), name, true); if (!L.length) return "";
@@ -2045,6 +2052,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("planTip").addEventListener("mousedown", function (e) { e.preventDefault(); });
   window.addEventListener("scroll", function () { $("planTip").hidden = true; tipRow = null; }, true);
   $("planTip").addEventListener("click", function (e) {
+    var ur = e.target.closest && e.target.closest("[data-userec]");
+    if (ur && tipRow) {   // set this category to exactly what your bank, + Log and receipts recorded
+      var want = +ur.getAttribute("data-userec"), nmE = tipRow.querySelector("input.nm"), nmv = nmE ? nmE.value : "";
+      var bx = Array.prototype.slice.call(tipRow.querySelectorAll("input.in")), ad = [];
+      bx.forEach(function (el) { boxAddrs(el).forEach(function (a) { ad.push(a); }); });
+      var have = ad.reduce(function (z, a) { return z + (+actual[a] || 0); }, 0), diff = Math.round((want - have) * 100) / 100;
+      if (diff > 0) actual[ad[0]] = Math.round(((+actual[ad[0]] || 0) + diff) * 100) / 100;
+      else { var lft = -diff; ad.slice().sort(function (a, b) { return (+actual[b] || 0) - (+actual[a] || 0); }).forEach(function (a) { if (lft < 0.005) return; var c0 = +actual[a] || 0, tk = Math.min(c0, lft); actual[a] = Math.round((c0 - tk) * 100) / 100; lft = Math.round((lft - tk) * 100) / 100; }); }
+      bx.forEach(function (el) { el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(actual[el.getAttribute("data-a")] || 0); });
+      $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave();
+      toast("<b>" + esc(nmv || "This category") + " set to " + money.format(want) + "</b><br>Exactly what your bank and Log recorded. Tap <b>Undo</b> to go back.");
+      return;
+    }
     var ux = e.target.closest && e.target.closest("[data-untype]");
     if (ux && tipRow) {   // take out only what was typed by hand; what came from your bank, + Log or receipts stays
       var amt = +ux.getAttribute("data-untype"), nmEl = tipRow.querySelector("input.nm"), nm = nmEl ? nmEl.value : "", left = amt;
