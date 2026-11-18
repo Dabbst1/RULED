@@ -1322,6 +1322,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* ==== end safety net ==== */
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
+.bdead{color:#b42318;font-weight:600}
+.bbtns{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.bdeadbox{border:1.5px solid #f0b4ae;background:#fff4f2;border-radius:12px;padding:14px 16px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px}
+.bdeadbox b{color:#8a1c12}.bdeadbox span{font-size:14px;color:#5b3a36;line-height:1.45}.bdeadbox .btn{align-self:flex-start}
+.brelink{background:#b42318!important;color:#fff!important;border-color:#b42318!important}
+:root[data-theme="dark"] .bdeadbox{background:#3D1620;border-color:#7a2b35}:root[data-theme="dark"] .bdeadbox b{color:#FFB4BE}:root[data-theme="dark"] .bdeadbox span{color:#E8C9CD}:root[data-theme="dark"] .bdead{color:#FF8A9A}
 </style>
 </head>
 <body>
@@ -3819,13 +3825,15 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         v.innerHTML = h; return;
       }
       // accounts
+      h += deadBanner(A, true);
       h += '<div class="panel"><div class="bhead"><h2>Linked accounts</h2><span><button type="button" class="btn ghost" data-bank="sync">Refresh</button> <button type="button" class="btn" data-bank="link"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "+ Link another") + "</button></span></div>";
       h += A.map(function (a) {
         var b = a.balance || {}, bal = b.kind === "credit" ? (b.owed !== null && b.owed !== undefined ? money.format(b.owed) + " owed" : "—") : (b.current !== null && b.current !== undefined ? money.format(b.current) : "—");
         var sub = b.kind === "cash" && b.available !== null && b.available !== undefined && b.available !== b.current ? money.format(b.available) + " available" : "";
-        return '<div class="bacct"><div><b>' + esc(a.name || "Account") + (a.last4 ? " ••" + esc(a.last4) : "") + "</b><small>" + esc(a.institution || "") + (a.subcategory ? " · " + esc(String(a.subcategory).replace(/_/g, " ")) : "") + (a.category === "credit" ? " · on your Debt tab" : "") + (a.status && a.status !== "active" ? " · " + esc(a.status) : "") + "</small></div>" +
+        return '<div class="bacct"><div><b>' + esc(a.name || "Account") + (a.last4 ? " ••" + esc(a.last4) : "") + "</b><small>" + esc(a.institution || "") + (a.subcategory ? " · " + esc(String(a.subcategory).replace(/_/g, " ")) : "") + (a.category === "credit" ? " · on your Debt tab" : "") + (a.status && a.status !== "active" ? ' · <span class="bdead">' + (a.status === "inactive" ? "not sharing — sign in again" : esc(a.status)) + "</span>" : "") + "</small></div>" +
           '<div class="bbal"><b>' + bal + "</b><small>" + (sub ? sub + " · " : "") + (bankData && bankData.refreshing ? "checking with " + esc(a.institution || "your bank") + "…" : (a.balance_at ? "as of " + new Date(a.balance_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + (a.balance && a.balance.tx_at ? '<br><span class="btxat">transactions checked ' + new Date(a.balance.tx_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "</span>" : "")) + "</small></div>" +
-          '<button type="button" class="sm" data-bank="unlink" data-id="' + esc(a.id) + '" data-name="' + esc((a.name || "this account") + (a.last4 ? " ••" + a.last4 : "")) + '">Unlink</button></div>';
+          '<span class="bbtns">' + (a.status === "inactive" ? '<button type="button" class="sm brelink" data-bank="relink" data-id="' + esc(a.id) + '"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Reconnect") + "</button> " : "") +
+          '<button type="button" class="sm" data-bank="unlink" data-id="' + esc(a.id) + '" data-name="' + esc((a.name || "this account") + (a.last4 ? " ••" + a.last4 : "")) + '">Unlink</button></span></div>';
       }).join("") + "</div>";
       // pending ones wait until they post (amounts can still change); everything else is already in the record
       var P = R.filter(function (t) { return t.status === "pending"; });
@@ -3851,6 +3859,42 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       if (r) { bankData = r; bankMsg = "Linked " + r.linked + (r.linked === 1 ? " account." : " accounts.") + (r.loading ? " Your transactions are on their way." : ""); return syncCardsToDebt(r.accounts); }
     }).then(renderBank).catch(function (e) {
       bankBusy = false; bankMsg = e.message === "too_many_accounts" ? "You’ve linked the most accounts we allow (12). Unlink one first." : "Couldn’t link your bank (" + esc(e.message) + "). Please try again."; renderBank();
+    });
+  }
+  // a bank stops sharing (Stripe marks the account "inactive") until the member signs in to the bank again.
+  // Reconnecting keeps the same connection, so nothing is counted twice.
+  function deadAccts(A) { return (A || []).filter(function (a) { return a.status === "inactive"; }); }
+  function deadBanner(A, onBank) {
+    var D = deadAccts(A); if (!D.length) return "";
+    var names = D.map(function (a) { return esc((a.institution || a.name || "Your bank") + (a.last4 ? " ••" + a.last4 : "")); }).join(", ");
+    return '<div class="bdeadbox"><b>' + names + (D.length === 1 ? " stopped" : " stopped") + ' sharing new transactions.</b><span>Banks ask you to sign in again every so often. Until you do, new purchases won’t show up here and your Actual numbers will fall behind. It takes about a minute, and nothing gets counted twice.</span>' +
+      (onBank ? '<button type="button" class="btn" data-bank="relink" data-id="' + esc(D[0].id) + '"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Reconnect " + esc(D[0].institution || "bank")) + "</button>"
+              : '<button type="button" class="btn" data-gotool="bank">Reconnect</button>') + "</div>";
+  }
+  function bankRelink(id) {
+    if (bankBusy || !id) return; bankBusy = true; bankMsg = ""; renderBank();
+    var sid = null;
+    bankCall("relink", { account: id }).then(function (r) {
+      return loadStripeJs().then(function (S) { return S(CFG.stripePk).collectFinancialConnectionsAccounts({ clientSecret: r.clientSecret }); });
+    }).then(function (res) {
+      if (res.error) throw new Error(res.error.message || "relink_failed");
+      var fs = res.financialConnectionsSession || {}, rr = fs.relink_result || {}; sid = fs.id;
+      if (!rr.authorization) {
+        bankMsg = rr.failure_reason === "no_account" ? "You signed in, but that account wasn’t picked. Tap <b>Reconnect</b> and choose it this time." :
+                  rr.failure_reason === "no_authorization" ? "The bank sign-in didn’t finish. Tap <b>Reconnect</b> to try again." : "Reconnecting didn’t finish. Tap <b>Reconnect</b> to try again.";
+        return null;
+      }
+      return bankCall("save", { session: sid });
+    }).then(function (r) {
+      bankBusy = false;
+      if (r) {
+        bankData = r;
+        var still = deadAccts(r.accounts).length;
+        bankMsg = still ? "Reconnected, but one account still isn’t sharing. Tap <b>Reconnect</b> on it." : "Reconnected. New transactions are on their way and will fill in your Actual numbers.";
+        return Promise.resolve(syncCardsToDebt(r.accounts)).then(function () { return autoImport(r.review || [], true).catch(function () {}); });
+      }
+    }).then(renderBank).catch(function (e) {
+      bankBusy = false; bankMsg = "Couldn’t reconnect (" + esc(e.message) + "). Please try again."; renderBank();
     });
   }
   function bankSelected() { return Array.prototype.filter.call(document.querySelectorAll("#bankView .bsel"), function (c) { return c.checked; }).map(function (c) { return c.getAttribute("data-id"); }); }
@@ -3917,6 +3961,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var b = e.target.closest && e.target.closest("[data-bank]"); if (!b) return;
     var a = b.getAttribute("data-bank");
     if (a === "link") bankLink();
+    else if (a === "relink") bankRelink(b.getAttribute("data-id"));
     else if (a === "sync") bankLoad(true, true);
     else if (a === "import") bankImport();
     else if (a === "skip") { var ids = bankSelected(); if (!ids.length) return; bankCall("mark", { ids: ids, state: "skipped" }).then(function () { bankData.review = bankData.review.filter(function (t) { return ids.indexOf(t.id) < 0; }); bankMsg = "Skipped " + ids.length + "."; renderBank(); }); }
@@ -4054,6 +4099,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             var inc = activeEntries(s.Lm, s.st).income, changed = false;
             months[k].forEach(function (t) {
               var d = txDay(t), col = d.getDate() <= 15 ? 0 : 1;
+              var tw = t.dup_of ? spendFind(t.dup_of) : null;
+              if (tw && !spendFind(t.id)) {  // same transaction re-sent after a reconnect: keep the one we had, counted once
+                tw.old = tw.id; tw.id = t.id; tw.acct = t.account || tw.acct; matched.push(t.id); added.push(t.id); return;
+              }
               var hm = spendFind(t.id) ? null : handMatch(t, d);
               if (hm && hm.exact) {          // you already logged this one: it becomes the bank's entry, counted once
                 var me = hm.e; me.mid = me.id; me.was = me.src; me.id = t.id; me.src = "bank"; me.raw = String(t.description || "").slice(0, 80); me.pend = t.status === "pending" || undefined; me.acct = t.account || "";
@@ -4193,7 +4242,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var pull = function (action) {
       return bankCall(action).then(function (d) {
         if (!d || !(d.accounts || []).length) { quietBusy = false; return; }
-        bankData = d; var sg = sig(d), go = sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve(); last = sg;
+        var deadWas = deadAccts(bankData && bankData.accounts).length;
+        bankData = d;
+        if (deadAccts(d.accounts).length !== deadWas && tool && tool.type === "home") openTool();   // show (or clear) the "sign in again" warning
+        var sg = sig(d), go = sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve(); last = sg;
         return go.then(function () {
           if (d.refreshing && ++tries < 10) setTimeout(function () { pull("sync"); }, 6000);   // the bank is still sending; check again shortly
           else quietBusy = false;
@@ -6434,6 +6486,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       SD.cash = false; SD.safe = Math.round((v.D35 + SD.spend - SD.spent) * 100) / 100;   // no pay marked yet: an estimate from the plan
     }
     if (SD && SD.inc > 0 && typeof SD.safe === "number" && !isNaN(SD.safe)) saveSafeSnap(SD);
+    h += deadBanner(bankData && bankData.accounts, false);
     if (SD && SD.inc > 0) h += safeHtml(SD); else
     h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
       '<div class="stat"><small>Planned expenses</small><b>' + m(v && v.D34) + "</b>" + al(homeActV && homeActV.D34) + '</div>' +
