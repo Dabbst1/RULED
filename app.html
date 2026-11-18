@@ -1323,6 +1323,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
+.typedln{align-items:center}.untype{margin-left:8px;width:26px;height:26px;border-radius:50%;border:1px solid #e3b9a6;background:#fff;color:#b45309;font-size:16px;line-height:1;cursor:pointer;flex:0 0 auto}.untype:hover{background:#fdeee6}
+:root[data-theme="dark"] .untype{background:#2a1d14;border-color:#7a4a2a;color:#ffb27a}
 .rsugg{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule,#e6ecf6)}.sugbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.sugbtns .btn{padding:6px 12px;font-size:14px}
 .srow.typed{background:var(--sheet,#fff);opacity:.92}.srow.typed .sd{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stsum{margin:14px 0 4px;padding:10px 12px;border-radius:10px;background:var(--sheet,#fff);border:1px solid var(--rule,#dde5f3)}
@@ -1978,7 +1980,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return '<h4 class="tipspent">Where the ' + money.format(act) + " came from</h4>" +
       L.slice(0, 6).map(function (e) { return "<div><span>" + esc(e.s.length > 20 ? e.s.slice(0, 19) + "…" : e.s) + " · " + dayLbl(e.d) + " · " + src(e) + "</span><b>" + money.format(e.a) + "</b></div>"; }).join("") +
       (L.length > 6 ? '<p class="sub" style="margin:4px 0 0">+ ' + (L.length - 6) + " more in Bank → Spending record.</p>" : "") +
-      (Math.abs(typed) >= 0.005 ? '<div class="typedln"><span>Typed straight into this box' + (typed < 0 ? " (less than the record)" : "") + "</span><b>" + money.format(typed) + "</b></div>" : "");
+      (Math.abs(typed) >= 0.005 ? '<div class="typedln"><span>Typed straight into this box' + (typed < 0 ? " (less than the record)" : "") + "</span><b>" + money.format(typed) + "</b>" + (typed > 0 ? '<button type="button" class="untype" data-untype="' + typed + '" title="Remove the typed amount (Undo brings it back)" aria-label="Remove the ' + money.format(typed) + ' typed into this box">×</button>' : "") + "</div>" : "");
   }
   function spentHtml(name) {
     var L = spendFor(storageKey(), name, false); if (!L.length) L = spendFor(storageKey(), name, true); if (!L.length) return "";
@@ -2040,6 +2042,20 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("planTip").addEventListener("mousedown", function (e) { e.preventDefault(); });
   window.addEventListener("scroll", function () { $("planTip").hidden = true; tipRow = null; }, true);
   $("planTip").addEventListener("click", function (e) {
+    var ux = e.target.closest && e.target.closest("[data-untype]");
+    if (ux && tipRow) {   // take out only what was typed by hand; what came from your bank, + Log or receipts stays
+      var amt = +ux.getAttribute("data-untype"), nmEl = tipRow.querySelector("input.nm"), nm = nmEl ? nmEl.value : "", left = amt;
+      var boxes = Array.prototype.slice.call(tipRow.querySelectorAll("input.in")), addrs = [];
+      boxes.forEach(function (el) { boxAddrs(el).forEach(function (a) { addrs.push(a); }); });
+      addrs.sort(function (a, b) { return (+actual[b] || 0) - (+actual[a] || 0); }).forEach(function (a) {
+        if (left < 0.005) return; var cur = +actual[a] || 0, take = Math.min(cur, left);
+        actual[a] = Math.round((cur - take) * 100) / 100; left = Math.round((left - take) * 100) / 100;
+      });
+      boxes.forEach(function (el) { el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(actual[el.getAttribute("data-a")] || 0); });
+      $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave();
+      toast("<b>Removed " + money.format(amt) + "</b><br>The amount typed into " + esc(nm || "this category") + " is gone; what came from your bank stays. Tap <b>Undo</b> to bring it back.");
+      return;
+    }
     if (e.target.id !== "tipFill" || !tipRow) return;
     Array.prototype.forEach.call(tipRow.querySelectorAll("input.in"), function (el) {
       if (el.classList.contains("fullin")) { [el.getAttribute("data-fb"), el.getAttribute("data-fc")].forEach(function (a) { actual[a] = inputs[a] || 0; }); el.value = fmt(fullSum(el)); return; }
