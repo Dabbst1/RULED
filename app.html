@@ -1323,6 +1323,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
+.spendlist{margin-top:10px}.spendlist>summary{cursor:pointer;list-style-position:outside;margin:6px 0;font-size:18px}.spendlist>summary::marker{color:var(--muted)}
 #planTip .typedln{align-items:center}#planTip .typedln span{flex:1}
 #planTip button.userec{margin-top:6px;background:#fff;color:#0F766E;border:1.5px solid #0F766E}#planTip button.userec:hover{background:#ecfdf5}
 :root[data-theme="dark"] #planTip button.userec{background:transparent;color:#6EE7A0;border-color:#2f8f6a}
@@ -2116,12 +2117,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function canon(o) { return Array.isArray(o) ? o.map(canon) : o && typeof o === "object" ? Object.keys(o).sort().reduce(function (r, k) { r[k] = canon(o[k]); return r; }, {}) : o; }
   function snapState() { return JSON.stringify(canon({ i: inputs, a: actual, m: meta })); }
   function histKey() { return "monerem-hist:" + (typeof session !== "undefined" && session && session.user ? session.user.id : "dev") + (testWs() ? ":test" : "") + ":" + storageKey(); }
-  function histSave() { try { localStorage.setItem(histKey(), JSON.stringify({ h: hist, r: redoS, last: histLast })); } catch (e) {} }
+  function histSave() {
+    // every step is kept while you work; if the browser runs out of room to keep them across a refresh, the oldest saved steps drop off first
+    var h = hist, r = redoS;
+    for (var tries = 0; tries < 40; tries++) {
+      try { localStorage.setItem(histKey(), JSON.stringify({ h: h, r: r, last: histLast })); return; }
+      catch (e) { if (!h.length && !r.length) return; if (h.length >= r.length) h = h.slice(Math.ceil(h.length / 4) || 1); else r = r.slice(Math.ceil(r.length / 4) || 1); }
+    }
+  }
   function updateUndoBtn() { $("undoBtn").disabled = !hist.length; $("redoBtn").disabled = !redoS.length; $("undoBtn").textContent = "\u21B6 Undo" + (hist.length ? " (" + hist.length + ")" : ""); $("redoBtn").textContent = "\u21B7 Redo" + (redoS.length ? " (" + redoS.length + ")" : ""); }
   function histReset() {
     hist = []; redoS = []; histLast = snapState();
     // bring back the undo/redo list from before a refresh, as long as the budget is exactly as it was left
-    try { var st = JSON.parse(localStorage.getItem(histKey()) || "null"); if (st && st.last === histLast && Array.isArray(st.h) && Array.isArray(st.r)) { hist = st.h.slice(-5); redoS = st.r.slice(-5); } } catch (e) {}
+    try { var st = JSON.parse(localStorage.getItem(histKey()) || "null"); if (st && st.last === histLast && Array.isArray(st.h) && Array.isArray(st.r)) { hist = st.h.slice(); redoS = st.r.slice(); } } catch (e) {}
     updateUndoBtn(); histSave();
   }
   function histNote() {
@@ -2131,7 +2139,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var ae = document.activeElement, typing = ae && ae.tagName === "INPUT" && (ae.classList.contains("in") || ae.classList.contains("nm"));
     var dragging = document.body.classList.contains("dragmode");
     if ((typing && editFlag) || (dragging && dragFlag)) { histLast = cur; histSave(); return; }   // still the same edit
-    hist.push(histLast); if (hist.length > 5) hist.shift(); redoS = [];
+    hist.push(histLast); redoS = [];   // no limit on how far back you can undo
     histLast = cur; if (typing) editFlag = true; if (dragging) dragFlag = true; updateUndoBtn(); histSave();
   }
   document.addEventListener("focusin", function () { editFlag = false; });
@@ -5044,9 +5052,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (wait.length) h += '<h3 class="dh3" style="margin-top:12px">Needs a category (' + wait.length + ")</h3>" + wait.map(row).join("");
     if (!rows.length) h += '<p class="sub" style="margin-top:10px">Nothing recorded for ' + mLabel(spendMonth) + " yet.</p>";
     else {
-      h += '<p class="stot" id="stotLine">' + mLabel(spendMonth) + ": <b>" + money.format(tot) + "</b> spent across " + spent.length + (spent.length === 1 ? " purchase" : " purchases") + ".</p><div id=\"typedRows\"></div>";
+      h += '<p class="stot" id="stotLine">' + mLabel(spendMonth) + ": <b>" + money.format(tot) + "</b> spent across " + spent.length + (spent.length === 1 ? " purchase" : " purchases") + ".</p>";
+      // the full list folds up like "History of this check"; it remembers whether you left it open or closed
+      var listOpen = false; try { listOpen = localStorage.getItem("monerem-spendlist") === "open"; } catch (x) {}   // folded up unless you left it open
+      var shown = rows.filter(function (e) { return e.kind !== "none"; });
+      h += '<details class="spendlist" id="spendList"' + (listOpen ? " open" : "") + '><summary class="dh3">All transactions (' + shown.length + (spent.length ? ", " + money.format(tot) + " spent" : "") + ")</summary><div id=\"typedRows\"></div>";
       setTimeout(function () { typedFill(spendMonth, tot, spent.length); }, 0);
-      h += rows.filter(function (e) { return e.kind !== "none"; }).map(row).join("");
+      h += shown.map(row).join("") + "</details>";
     }
     return h + "</div>";
   }
@@ -5078,6 +5090,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   window.addEventListener("wheel", function () { pin = null; }, { passive: true });
   window.addEventListener("touchmove", function () { pin = null; }, { passive: true });
+  $("bankView").addEventListener("toggle", function (e) { if (e.target && e.target.id === "spendList") { try { localStorage.setItem("monerem-spendlist", e.target.open ? "open" : "closed"); } catch (x) {} } }, true);
   $("bankView").addEventListener("change", function (e) {
     var t = e.target;
     if (t.id === "spendMon") { spendMonth = t.value; spendMsg = ""; renderBank(); return; }
