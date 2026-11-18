@@ -4743,16 +4743,15 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           start = Math.round(bal0 * 100) / 100; carried = true; fromMon = MONTHS[(m0 + 11) % 12];
         }
       }
-      var autoStart = false;
-      if (start === null) {   // not entered: work it out from your bank — today's balance minus everything in and out of the account this month
-        var flows = 0;
-        rows.forEach(function (e) {
-          var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);
-          if (e.src !== "bank" || !isCash || (e.kind === "skip" && e.why === "canceled by the bank")) return;
-          flows += (e.kind === "in" || (e.dir === "in" && e.kind !== "ex")) ? e.a : -e.a;
-        });
-        start = Math.round((avail + heldUnknown - flows) * 100) / 100; autoStart = true;
-      }
+      var autoStart = false, flows = 0;
+      // what your bank's own transactions say your balance was on the 1st: today's balance minus everything in and out since
+      rows.forEach(function (e) {
+        var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);
+        if (e.src !== "bank" || !isCash || (e.kind === "skip" && e.why === "canceled by the bank")) return;
+        flows += (e.kind === "in" || (e.dir === "in" && e.kind !== "ex")) ? e.a : -e.a;
+      });
+      var bankStart = Math.round((avail + heldUnknown - flows) * 100) / 100;
+      if (start === null) { start = bankStart; autoStart = true; }
       var items = [
         [start !== null ? "Your balance on " + mon + " 1 (" + (autoStart ? "worked out from your bank’s transactions" : carried ? "carried over from " + fromMon + "’s bank activity" : "you entered it") + ")" : null, start || 0, []],
         ["Money into your account that isn’t income (transfers in, refunds, Zelle)", sum(G.skipIn), G.skipIn],
@@ -4767,7 +4766,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
-      var Rr = { autoStart: autoStart, acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+      var Rr = { bankStart: bankStart, autoStart: autoStart, acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
       reconLog(Rr); return Rr;
     });
   }
@@ -4785,6 +4784,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return doSave(s.key, s.doc).then(function () { refreshOpenMonth([s.key]); toast("<b>Fixed</b><br>" + esc(name) + " was counted twice. The typed " + money.format(amt) + " was removed; the bank’s amount stays."); });
     }).then(function () { if (tool && tool.id === "bank") renderBank(); else reconFill(); if (tool && (tool.id === "monthly-budget" || tool.type === "home")) openTool(); });
   }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-usestart]"); if (!b) return;
+    var n = new Date(); delete reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)]; reconSave(); if (tool && tool.id === "bank") renderBank(); else reconFill();
+  });
   document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-recfix]"); if (!b) return; b.disabled = true; reconFix(b.getAttribute("data-recfix"), +b.getAttribute("data-amt")); });
   function reconFill() {
     var box = $("recon"); if (!box) return;
@@ -4801,7 +4804,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       if (Math.abs(gap) >= 0.005) {
         h += '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
           items.map(function (x) { return '<div class="rrow"><span>' + x[0] + (x[2] === null ? typedHtml : names(x[2])) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
-          (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
+          (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>" + (!R.autoStart && !R.carried && Math.abs(R.bankStart - start) >= 0.01 ? "Your bank’s own transactions put your " + mon + " 1 balance at <b>" + money.format(R.bankStart) + "</b>, not the " + money.format(start) + " entered below. If you typed " + money.format(start) + " from something other than your statement, tap <b>Use " + money.format(R.bankStart) + "</b>. <button type=\"button\" class=\"linkbtn\" data-usestart=\"" + R.bankStart + "\">Use " + money.format(R.bankStart) + "</button>" : "Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.") + "</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
       } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
       h += '<form class="rstart" id="reconStartF"><label>Your balance on ' + mon + ' 1<span class="wizmoney"><i>$</i><input id="reconStartIn" inputmode="decimal" autocomplete="off" value="' + (start !== null && !R.carried ? start.toFixed(2) : "") + '" placeholder="' + (R.carried ? "carried over: " + start.toFixed(2) : "from your statement") + '"></span></label><button class="btn ghost" type="submit">Save</button>' + (start !== null && !R.carried ? '<button class="linkbtn" type="button" id="reconStartClear">Clear</button>' : "") + "</form>";
