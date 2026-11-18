@@ -3889,6 +3889,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return true;
   }
   var HOLD = /placed a hold|hold on (one|your|a|the)|funds? hold|hold placed|deposit hold/i;
+  function heldNow(e) {
+    if (e.pend) return true;
+    var A = (bankData && bankData.accounts || []).filter(function (a) { return a.id === e.acct; })[0], b = A && A.balance || {};
+    var held = typeof b.current === "number" && typeof b.available === "number" ? b.current - b.available : 0, d = parseD(e.d);
+    return held >= e.a - 0.01 && d && (Date.now() - d.getTime()) < 14 * 864e5;   // the bank is still holding at least this much, and it's recent
+  }
+  function holdName(e) { if (e.src === "bank" && HOLD.test(String(e.raw || "") + " " + String(e.s || ""))) e.s = heldNow(e) ? "Deposit on hold" : "Deposit"; return e; }
   function notIncome(e) { if (HOLD.test(String(e.raw || "") + " " + String(e.s || ""))) return false; return (e.dir || "out") !== "in" || OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }
   function payerKey(desc) {
     return "in|" + String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(direct|dep|deposit|dir|payroll|ppd|id|ach|credit|salary|paycheck|pay|co|corp|inc|llc|des|indn|ref|trace|web|online|from|transfer)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
@@ -4297,7 +4304,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function spendLoad() {
     if (spendLoaded) return Promise.resolve();
     return loadSaved("spendlog").then(function (s) { spend = s && Array.isArray(s.__log) ? s.__log : []; spendLoaded = true;
-      spend.forEach(function (e) { if (e.src === "bank" && HOLD.test(String(e.raw || "") + " " + String(e.s || "")) && e.s !== "Deposit" && e.s !== "Deposit on hold") e.s = e.pend ? "Deposit on hold" : "Deposit"; }); }).catch(function () { spendLoaded = true; });
+      spend.forEach(holdName); }).catch(function () { spendLoaded = true; });
   }
   function spendSave() {
     spend.sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : 0; });
@@ -4388,7 +4395,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = "canceled by the bank"; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
             if (act.v) { apply(e, e.a, -1); e.pend = false; if (e.kind === "in" || e.kind === "ex") { e.wasKind = e.kind; e.wasCat = e.cat; } e.kind = "skip"; e.cat = ""; e.why = "canceled by the bank"; out.voided.push(e.id); return; }
             var d = Math.round((act.na - e.a) * 100) / 100; if (d) apply(e, Math.abs(d), d > 0 ? 1 : -1);
-            e.a = act.na; if (act.post) { e.pend = false; out.posted.push(e.id); }
+            e.a = act.na; if (act.post) { e.pend = false; holdName(e); out.posted.push(e.id); }
           });
           if (changed) { out.touched.push(k); delete s.doc.__filled; return doSave(s.key, s.doc); }
         });
@@ -5062,7 +5069,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (e.pend ? "Your bank is holding this deposit for now · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" || (e.kind === "in" && e.auto === false) ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
@@ -6060,6 +6067,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           return stPass("all " + SORT_CASES.length + ": stores, bills paid by autopay, rent, tithe, car loans, fees, card payments, transfers and income");
         } finally { rcRules = keep; }
       });
+    }],
+    ["Math", "Held deposits show as released when the bank lets them go", function () {
+      var e = { src: "bank", raw: "We've placed a hold on one or more electronic funds transfers or checks in your", s: "x", a: 100, d: iso(new Date()), pend: true, acct: "none" };
+      stIs(holdName(e).s === "Deposit on hold", "a pending held deposit should say Deposit on hold");
+      e.pend = false; stIs(holdName(e).s === "Deposit", "once the bank releases it, it should say Deposit");
+      return stPass("on hold while the bank holds it, Deposit once it’s released");
     }],
     ["Math", "Nothing gets counted twice", function () {
       return spendLoad().then(function () {
