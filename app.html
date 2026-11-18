@@ -3900,7 +3900,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function bankLoad(doSync, force) {
     bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
     return Promise.all([rcLoad(), loadDebts(), guessUndo().then(holdUndo).then(fixBadIncome).then(depositRescue).then(xferRescue), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
-      bankData = a[3]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
+      bankData = a[3]; orphanSweep(); recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
       return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
     }).then(function () {
@@ -3942,7 +3942,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         v.innerHTML = h; return;
       }
       // accounts
-      h += deadBanner(A, true) + heldBanner(true) + orphanBanner();
+      h += deadBanner(A, true) + heldBanner(true);
       h += '<div class="panel"><div class="bhead"><h2>Linked accounts</h2><span><button type="button" class="btn ghost" data-bank="sync">Refresh</button> <button type="button" class="btn" data-bank="link"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "+ Link another") + "</button></span></div>";
       h += A.map(function (a) {
         var b = a.balance || {}, bal = b.kind === "credit" ? (b.owed !== null && b.owed !== undefined ? money.format(b.owed) + " owed" : "—") : (b.current !== null && b.current !== undefined ? money.format(b.current) : "—");
@@ -4029,6 +4029,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return n;
       });
     }).catch(function () { holdBusy = false; return 0; });
+  }
+  function orphanSweep() {
+    if (!bankData || !(bankData.accounts || []).length) return Promise.resolve(0);
+    return spendLoad().then(function () {
+      var ids = bankData.accounts.map(function (a) { return a.id; }), before = spend.length;
+      spend = spend.filter(function (e) { return !(e.src === "bank" && e.acct && ids.indexOf(e.acct) < 0 && (e.kind === "none" || e.kind === "skip")); });
+      var n = before - spend.length; return n ? spendSave().then(function () { return n; }) : 0;
+    }).catch(function () { return 0; });
   }
   var guessUndone = false;
   function guessUndo() {
@@ -4249,7 +4257,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       bankCall("unlink", { account: id }).then(function (r) {
         bankData = r; debtState.debts.forEach(function (d) { if (d.bankId === id) delete d.bankId; }); saveDebts();
         delete bankHeld[id];
-        return (takeOut ? removeEntries(mine) : Promise.resolve(0)).then(function (n) { bankMsg = "Unlinked." + (n ? " Took its " + n + (n === 1 ? " amount" : " amounts") + " back out of your budget." : ""); renderBank(); if (n && tool && tool.type === "home") openTool(); });
+        return orphanSweep().then(function () { return takeOut; }).then(function (takeOut) { return (takeOut ? removeEntries(mine) : Promise.resolve(0)).then(function (n) { bankMsg = "Unlinked." + (n ? " Took its " + n + (n === 1 ? " amount" : " amounts") + " back out of your budget." : ""); renderBank(); if (n && tool && tool.type === "home") openTool(); }); });
       }).catch(function (er) { bankMsg = "Couldn’t unlink (" + esc(er.message) + ")."; renderBank(); });
     }
   });
@@ -4620,7 +4628,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return bankCall(action).then(function (d) {
         if (!d || !(d.accounts || []).length) { quietBusy = false; return; }
         var deadWas = deadAccts(bankData && bankData.accounts).length;
-        bankData = d;
+        bankData = d; orphanSweep();
         if (deadAccts(d.accounts).length !== deadWas && tool && tool.type === "home") openTool();   // show (or clear) the "sign in again" warning
         var sg = sig(d), go = (sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve()).then(holdRelease); last = sg;
         return go.then(function () {
@@ -4748,7 +4756,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     }).then(function (v) {
       if (!v || typeof v.D35 !== "number") return null;
       var net = v.D35, hid = ((st.doc.__meta || {}).hidden || []).map(Number);   // net is recomputed below from the rows themselves
-      var rows = spend.filter(function (e) { return e.key === key; });
+      var linkedIds = accts.map(function (a) { return a.id; });
+      var rows = spend.filter(function (e) { return e.key === key && (!e.acct || e.src !== "bank" || linkedIds.indexOf(e.acct) >= 0); });   // an unlinked account's transactions aren't this bank's money
       var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, pendOut = 0, recBy = {};
       rows.forEach(function (e) {
         var isIn = e.kind === "in" || (e.dir === "in" && e.kind !== "ex");
@@ -4902,16 +4911,16 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var names = function (L) { return L && L.length ? "<small>" + L.slice(0, 4).map(function (e) { return esc(e.s) + " " + money.format(e.a) + (e.fix ? ' <button type="button" class="linkbtn" data-recfix="' + esc(e.fix) + '" data-amt="' + e.a + '">Fix</button>' : ""); }).join(" · ") + (L.length > 4 ? " · and " + (L.length - 4) + " more" : "") + "</small>" : ""; };
       var typedHtml = "<small>" + typedList.map(function (t) { return esc(t.n) + ": " + money.format(t.act) + " in Actual, " + money.format(t.rec) + " from your bank or Log"; }).join("<br>") + "</small>";
       var dups = rows.filter(function (e) { return e.maybeDup && spendFind(e.maybeDup) && spendFind(e.maybeDup).src !== "bank"; }).length;
-      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank, available</small><b>' + money.format(avail) + "</b></div><div><small>Net in Actual, " + mon + "</small><b>" + money.format(net) + "</b></div><div><small>Not explained</small><b>" + (Math.abs(rest) < 0.005 ? '<span class="stgood">None ✓</span>' : money.format(Math.abs(rest))) + "</b></div></div>";
-      h += Math.abs(rest) < 0.005 ? '<p class="rok">&#10003; Reconciled automatically: every dollar between your bank and Actual is accounted for below.</p>' : "";
+      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank, available</small><b>' + money.format(avail) + "</b></div><div><small>Net in Actual, " + mon + "</small><b>" + money.format(net) + "</b></div><div><small>Difference</small><b>" + (Math.abs(gap) < 0.005 ? '<span class="stgood">None ✓</span>' : money.format(Math.abs(gap))) + "</b></div></div>";
+      h += Math.abs(gap) < 0.005 ? '<p class="rok">&#10003; Your Actual numbers match your bank to the cent.</p>' : "";
       if (dups) h += '<p class="rwarn">' + dups + (dups === 1 ? " purchase might be" : " purchases might be") + " counted twice. Answer the “Same purchase?” question" + (dups === 1 ? "" : "s") + " below.</p>";
       if (Math.abs(gap) >= 0.005) {
         h += '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
           items.map(function (x) { return '<div class="rrow"><span>' + x[0] + (x[2] === null ? typedHtml : names(x[2])) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
           (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>" + (!R.autoStart && !R.carried && Math.abs(R.bankStart - start) >= 0.01 ? "Your bank’s own transactions put your " + mon + " 1 balance at <b>" + money.format(R.bankStart) + "</b>, not the " + money.format(start) + " entered below. If you typed " + money.format(start) + " from something other than your statement, tap <b>Use " + money.format(R.bankStart) + "</b>. <button type=\"button\" class=\"linkbtn\" data-usestart=\"" + R.bankStart + "\">Use " + money.format(R.bankStart) + "</button>" : "Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.") + "</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
-      } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
-      h += '<p class="sub" style="margin:8px 0 0">Your ' + mon + ' 1 balance (' + money.format(R.bankStart) + ') is worked out from your bank’s own transactions, so it can’t be mistyped.</p>';
+      }
+      if (Math.abs(gap) >= 0.005) h += '<p class="sub" style="margin:8px 0 0">Your ' + mon + ' 1 balance (' + money.format(R.bankStart) + ') is worked out from your bank’s own transactions, so it can’t be mistyped.</p>';
       h += suggHtml(R);
       h += reconHistHtml(R);
       box.innerHTML = h;
@@ -4943,7 +4952,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var expect = Math.round((R.avail - R.rest) * 100) / 100;
       h += row("Should be in your bank", R.start === null ? "—" : money.format(expect), "tot") + row("Your bank says (available)", money.format(R.avail), "tot");
       h += "</div>";
-      if (Math.abs(R.rest) < 0.005 && R.start !== null) h += '<p class="rok">&#10003; Matches your bank to the cent.</p>';
+      if (Math.abs(R.gap) < 0.005) h += '<p class="rok">&#10003; Matches your bank to the cent.</p>';
       else if (R.start === null) h += '<form class="rstart" id="actStartF"><label>Your balance on ' + R.mon + ' 1<span class="wizmoney"><i>$</i><input id="actStartIn" inputmode="decimal" autocomplete="off" placeholder="from your statement"></span></label><button class="btn" type="submit">Save</button></form>';
       else h += '<p class="rwarn">Off by ' + money.format(Math.abs(R.rest)) + '. Usually a charge your bank hasn’t sent yet, something counted twice, or a typo. Open <b>Bank</b> → <b>Check against my bank</b> to find it.</p>';
       box.innerHTML = h;
@@ -6037,6 +6046,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return stPass("holds count once, when the bank releases the money");
       });
     }],
+    ["Your data", "Nothing left over from unlinked accounts", function () {
+      if (testWs() || CFG.devMode || !bankData || !(bankData.accounts || []).length) return stSkip("needs your main budget’s bank");
+      return spendLoad().then(function () {
+        var ids = bankData.accounts.map(function (a) { return a.id; });
+        var left = spend.filter(function (e) { return e.src === "bank" && e.acct && ids.indexOf(e.acct) < 0 && (e.kind === "none" || e.kind === "skip"); });
+        stIs(!left.length, left.length + " line(s) from an account you unlinked are still on the Bank tab");
+        return reconCalc().then(function (R) {
+          var bad = R ? R.rows.filter(function (e) { return e.src === "bank" && e.acct && ids.indexOf(e.acct) < 0; }) : [];
+          stIs(!bad.length, "the bank check is still counting " + bad.length + " transaction(s) from an unlinked account");
+          return stPass("no leftovers, and the bank check only uses linked accounts");
+        });
+      });
+    }],
     ["Your data", "Nothing stuck waiting", function () {
       return spendLoad().then(function () {
         var old = new Date(); old.setDate(old.getDate() - 10);
@@ -6054,7 +6076,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         if (!R) return stSkip("no cash account to check against");
         var twice = R.typedList.filter(function (t) { return t.dup; });
         if (twice.length) return { s: "fail", d: twice.map(function (t) { return t.n + " " + money.format(t.dup); }).join(", ") + " counted twice (typed in and also from your bank). Tap Fix in Bank → Check against my bank." };
-        if (Math.abs(R.rest) < 0.01) return stPass("bank " + money.format(R.avail) + ", fully explained");
+        if (Math.abs(R.gap) < 0.01) return stPass("Actual and your bank both show " + money.format(R.avail));
         return stWarn(money.format(Math.abs(R.rest)) + " between your bank and Actual isn’t explained yet. Open Bank → Check against my bank.");
       });
     }],
