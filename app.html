@@ -1323,8 +1323,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
-.typedln{align-items:center}.untype{margin-left:8px;width:26px;height:26px;border-radius:50%;border:1px solid #e3b9a6;background:#fff;color:#b45309;font-size:16px;line-height:1;cursor:pointer;flex:0 0 auto}.untype:hover{background:#fdeee6}
-:root[data-theme="dark"] .untype{background:#2a1d14;border-color:#7a4a2a;color:#ffb27a}
+#planTip .typedln{align-items:center}#planTip .typedln span{flex:1}
+#planTip button.untype{margin:0 0 0 6px;width:auto;height:auto;padding:0 4px;border:0;border-radius:4px;background:transparent;color:#b45309;font-size:15px;font-weight:700;line-height:1.2;cursor:pointer;flex:0 0 auto}#planTip button.untype:hover{background:#fdeee6}
+:root[data-theme="dark"] #planTip .untype{background:transparent;color:#ffb27a}
 .rsugg{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule,#e6ecf6)}.sugbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.sugbtns .btn{padding:6px 12px;font-size:14px}
 .srow.typed{background:var(--sheet,#fff);opacity:.92}.srow.typed .sd{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stsum{margin:14px 0 4px;padding:10px 12px;border-radius:10px;background:var(--sheet,#fff);border:1px solid var(--rule,#dde5f3)}
