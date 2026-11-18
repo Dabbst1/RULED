@@ -3788,7 +3788,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var FEE = /\bfees?\b|fee-|overdraft|\bnsf\b|service charge|maintenance charge|returned item/i;
   var XFER_CAT = "Transfers";
   function isXferOut(desc, amt) { var d = String(desc || ""); if (HOLD.test(d) || CARD_PAY.test(d) || CAR_PAY.test(d) || FEE.test(d)) return false; return amt < 0 ? XFER_OUT.test(d) : OUT_XFER.test(d); }
-  function xferRule(desc) { var r = rcRules[nk(merchantKey(desc))]; return r && r !== "__skip" && nk(r) !== nk(XFER_CAT) ? r : null; }
+  var GENERIC_PAY = /^(paypal|zelle|venmo|cash app|cashapp|online|transfer|xfer|wire|atm|withdrawal|non|chase|bank|ach|external|mobile|internet|recurring|payment)\b/;
+  function xferRule(desc) { var k = merchantKey(desc); if (!k || GENERIC_PAY.test(k)) return null; var r = rcRules[nk(k)]; return r && r !== "__skip" && nk(r) !== nk(XFER_CAT) ? r : null; }
   // make sure this month has a Transfers line (added only when money actually moves out)
   function ensureXferCat(s) {
     if (s.cats.some(function (c) { return nk(c.name) === nk(XFER_CAT); })) return true;
@@ -3839,7 +3840,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var bankPoll = 0;
   function bankLoad(doSync, force) {
     bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
-    return Promise.all([rcLoad(), loadDebts(), holdUndo().then(fixBadIncome).then(depositRescue).then(xferRescue), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
+    return Promise.all([rcLoad(), loadDebts(), guessUndo().then(holdUndo).then(fixBadIncome).then(depositRescue).then(xferRescue), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[3]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
       return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
@@ -3882,7 +3883,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         v.innerHTML = h; return;
       }
       // accounts
-      h += deadBanner(A, true);
+      h += deadBanner(A, true) + heldBanner(true) + orphanBanner();
       h += '<div class="panel"><div class="bhead"><h2>Linked accounts</h2><span><button type="button" class="btn ghost" data-bank="sync">Refresh</button> <button type="button" class="btn" data-bank="link"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "+ Link another") + "</button></span></div>";
       h += A.map(function (a) {
         var b = a.balance || {}, bal = b.kind === "credit" ? (b.owed !== null && b.owed !== undefined ? money.format(b.owed) + " owed" : "—") : (b.current !== null && b.current !== undefined ? money.format(b.current) : "—");
@@ -3913,7 +3914,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return bankCall("save", { session: sid });
     }).then(function (r) {
       bankBusy = false;
-      if (r) { bankData = r; bankMsg = "Linked " + r.linked + (r.linked === 1 ? " account." : " accounts.") + (r.loading ? " Your transactions are on their way." : ""); return syncCardsToDebt(r.accounts); }
+      if (r) { bankData = r; bankMsg = "Linked " + r.linked + (r.linked === 1 ? " account." : " accounts.") + (r.loading ? " Your transactions are on their way." : " Review what it brought below before anything is added to your budget."); return Promise.resolve(syncCardsToDebt(r.accounts)).then(function () { return autoImport(r.review || [], true).catch(function () {}); }); }
     }).then(renderBank).catch(function (e) {
       bankBusy = false; bankMsg = e.message === "too_many_accounts" ? "You’ve linked the most accounts we allow (12). Unlink one first." : "Couldn’t link your bank (" + esc(e.message) + "). Please try again."; renderBank();
     });
@@ -3969,6 +3970,33 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return n;
       });
     }).catch(function () { holdBusy = false; return 0; });
+  }
+  var guessUndone = false;
+  function guessUndo() {
+    if (guessUndone) return Promise.resolve(0); guessUndone = true;
+    return Promise.all([spendLoad(), rcLoad()]).then(function () {
+      var L = spend.filter(function (e) { return e.src === "bank" && e.kind === "ex" && e.auto !== false && /isn’t in your budget|store not recognized/.test(e.why || ""); });
+      if (!L.length) return 0;
+      var byM = {}; L.forEach(function (e) { (byM[e.key] = byM[e.key] || []).push(e); });
+      var n = 0, tot = 0, cats = {}, chain = Promise.resolve();
+      Object.keys(byM).forEach(function (k) {
+        chain = chain.then(function () {
+          var m = /(\d{4})-(\d{2})$/.exec(k); if (!m) return;
+          return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+            byM[k].forEach(function (e) {
+              if (rcApply(s, e.cat, e.col || 0, e.a, -1) === null) return;
+              cats[e.cat] = 1; tot += e.a; n++;
+              e.wasCat = e.cat; e.kind = "none"; e.cat = ""; e.why = (e.want ? e.want + " isn’t in your budget. " : "") + "Monerem had guessed " + e.wasCat + ". Pick where this goes.";
+            });
+            delete s.doc.__filled; return doSave(s.key, s.doc);
+          });
+        });
+      });
+      return chain.then(function () { return spendSave(); }).then(function () {
+        if (n) { toast("<b>Guesses taken back out</b><br>" + n + (n === 1 ? " purchase" : " purchases") + " (" + money.format(tot) + ") had been put in " + Object.keys(cats).join(", ") + " as a closest match. " + (n === 1 ? "It’s" : "They’re") + " waiting on the Bank tab for you to pick the right category."); refreshOpenMonth(Object.keys(byM)); }
+        return n;
+      });
+    }).catch(function () { return 0; });
   }
   var holdUndone = false;
   function holdUndo() {
@@ -4156,10 +4184,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     else if (a === "skip") { var ids = bankSelected(); if (!ids.length) return; bankCall("mark", { ids: ids, state: "skipped" }).then(function () { bankData.review = bankData.review.filter(function (t) { return ids.indexOf(t.id) < 0; }); bankMsg = "Skipped " + ids.length + "."; renderBank(); }); }
     else if (a === "unlink") {
       var id = b.getAttribute("data-id");
-      if (!window.confirm("Unlink " + b.getAttribute("data-name") + "? Monerem will stop reading this account and delete its saved transactions. Amounts you already added to your budget stay.")) return;
+      if (!window.confirm("Unlink " + b.getAttribute("data-name") + "? Monerem will stop reading this account and delete its saved transactions. Next, you choose whether the amounts it added to your budget stay or come back out.")) return;
+      var mine = spend.filter(function (x) { return x.acct === id && (x.kind === "ex" || x.kind === "in"); }), takeOut = mine.length && window.confirm("Also take the " + mine.length + (mine.length === 1 ? " amount" : " amounts") + " this account added to your budget back out? (OK = take them out, Cancel = keep them)");
       bankCall("unlink", { account: id }).then(function (r) {
         bankData = r; debtState.debts.forEach(function (d) { if (d.bankId === id) delete d.bankId; }); saveDebts();
-        bankMsg = "Unlinked."; renderBank();
+        delete bankHeld[id];
+        return (takeOut ? removeEntries(mine) : Promise.resolve(0)).then(function (n) { bankMsg = "Unlinked." + (n ? " Took its " + n + (n === 1 ? " amount" : " amounts") + " back out of your budget." : ""); renderBank(); if (n && tool && tool.type === "home") openTool(); });
       }).catch(function (er) { bankMsg = "Couldn’t unlink (" + esc(er.message) + ")."; renderBank(); });
     }
   });
@@ -4270,15 +4300,106 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return chain.then(function () { return out; });
   }
   /* add new bank transactions to Actual without asking */
+  // accounts whose transactions go into your budget automatically (you OK'd them, or they were linked before this check existed)
+  var acctOk = null, bankHeld = {};
+  function acctOkLoad() {
+    if (acctOk) return Promise.resolve(acctOk);
+    return Promise.all([loadSaved("bankseen"), spendLoad()]).then(function (a) {
+      if (a[0] && Array.isArray(a[0].__ok)) { acctOk = a[0].__ok; return acctOk; }
+      var ids = {}; spend.forEach(function (e) { if (e.acct) ids[e.acct] = 1; });   // first time: every account that's already been bringing transactions
+      ((bankData && bankData.accounts) || []).forEach(function (x) { if (spend.some(function (e) { return e.acct === x.id; })) ids[x.id] = 1; });
+      acctOk = Object.keys(ids); acctOkSave(); return acctOk;
+    }).catch(function () { acctOk = []; return acctOk; });
+  }
+  function acctOkSave() { return doSave("bankseen", { __ok: acctOk || [] }); }
+  function heldSummary(id) {
+    var L = bankHeld[id] || [], cur = monthKeyOf(new Date()), now = L.filter(function (t) { return monthKeyOf(txDay(t)) === cur; });
+    var out = now.filter(function (t) { return t.amount < 0; }).reduce(function (z, t) { return z - t.amount; }, 0), inn = now.filter(function (t) { return t.amount > 0; }).reduce(function (z, t) { return z + t.amount; }, 0);
+    var a = ((bankData && bankData.accounts) || []).filter(function (x) { return x.id === id; })[0] || {};
+    return { L: L, now: now, older: L.length - now.length, out: out, inn: inn, name: (a.institution || "") + " " + (a.name || "account") + (a.last4 ? " ••" + a.last4 : "") };
+  }
+  function heldBanner(onBank) {
+    return Object.keys(bankHeld).filter(function (id) { return (bankHeld[id] || []).length; }).map(function (id) {
+      var S = heldSummary(id);
+      return '<div class="bdeadbox heldbox"><b>' + esc(S.name.trim()) + " is linked. Add its transactions to your budget?</b><span>" +
+        (S.now.length ? "This month: " + S.now.length + (S.now.length === 1 ? " transaction" : " transactions") + " (" + money.format(S.out) + " out" + (S.inn ? ", " + money.format(S.inn) + " in" : "") + ")." : "Nothing from this month yet.") +
+        (S.older ? " The bank also sent " + S.older + " from earlier months: those stay on record and don’t change past months." : "") +
+        " Nothing has been added yet. If this is a credit card you already pay from your checking account, adding both counts the same spending twice.</span>" +
+        (onBank ? '<span class="dupbtns"><button type="button" class="btn" data-heldok="' + esc(id) + '">Add this month’s</button><button type="button" class="btn ghost" data-heldno="' + esc(id) + '">Keep on record only</button></span>' : '<button type="button" class="btn" data-gotool="bank">Review</button>') + "</div>";
+    }).join("");
+  }
+  function heldDecide(id, add) {
+    var S = heldSummary(id), cur = monthKeyOf(new Date());
+    if (acctOk.indexOf(id) < 0) acctOk.push(id);
+    // earlier months never change; with "record only", this month's are kept on record too, not counted
+    S.L.forEach(function (t) {
+      if (add && monthKeyOf(txDay(t)) === cur) return;
+      var d = txDay(t);
+      spendPut({ id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: monthKeyOf(d), col: d.getDate() <= 15 ? 0 : 1, src: "bank", acct: t.account || "", kind: "skip", cat: "", auto: true, why: add ? "before you linked this account" : "on record only (you chose not to add this account)" });
+    });
+    delete bankHeld[id];
+    var ids = S.L.filter(function (t) { return !add || monthKeyOf(txDay(t)) !== cur; }).map(function (t) { return t.id; });
+    return Promise.all([acctOkSave(), spendSave(), ids.length ? bankCall("mark", { ids: ids, state: "skipped" }).catch(function () {}) : null]).then(function () {
+      return add ? autoImport((bankData && bankData.review) || [], true) : null;
+    }).then(function () { bankMsg = add ? "Added this month’s transactions from " + esc(S.name.trim()) + "." : "Kept on record only. New transactions from this account won’t be added either until you change a category."; renderBank(); });
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-heldok],[data-heldno]"); if (!b) return;
+    b.disabled = true; heldDecide(b.getAttribute("data-heldok") || b.getAttribute("data-heldno"), b.hasAttribute("data-heldok"));
+  });
+  // amounts in your budget from an account that isn't linked any more
+  function orphanList() {
+    if (!bankData || !bankData.accounts) return [];
+    var ids = bankData.accounts.map(function (a) { return a.id; });
+    return spend.filter(function (e) { return e.src === "bank" && e.acct && ids.indexOf(e.acct) < 0 && (e.kind === "ex" || e.kind === "in") && !e.orphanOk; });
+  }
+  function orphanBanner() {
+    var L = orphanList(); if (!L.length) return "";
+    var out = L.filter(function (e) { return e.kind === "ex"; }).reduce(function (z, e) { return z + e.a; }, 0), inn = L.filter(function (e) { return e.kind === "in"; }).reduce(function (z, e) { return z + e.a; }, 0);
+    return '<div class="bdeadbox"><b>' + L.length + (L.length === 1 ? " amount" : " amounts") + " in your budget came from an account that’s no longer linked.</b><span>" + money.format(out) + " of spending" + (inn ? " and " + money.format(inn) + " of income" : "") + ". If you unlinked it because it didn’t belong, take them out and your Actual numbers go back to how they were.</span>" +
+      '<span class="dupbtns"><button type="button" class="btn" data-orphan="out">Take them out</button><button type="button" class="btn ghost" data-orphan="keep">Keep them</button></span></div>';
+  }
+  function removeEntries(L) {
+    var byM = {}; L.forEach(function (e) { (byM[e.key] = byM[e.key] || []).push(e); });
+    var chain = Promise.resolve(), gone = {};
+    Object.keys(byM).forEach(function (k) {
+      chain = chain.then(function () {
+        var m = /(\d{4})-(\d{2})$/.exec(k); if (!m) return;
+        return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+          var inc = activeEntries(s.Lm, s.st).income;
+          byM[k].forEach(function (e) {
+            if (e.kind === "ex") rcApply(s, e.cat, e.col || 0, e.a, -1);
+            else if (e.kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (c) { var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.max(0, Math.round((cur - e.a) * 100) / 100); } }
+            gone[e.id] = 1;
+          });
+          delete s.doc.__filled; return doSave(s.key, s.doc);
+        });
+      });
+    });
+    return chain.then(function () { spend = spend.filter(function (e) { return !gone[e.id]; }); return spendSave(); }).then(function () { refreshOpenMonth(Object.keys(byM)); return Object.keys(gone).length; });
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-orphan]"); if (!b) return;
+    var L = orphanList(); b.disabled = true;
+    if (b.getAttribute("data-orphan") === "keep") { L.forEach(function (x) { x.orphanOk = true; }); spendSave().then(renderBank); return; }
+    removeEntries(L).then(function (n) { bankMsg = "Took " + n + (n === 1 ? " amount" : " amounts") + " from the unlinked account out of your budget."; renderBank(); if (tool && tool.type === "home") openTool(); });
+  });
   function autoImport(list, full) {
     if (autoBusy) return autoBusy;
     try { flushSave(); } catch (e) {}
     var settled = { posted: [], voided: [], touched: [] };
     // pending purchases count right away; when they post (or the bank drops them) settlePending fixes the amount
     var fresh = (list || []).filter(function (t) { return t && t.id && t.status !== "void" && typeof t.amount === "number"; });
-    autoBusy = Promise.all([spendLoad(), rcLoad()]).then(function () { return settlePending(list, full); }).then(function (S) {
+    autoBusy = Promise.all([spendLoad(), rcLoad(), acctOkLoad()]).then(function () { return settlePending(list, full); }).then(function (S) {
       settled = S;
       fresh = fresh.filter(function (t) { var e = spendFind(t.id); return !e || e.kind === "none"; });
+      // an account you just linked: its transactions wait for your OK before they touch your budget
+      if (acctOk) {
+        var reconn = {}; fresh.forEach(function (t) { if (t.dup_of) reconn[t.account] = 1; });   // a reconnected account (same transactions coming back): already yours
+        Object.keys(reconn).forEach(function (a) { if (acctOk.indexOf(a) < 0) { acctOk.push(a); acctOkSave(); } });
+        bankHeld = {};
+        fresh = fresh.filter(function (t) { if (!t.account || acctOk.indexOf(t.account) >= 0) return true; (bankHeld[t.account] = bankHeld[t.account] || []).push(t); return false; });
+      }
       var months = {};
       fresh.forEach(function (t) { var k = monthKeyOf(txDay(t)); (months[k] = months[k] || []).push(t); });
       var added = [], skipped = [], waiting = 0, touched = [], matched = [], chain = Promise.resolve();
@@ -4306,7 +4427,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
               }
               if ((g === "" && t.amount < 0) || g.indexOf("ex:") === 0) {   // money in never lands in a spending category
                 var pl = bankPlace(t, s);
-                if (pl && rcApply(s, pl.cat, col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: pl.cat, off: pl.off, want: pl.want, why: pl.why })); added.push(t.id); changed = true; return; }
+                var sure = pl && (!pl.why || pl.why === "nothing planned");   // the store's own category is in your budget (or you chose it before)
+                if (sure && rcApply(s, pl.cat, col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: pl.cat, off: pl.off, want: pl.want, why: pl.why })); added.push(t.id); changed = true; return; }
+                if (pl && !sure) { spendPut(Object.assign(base, { kind: "none", cat: "", want: pl.want, why: pl.want ? pl.want + " isn’t in your budget. Pick where this goes, or add " + pl.want + "." : "" })); waiting++; return; }   // never guess into an unrelated category
               }
               if (g.indexOf("in:") === 0) {
                 var e = inc.filter(function (c) { return nk(c.name) === nk(g.slice(3)); })[0];
@@ -4430,7 +4553,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function quietBankImport(force) {
     if (!session || CFG.devMode || quietBusy) return;
     if (!force && Date.now() - quietAt < 90 * 1000) return;
-    quietBusy = true; quietAt = Date.now(); holdUndo().then(fixBadIncome).then(depositRescue).then(xferRescue);
+    quietBusy = true; quietAt = Date.now(); guessUndo().then(holdUndo).then(fixBadIncome).then(depositRescue).then(xferRescue);
     var tries = 0, last = "";
     var sig = function (d) { return JSON.stringify((d.review || []).map(function (t) { return t.id + t.status + t.amount; })); };
     var pull = function (action) {
@@ -4794,7 +4917,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack ? ' · <b class="bdead">' + esc(e.why) + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
@@ -7330,7 +7453,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       SD.cash = false; SD.safe = Math.round((v.D35 + SD.spend - SD.spent) * 100) / 100;   // no pay marked yet: an estimate from the plan
     }
     if (SD && SD.inc > 0 && typeof SD.safe === "number" && !isNaN(SD.safe)) saveSafeSnap(SD);
-    h += deadBanner(bankData && bankData.accounts, false);
+    h += deadBanner(bankData && bankData.accounts, false) + heldBanner(false);
     if (SD && SD.inc > 0) h += safeHtml(SD); else
     h += '<div class="cards"><div class="stat"><small>Planned take-home pay</small><b>' + m(v && v.D7) + "</b>" + al(homeActV && homeActV.D7) + '</div>' +
       '<div class="stat"><small>Planned expenses</small><b>' + m(v && v.D34) + "</b>" + al(homeActV && homeActV.D34) + '</div>' +
