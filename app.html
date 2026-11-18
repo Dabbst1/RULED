@@ -1323,6 +1323,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
+.rsugg{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule,#e6ecf6)}.sugbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.sugbtns .btn{padding:6px 12px;font-size:14px}
 .srow.typed{background:var(--sheet,#fff);opacity:.92}.srow.typed .sd{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stsum{margin:14px 0 4px;padding:10px 12px;border-radius:10px;background:var(--sheet,#fff);border:1px solid var(--rule,#dde5f3)}
 .stgood{color:#12805c}.stbad{color:#b42318}
@@ -4766,7 +4767,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
-      var Rr = { bankStart: bankStart, autoStart: autoStart, acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+      var Rr = { cats: st.cats, incs: ents.income.filter(function (e) { return hid.indexOf(e.row) < 0; }), bankStart: bankStart, autoStart: autoStart, acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
       reconLog(Rr); return Rr;
     });
   }
@@ -4789,6 +4790,50 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var n = new Date(); delete reconStart[n.getFullYear() + "-" + pad(n.getMonth() + 1)]; reconSave(); if (tool && tool.id === "bank") renderBank(); else reconFill();
   });
   document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-recfix]"); if (!b) return; b.disabled = true; reconFix(b.getAttribute("data-recfix"), +b.getAttribute("data-amt")); });
+  /* Suggested fixes: bank transactions that aren't in Actual (waiting, or marked not counted) and where they most likely belong.
+     Nothing moves until you tap. */
+  var PERSON = /^[A-Z][a-z'’-]+( [A-Z]\.?)?( [A-Z][a-z'’-]+){1,2}$/;
+  function suggFor(e, R) {
+    if (e.src !== "bank" || e.noSugg || e.held || e.fromHold) return null;
+    if (!(e.kind === "none" || e.kind === "skip")) return null;
+    if (e.why === "canceled by the bank" || /^hold released|before you linked|on record only/.test(e.why || "")) return null;
+    var txt = String(e.raw || "") + " " + String(e.s || ""), isIn = (e.dir || "out") === "in" && !(OUT_XFER.test(txt) && !HOLD.test(txt));
+    var has = function (n) { return R.cats.some(function (c) { return nk(c.name) === nk(n); }); };
+    if (isIn) {
+      var pr = rcRules[payerKey(e.raw || e.s)];
+      if (pr && pr !== "__skip" && R.incs.some(function (c) { return nk(c.name) === nk(pr); })) return { picks: ["in:" + pr], why: "you chose " + pr + " for this payer before" };
+      return R.incs.length ? { picks: R.incs.map(function (c) { return "in:" + c.name; }), why: "money that came in counts as income" } : null;
+    }
+    if (CARD_PAY.test(txt) && !CAR_PAY.test(txt)) return null;   // paying a credit card: correctly not counted
+    var g = bankGuess({ amount: -e.a, description: e.raw || e.s }, R.cats, R.incs);
+    if (g.indexOf("ex:") === 0 && (has(g.slice(3)) || nk(g.slice(3)) === nk(XFER_CAT))) return { picks: [g], why: nk(g.slice(3)) === nk(XFER_CAT) ? "money moved out of your account" : "what this store usually is" };
+    if (PERSON.test(String(e.s || "").trim())) return { picks: ["ex:" + XFER_CAT], why: "money sent to a person" };
+    return null;
+  }
+  function suggHtml(R) {
+    var L = (R.rows || []).map(function (e) { return { e: e, s: suggFor(e, R) }; }).filter(function (x) { return x.s; });
+    if (!L.length) return "";
+    var gap = Math.abs(R.rest);
+    return '<div class="rsugg"><h4 class="admh4">Suggested fixes (' + L.length + ')</h4><p class="sub" style="margin:0 0 6px">From your bank, but not in your Actual numbers. Tap where each belongs; nothing changes until you do.</p>' +
+      L.map(function (x) {
+        var e = x.e, exact = gap >= 0.005 && Math.abs(e.a - gap) < 0.01;
+        return '<div class="srow sugrow"><span class="sd">' + dayLbl(e.d) + '</span><span class="ss"><b>' + esc(e.s) + "</b><small>" + (e.kind === "none" ? "waiting for a category" : "marked not counted") + " · " + esc(x.s.why) + (exact ? ' · <b class="bdead">same amount as what’s not explained</b>' : "") + '</small></span><span class="sa">' + ((e.dir || "out") === "in" ? "+" : "−") + money.format(e.a) + '</span><span class="sc sugbtns">' +
+          x.s.picks.map(function (p) { return '<button type="button" class="btn ghost" data-sugg="' + esc(e.id) + '" data-pick="' + esc(p) + '">' + esc(p.slice(3)) + "</button>"; }).join("") +
+          '<button type="button" class="linkbtn" data-suggno="' + esc(e.id) + '">Leave it</button></span></div>';
+      }).join("") + "</div>";
+  }
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest && ev.target.closest("[data-sugg],[data-suggno]"); if (!b) return;
+    var id = b.getAttribute("data-sugg") || b.getAttribute("data-suggno"), e = spendFind(id); if (!e) return;
+    if (b.hasAttribute("data-suggno")) { e.noSugg = true; spendSave().then(function () { if (tool && tool.id === "bank") renderBank(); else reconFill(); }); return; }
+    var pick = b.getAttribute("data-pick"); b.disabled = true;
+    var m = /(\d{4})-(\d{2})$/.exec(e.key || ""), prep = Promise.resolve();
+    if (m && nk(pick.slice(3)) === nk(XFER_CAT)) prep = rcMonthState(+m[1], +m[2] - 1).then(function (s) { var had = s.cats.some(function (c) { return nk(c.name) === nk(XFER_CAT); }); if (!had && ensureXferCat(s)) return doSave(s.key, s.doc); });
+    prep.then(function () { return spendRecat(id, pick); }).then(function () {
+      spendMsg = "“" + esc(e.s) + "” is now in <b>" + esc(pick.slice(3)) + "</b>."; if (tool && tool.id === "bank") renderBank(); else reconFill();
+      if (tool && (tool.type === "home" || tool.id === "monthly-budget")) openTool();
+    }).catch(function () { b.disabled = false; spendMsg = "Couldn’t move that one. Try again."; renderBank(); });
+  });
   function reconFill() {
     var box = $("recon"); if (!box) return;
     reconCalc().then(function (R) {
@@ -4808,6 +4853,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
       } else h += '<p class="sub">Your bank and your Actual numbers match exactly.</p>';
       h += '<form class="rstart" id="reconStartF"><label>Your balance on ' + mon + ' 1<span class="wizmoney"><i>$</i><input id="reconStartIn" inputmode="decimal" autocomplete="off" value="' + (start !== null && !R.carried ? start.toFixed(2) : "") + '" placeholder="' + (R.carried ? "carried over: " + start.toFixed(2) : "from your statement") + '"></span></label><button class="btn ghost" type="submit">Save</button>' + (start !== null && !R.carried ? '<button class="linkbtn" type="button" id="reconStartClear">Clear</button>' : "") + "</form>";
+      h += suggHtml(R);
       h += reconHistHtml(R);
       box.innerHTML = h;
     }).catch(function () { box.innerHTML = ""; });
