@@ -3765,6 +3765,25 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var PAYCHECK = /payroll|direct dep|dir dep|salary|paycheck|adp|gusto|paychex/i;
   // money moved out to another account of yours (or someone else): never income, whatever the bank's sign says
   var OUT_XFER = /transfer to|xfer to|trnsfr to|tfr to|\bto (chk|checking|sav|savings)\b|zelle to|venmo to|cash app to|payment to/i;
+  // money moved out of the account (to another account or a person). Kept on record as an expense, under Transfers,
+  // unless you've told Monerem where that one goes (e.g. a Zelle to your landlord → Rent). Card payments aren't counted:
+  // the purchases on the card are what you spent.
+  var XFER_OUT = /transfer|xfer|trnsfr|zelle|venmo|cash app|withdrawal|\batm\b/i;
+  var CARD_PAY = /credit card|autopay|auto pay|cc pymt|payment thank you|card payment|epay|crd pmt|card pmt|pymt to (chase|amex|citi|discover|capital one)/i;
+  var XFER_CAT = "Transfers";
+  function isXferOut(desc, amt) { var d = String(desc || ""); if (HOLD.test(d) || CARD_PAY.test(d)) return false; return amt < 0 ? XFER_OUT.test(d) : OUT_XFER.test(d); }
+  function xferRule(desc) { var r = rcRules[nk(merchantKey(desc))]; return r && r !== "__skip" && nk(r) !== nk(XFER_CAT) ? r : null; }
+  // make sure this month has a Transfers line (added only when money actually moves out)
+  function ensureXferCat(s) {
+    if (s.cats.some(function (c) { return nk(c.name) === nk(XFER_CAT); })) return true;
+    var m = s.doc.__meta = s.doc.__meta || {}; m.labels = m.labels || {}; m.custom = m.custom || []; m.hidden = m.hidden || []; m.removed = m.removed || [];
+    var blk = s.Lm.rows.filter(function (r) { return r.type === "custom" && r.group !== "income"; })[0]; if (!blk) return false;
+    var slot = blk.slots.filter(function (sl) { return m.custom.indexOf(sl.row) < 0; })[0]; if (!slot) return false;
+    m.custom.push(slot.row); m.labels[slot.row] = XFER_CAT; m.hidden = m.hidden.filter(function (x) { return x !== slot.row; });
+    s.st = { labels: m.labels, custom: m.custom, removed: m.removed };
+    var keep = s.cats.filter(function (c) { return c.auto; }); s.cats = activeEntries(s.Lm, s.st).expense.concat(keep);
+    return true;
+  }
   var HOLD = /placed a hold|hold on (one|your|a|the)|funds? hold|hold placed|deposit hold/i;
   function notIncome(e) { if (HOLD.test(String(e.raw || "") + " " + String(e.s || ""))) return false; return (e.dir || "out") !== "in" || OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }
   function payerKey(desc) {
@@ -3787,16 +3806,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return { cat: near, off: true, want: grp ? grp[2] : "", why: grp ? grp[2] + " isn’t in your budget" : "store not recognized" };
   }
   function bankGuess(t, cats, incs) {
-    if (t.amount > 0 && OUT_XFER.test(t.description || "")) return "skip";
+    if (isXferOut(t.description, t.amount)) { var xr = xferRule(t.description); return "ex:" + (xr && cats.some(function (c) { return nk(c.name) === nk(xr); }) ? xr : XFER_CAT); }   // money moved out: on record as an expense
     if (t.amount > 0) {
       // money in: use what you chose last time for this payer; with more than one income, never guess whose pay it is
       var pr = rcRules[payerKey(t.description)];
       if (pr === "__skip") return "skip";
       if (pr && incs.some(function (c) { return nk(c.name) === nk(pr); })) return "in:" + pr;
-      if (HOLD.test(t.description || "")) return "skip";                       // a hold notice isn't money yet: it's counted when the bank releases it
-      if (/transfer from|xfer from|trnsfr from|from (chk|checking|sav|savings)\b/i.test(t.description || "")) return "skip";   // your own money moving between accounts
-      if (!PAYCHECK.test(t.description)) return "";                            // a deposit we don't recognize (check, Zelle from a client…): you pick, once
-      return incs.length === 1 ? "in:" + incs[0].name : "";   // "" = waits for you to pick which income it is, once
+      // money coming in is income. One income: it goes there. More than one: whose it is, once, then remembered.
+      return incs.length === 1 ? "in:" + incs[0].name : "";
     }
     if (NOT_SPENDING.test(t.description)) return "skip";
     if (rcRules[nk(merchantKey(t.description))] === "__skip") return "skip";
@@ -3806,7 +3823,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var bankPoll = 0;
   function bankLoad(doSync, force) {
     bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
-    return Promise.all([rcLoad(), loadDebts(), holdUndo().then(fixBadIncome), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
+    return Promise.all([rcLoad(), loadDebts(), holdUndo().then(fixBadIncome).then(depositRescue).then(xferRescue), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[3]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
       return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
@@ -3907,7 +3924,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var hd = parseD(h.d);
         var dep = spend.filter(function (d) {
           if (d === h || d.src !== "bank" || (d.dir || "out") !== "in" || d.fromHold || HOLD.test(String(d.raw || "") + " " + String(d.s || "")) || Math.abs(d.a - h.a) > 0.004) return false;
-          if (!(d.kind === "skip" || d.kind === "none") || d.why === "canceled by the bank" || (d.kind === "skip" && d.auto === false)) return false;   // you chose "not counted" yourself: leave it
+          if (!(d.kind === "skip" || d.kind === "none" || d.kind === "in") || d.why === "canceled by the bank" || (d.kind === "skip" && d.auto === false)) return false;   // you chose "not counted" yourself: leave it
           var dd = daysApart(parseD(d.d), hd); return dd >= -3 && dd <= 14 && !pairs.some(function (p) { return p.d === d; });
         }).sort(function (a, b) { return a.d < b.d ? -1 : 1; })[0];
         if (dep) pairs.push({ h: h, d: dep, cat: h.kind === "in" ? h.cat : h.wasCat });
@@ -3918,7 +3935,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           var pk = payerKey(p.d.raw || p.d.s), keepRule = rcRules[pk], hk = payerKey(p.h.raw || p.h.s), keepH = rcRules[hk];
           var hadIn = p.h.kind === "in";
           return (hadIn ? spendRecat(p.h.id, "skip") : Promise.resolve()).then(function () {
-            return spendRecat(p.d.id, "in:" + p.cat).catch(function (er) {   // couldn't count the deposit: put the hold back so nothing is lost
+            return (p.d.kind === "in" && nk(p.d.cat) === nk(p.cat) ? Promise.resolve() : spendRecat(p.d.id, "in:" + p.cat)).catch(function (er) {   // couldn't count the deposit: put the hold back so nothing is lost
               return (hadIn ? spendRecat(p.h.id, "in:" + p.cat) : Promise.resolve()).then(function () { throw er; });
             });
           }).then(function () {
@@ -3945,6 +3962,60 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       L.forEach(function (h) { h.kind = "none"; h.cat = ""; h.fixedBack = true; h.why = "Monerem took this out of your income by mistake. Pick the income it belongs to and it’s counted again."; });
       if (!L.length) return 0;
       return spendSave().then(function () { toast("<b>Put back for you to place</b><br>" + (L.length === 1 ? "A held deposit" : L.length + " held deposits") + " was taken out of income by mistake. On the Bank tab, pick the income it belongs to."); return L.length; });
+    }).catch(function () { return 0; });
+  }
+  var xferDone = false;
+  function xferRescue() {
+    if (xferDone) return Promise.resolve(0); xferDone = true;
+    return Promise.all([spendLoad(), rcLoad()]).then(function () {
+      var L = spend.filter(function (e) { return e.src === "bank" && e.kind === "skip" && e.why !== "canceled by the bank" && !/^hold released/.test(e.why || "") && !e.held && isXferOut(e.raw || e.s, (e.dir || "out") === "in" ? e.a : -e.a); });
+      if (!L.length) return 0;
+      var byM = {}; L.forEach(function (e) { (byM[e.key] = byM[e.key] || []).push(e); });
+      var n = 0, chain = Promise.resolve();
+      Object.keys(byM).forEach(function (k) {
+        chain = chain.then(function () {
+          var m = /(\d{4})-(\d{2})$/.exec(k); if (!m) return;
+          return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+            var had = s.cats.some(function (c) { return nk(c.name) === nk(XFER_CAT); });
+            if (!ensureXferCat(s)) return;
+            return (had ? Promise.resolve() : doSave(s.key, s.doc)).then(function () {
+              var c2 = Promise.resolve();
+              byM[k].forEach(function (e) { c2 = c2.then(function () { var to = xferRule(e.raw || e.s); return spendRecat(e.id, "ex:" + (to && s.cats.some(function (c) { return nk(c.name) === nk(to); }) ? to : XFER_CAT)).then(function () { e.auto = true; e.why = "money moved out of your account"; n++; }, function () {}); }); });
+              return c2;
+            });
+          });
+        });
+      });
+      return chain.then(function () { return spendSave(); }).then(function () {
+        if (n) toast("<b>Transfers are on record</b><br>" + n + (n === 1 ? " transfer out of your account is" : " transfers out of your account are") + " now in your <b>Transfers</b> expense line, so Actual shows the money that left.");
+        return n;
+      });
+    }).catch(function () { return 0; });
+  }
+  var depRescued = false;
+  function depositRescue() {
+    if (depRescued) return Promise.resolve(0); depRescued = true;
+    return Promise.all([spendLoad(), rcLoad()]).then(function () {
+      var L = spend.filter(function (e) {
+        var txt = String(e.raw || "") + " " + String(e.s || "");
+        return e.src === "bank" && (e.dir || "out") === "in" && e.kind === "skip" && e.auto !== false && e.why !== "canceled by the bank" && !/^hold released/.test(e.why || "") && !e.held && !e.fromHold && !(OUT_XFER.test(txt) && !HOLD.test(txt)) && rcRules[payerKey(e.raw || e.s)] !== "__skip";
+      });
+      if (!L.length) return 0;
+      var n = 0, w = 0, chain = Promise.resolve();
+      L.forEach(function (e) {
+        chain = chain.then(function () {
+          var m = /(\d{4})-(\d{2})$/.exec(e.key || ""); if (!m) return;
+          return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+            var g = bankGuess({ amount: e.a, description: e.raw || e.s }, s.cats, activeEntries(s.Lm, s.st).income);
+            if (g.indexOf("in:") === 0) return spendRecat(e.id, g).then(function () { e.auto = true; n++; }, function () {});
+            e.kind = "none"; e.why = ""; w++;
+          });
+        });
+      });
+      return chain.then(function () { return spendSave(); }).then(function () {
+        if (n || w) toast("<b>Money coming in now counts as income</b><br>" + (n ? n + (n === 1 ? " deposit was" : " deposits were") + " added to your income" : "") + (n && w ? ", and " : "") + (w ? w + (w === 1 ? " is" : " are") + " waiting on the Bank tab for you to pick whose income " + (w === 1 ? "it is" : "they are") : "") + ".");
+        return n + w;
+      });
     }).catch(function () { return 0; });
   }
   var badIncFixed = false;
@@ -4118,7 +4189,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   // a hand-logged entry this bank transaction could be. exact = same amount to the cent (merged automatically)
   function handMatch(t, d) {
     var amt = Math.round(Math.abs(t.amount) * 100) / 100, dir = t.amount > 0 ? "in" : "out", best = null;
-    if (NOT_SPENDING.test(t.description || "") || (dir === "in" && !PAYCHECK.test(t.description || ""))) return null;   // a transfer is never the purchase you logged
+    if (dir === "out" && NOT_SPENDING.test(t.description || "")) return null;   // a transfer is never the purchase you logged
+    if (dir === "in" && OUT_XFER.test(t.description || "") && !HOLD.test(t.description || "")) return null;
     spend.forEach(function (e) {
       if ((e.src !== "manual" && e.src !== "receipt") || e.kind === "skip" || e.kind === "none" || (e.dir || "out") !== dir || (e.notDup || []).indexOf(t.id) >= 0) return;
       var ed = parseD(e.d); if (!ed) return;
@@ -4212,6 +4284,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
               }
               var g = bankGuess(t, s.cats, inc), base = { id: t.id, d: iso(d), s: cleanStore(t.description).slice(0, 60), raw: String(t.description || "").slice(0, 80), pend: t.status === "pending" || undefined, dir: t.amount > 0 ? "in" : "out", a: Math.abs(t.amount), key: k, col: col, maybeDup: hm ? hm.e.id : undefined, src: "bank", acct: t.account || "", auto: true };
               if (g === "skip") { spendPut(Object.assign(base, { kind: "skip", cat: "" })); skipped.push(t.id); return; }
+              if (isXferOut(t.description, t.amount)) {
+                var xc = g.slice(3); if (nk(xc) === nk(XFER_CAT) && !ensureXferCat(s)) xc = "";
+                if (xc && rcApply(s, xc, col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: xc, why: nk(xc) === nk(XFER_CAT) ? "money moved out of your account" : "" })); added.push(t.id); changed = true; return; }
+              }
               if ((g === "" && t.amount < 0) || g.indexOf("ex:") === 0) {   // money in never lands in a spending category
                 var pl = bankPlace(t, s);
                 if (pl && rcApply(s, pl.cat, col, Math.abs(t.amount), 1) !== null) { spendPut(Object.assign(base, { kind: "ex", cat: pl.cat, off: pl.off, want: pl.want, why: pl.why })); added.push(t.id); changed = true; return; }
@@ -4338,7 +4414,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function quietBankImport(force) {
     if (!session || CFG.devMode || quietBusy) return;
     if (!force && Date.now() - quietAt < 90 * 1000) return;
-    quietBusy = true; quietAt = Date.now(); holdUndo().then(fixBadIncome);
+    quietBusy = true; quietAt = Date.now(); holdUndo().then(fixBadIncome).then(depositRescue).then(xferRescue);
     var tries = 0, last = "";
     var sig = function (d) { return JSON.stringify((d.review || []).map(function (t) { return t.id + t.status + t.amount; })); };
     var pull = function (action) {
@@ -4627,7 +4703,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var incG = '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
       var exG = '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
       var moneyIn = isIn || e.dir === "in" || /payroll|direct dep|salary|paycheck|deposit|transfer from|zelle from|venmo from|cashout|refund|hold on/i.test((e.raw || "") + " " + e.s);
-      o += notIncome(e) && e.kind !== "in" ? exG : moneyIn ? incG + exG : exG + incG;
+      var inSide = !notIncome(e);
+      o += inSide ? incG + (e.kind === "ex" ? exG : "") : exG + (e.kind === "in" ? incG : "");
       return o;
     };
     var row = function (e) {
@@ -5530,11 +5607,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           stIs(bankGuess({ amount: 1690.85, description: "ACME CORP PAYROLL DIR DEP" }, [], two) === "", "with two incomes it should wait for you to pick whose pay it is");
           rcRules[payerKey("ACME CORP PAYROLL DIR DEP")] = "Marysol";
           stIs(bankGuess({ amount: 1690.85, description: "ACME CORP DIRECT DEPOSIT PPD" }, [], two) === "in:Marysol", "it should remember whose pay this payer is");
-          stIs(bankGuess({ amount: 50, description: "ZELLE FROM JOHN" }, [], one) === "skip", "money moved in isn’t pay");
-          ["ONLINE TRANSFER TO SAV 1234", "CHASE CREDIT CARD AUTOPAY", "ZELLE TO JOHN SMITH", "ATM WITHDRAWAL"].forEach(function (s) { stIs(bankGuess({ amount: -100, description: s }, [], one) === "skip", "“" + s + "” should be left out (it’s not spending)"); });
+          stIs(bankGuess({ amount: 50, description: "ZELLE FROM JOHN" }, [], one) === "in:Paycheck", "money coming in is income");
+          ["ONLINE TRANSFER TO SAV 1234", "ZELLE TO JOHN SMITH", "ATM WITHDRAWAL", "VENMO PAYMENT"].forEach(function (s) { stIs(bankGuess({ amount: -100, description: s }, [], one) === "ex:Transfers", "“" + s + "” should be on record under Transfers"); });
+          stIs(bankGuess({ amount: -100, description: "CHASE CREDIT CARD AUTOPAY" }, [], one) === "skip", "a credit card payment shouldn’t be counted (the card purchases are)");
           var c = cleanStore("TARGET T-1234 SANFORD FL"); stIs(/target/i.test(c) && !/\d/.test(c), "store name cleanup gave “" + c + "”");
           stIs(merchantKey("PUBLIX SUPER MKT #512") === merchantKey("PUBLIX SUPER MKT #877"), "the same store at two locations should be one store");
-          return stPass("pay goes to the right person, transfers and card payments stay out, store names clean up");
+          return stPass("pay goes to the right person, transfers out are kept under Transfers, card payments stay out, store names clean up");
         } finally { rcRules = keep; }
       });
     }],
@@ -5572,14 +5650,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       return spendLoad().then(function () {
         var bad = spend.filter(function (e) { return e.src === "bank" && e.kind === "in" && notIncome(e); });
         stIs(!bad.length, bad.length + " transfer" + (bad.length === 1 ? " is" : "s are") + " counted as income: " + bad.slice(0, 3).map(function (e) { return e.d + " " + (e.s || "") + " " + money.format(e.a) + " in " + e.cat; }).join("; ") + ". Open the Bank tab and Monerem fixes " + (bad.length === 1 ? "it" : "them") + ".");
-        stIs(bankGuess({ amount: 27.59, description: "ONLINE TRANSFER TO CHK ...1858 TRANSACTION#: 1" }, [], [{ name: "Paycheck" }]) === "skip", "a transfer to another account would still be guessed as pay");
+        stIs(bankGuess({ amount: 27.59, description: "ONLINE TRANSFER TO CHK ...1858 TRANSACTION#: 1" }, [], [{ name: "Paycheck" }]) === "ex:Transfers", "a transfer to another account should go under Transfers, not pay");
         return stPass("only real pay is counted as income");
       });
     }],
     ["Math", "Released holds are counted once", function () {
-      stIs(bankGuess({ amount: 629.77, description: "We've placed a hold on one or more electronic funds transfers or checks in your account" }, [], [{ name: "David" }]) === "skip", "a hold notice shouldn’t count as money yet");
-      stIs(bankGuess({ amount: 85, description: "ZELLE FROM JANE CLIENT" }, [], [{ name: "David" }]) === "", "an unknown deposit should wait for you to pick, not be left out");
-      stIs(bankGuess({ amount: 200, description: "ONLINE TRANSFER FROM SAV ...4421" }, [], [{ name: "David" }]) === "skip", "money from your own savings isn’t income");
+      stIs(bankGuess({ amount: 85, description: "ZELLE FROM JANE CLIENT" }, [], [{ name: "David" }]) === "in:David", "money coming in should be income");
+      stIs(bankGuess({ amount: 85, description: "ZELLE FROM JANE CLIENT" }, [], [{ name: "David" }, { name: "Marysol" }]) === "", "with two incomes, a new payer should wait for you to pick whose it is");
       return spendLoad().then(function () {
         var open = spend.filter(function (h) { return h.src === "bank" && h.kind === "in" && HOLD.test(String(h.raw || "") + " " + String(h.s || "")) && !h.held; });
         var waiting = open.filter(function (h) { return spend.some(function (d) { return d !== h && d.src === "bank" && d.dir === "in" && (d.kind === "skip" || d.kind === "none") && !d.fromHold && Math.abs(d.a - h.a) < 0.005 && !HOLD.test(String(d.raw || "")); }); });
