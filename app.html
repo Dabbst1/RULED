@@ -3766,7 +3766,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   // money moved out to another account of yours (or someone else): never income, whatever the bank's sign says
   var OUT_XFER = /transfer to|xfer to|trnsfr to|tfr to|\bto (chk|checking|sav|savings)\b|zelle to|venmo to|cash app to|payment to/i;
   var HOLD = /placed a hold|hold on (one|your|a|the)|funds? hold|hold placed|deposit hold/i;
-  function notIncome(e) { return (e.dir || "out") !== "in" || OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }
+  function notIncome(e) { if (HOLD.test(String(e.raw || "") + " " + String(e.s || ""))) return false; return (e.dir || "out") !== "in" || OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }
   function payerKey(desc) {
     return "in|" + String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(direct|dep|deposit|dir|payroll|ppd|id|ach|credit|salary|paycheck|pay|co|corp|inc|llc|des|indn|ref|trace|web|online|from|transfer)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
   }
@@ -3806,7 +3806,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var bankPoll = 0;
   function bankLoad(doSync, force) {
     bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
-    return Promise.all([rcLoad(), loadDebts(), fixBadIncome(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
+    return Promise.all([rcLoad(), loadDebts(), holdUndo().then(fixBadIncome), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[3]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
       return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
@@ -3908,7 +3908,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var dep = spend.filter(function (d) {
           if (d === h || d.src !== "bank" || (d.dir || "out") !== "in" || d.fromHold || HOLD.test(String(d.raw || "") + " " + String(d.s || "")) || Math.abs(d.a - h.a) > 0.004) return false;
           if (!(d.kind === "skip" || d.kind === "none") || d.why === "canceled by the bank" || (d.kind === "skip" && d.auto === false)) return false;   // you chose "not counted" yourself: leave it
-          var dd = daysApart(parseD(d.d), hd); return dd >= 0 && dd <= 14 && !pairs.some(function (p) { return p.d === d; });
+          var dd = daysApart(parseD(d.d), hd); return dd >= -3 && dd <= 14 && !pairs.some(function (p) { return p.d === d; });
         }).sort(function (a, b) { return a.d < b.d ? -1 : 1; })[0];
         if (dep) pairs.push({ h: h, d: dep, cat: h.kind === "in" ? h.cat : h.wasCat });
       });
@@ -3916,7 +3916,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       pairs.forEach(function (p) {
         chain = chain.then(function () {
           var pk = payerKey(p.d.raw || p.d.s), keepRule = rcRules[pk], hk = payerKey(p.h.raw || p.h.s), keepH = rcRules[hk];
-          return (p.h.kind === "in" ? spendRecat(p.h.id, "skip") : Promise.resolve()).then(function () { return spendRecat(p.d.id, "in:" + p.cat); }).then(function () {
+          var hadIn = p.h.kind === "in";
+          return (hadIn ? spendRecat(p.h.id, "skip") : Promise.resolve()).then(function () {
+            return spendRecat(p.d.id, "in:" + p.cat).catch(function (er) {   // couldn't count the deposit: put the hold back so nothing is lost
+              return (hadIn ? spendRecat(p.h.id, "in:" + p.cat) : Promise.resolve()).then(function () { throw er; });
+            });
+          }).then(function () {
             // don't let one released hold teach Monerem that every deposit like it is this person's pay
             if (keepRule === undefined) delete rcRules[pk]; else rcRules[pk] = keepRule;
             if (keepH === undefined) delete rcRules[hk]; else rcRules[hk] = keepH;
@@ -3932,15 +3937,27 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       });
     }).catch(function () { holdBusy = false; return 0; });
   }
+  var holdUndone = false;
+  function holdUndo() {
+    if (holdUndone) return Promise.resolve(0); holdUndone = true;
+    return spendLoad().then(function () {
+      var L = spend.filter(function (h) { return h.src === "bank" && HOLD.test(String(h.raw || "") + " " + String(h.s || "")) && h.kind === "skip" && h.auto === false && !h.why && !h.held && !h.fixedBack; });
+      L.forEach(function (h) { h.kind = "none"; h.cat = ""; h.fixedBack = true; h.why = "Monerem took this out of your income by mistake. Pick the income it belongs to and it’s counted again."; });
+      if (!L.length) return 0;
+      return spendSave().then(function () { toast("<b>Put back for you to place</b><br>" + (L.length === 1 ? "A held deposit" : L.length + " held deposits") + " was taken out of income by mistake. On the Bank tab, pick the income it belongs to."); return L.length; });
+    }).catch(function () { return 0; });
+  }
   var badIncFixed = false;
   function fixBadIncome() {
     if (badIncFixed) return Promise.resolve(0); badIncFixed = true;
     return Promise.all([spendLoad(), rcLoad()]).then(function () {
-      var bad = spend.filter(function (e) { return e.src === "bank" && e.kind === "in" && notIncome(e); }), n = 0, chain = Promise.resolve();
+      // only lines whose description says the money went out (transfer to…, Zelle to…). The bank's +/- alone isn't trusted: Chase shows a held deposit as money out.
+      var bad = spend.filter(function (e) { return e.src === "bank" && e.kind === "in" && !HOLD.test(String(e.raw || "") + " " + String(e.s || "")) && OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }), n = 0, chain = Promise.resolve();
       bad.forEach(function (e) {
         chain = chain.then(function () {
           var pk = payerKey(e.raw || e.s); if (rcRules[pk] && rcRules[pk] !== "__skip") rcRules[pk] = "__skip";
-          return spendRecat(e.id, "skip").then(function () { n++; }, function () {});
+          var was = e.cat;
+          return spendRecat(e.id, "skip").then(function () { e.fixCat = was; e.why = "transfer out: taken out of " + was; n++; }, function () {});
         });
       });
       return chain.then(function () {
@@ -4321,7 +4338,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function quietBankImport(force) {
     if (!session || CFG.devMode || quietBusy) return;
     if (!force && Date.now() - quietAt < 90 * 1000) return;
-    quietBusy = true; quietAt = Date.now(); fixBadIncome();
+    quietBusy = true; quietAt = Date.now(); holdUndo().then(fixBadIncome);
     var tries = 0, last = "";
     var sig = function (d) { return JSON.stringify((d.review || []).map(function (t) { return t.id + t.status + t.amount; })); };
     var pull = function (action) {
@@ -4616,7 +4633,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : " · not counted in your budget") : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack ? ' · <b class="bdead">' + esc(e.why) + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
