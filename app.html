@@ -5026,18 +5026,26 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var pin = null;
   function pinNext(sel) {
     var row = sel.closest(".srow"); if (!row) { pin = null; return; }
-    var top = row.getBoundingClientRect().top, nx = row.nextElementSibling;
-    while (nx && !nx.querySelector("select[data-spend]")) nx = nx.nextElementSibling;
-    var pv = row.previousElementSibling; while (pv && !pv.querySelector("select[data-spend]")) pv = pv.previousElementSibling;
-    var pick = function (el) { var s0 = el && el.querySelector("select[data-spend]"); return s0 ? s0.getAttribute("data-spend") : null; };
-    pin = { ids: [pick(nx), pick(pv)].filter(Boolean), top: top, y: window.scrollY, until: Date.now() + 2500 };
+    var idOf = function (el) { var s0 = el && el.querySelector("select[data-spend]"); return s0 ? s0.getAttribute("data-spend") : null; };
+    var nx = row.nextElementSibling; while (nx && !idOf(nx)) nx = nx.nextElementSibling;
+    var pv = row.previousElementSibling; while (pv && !idOf(pv)) pv = pv.previousElementSibling;
+    // 1) the next (or previous) item in the same list slides into the spot you were working on
+    // 2) if it was the last one, whatever is below stays exactly where it was on screen
+    var me = sel.getAttribute("data-spend"), all = Array.prototype.slice.call(document.querySelectorAll("#bankView select[data-spend]"));
+    var below = all.slice(all.indexOf(sel) + 1).filter(function (x) { return x.closest(".srow") !== row; }).slice(0, 4).map(function (x) { return { id: x.getAttribute("data-spend"), top: x.closest(".srow").getBoundingClientRect().top }; });
+    var st = $("stotLine");
+    pin = { sib: [idOf(nx), idOf(pv)].filter(function (x) { return x && x !== me; }), top: row.getBoundingClientRect().top, below: below, stTop: st ? st.getBoundingClientRect().top : null, y: window.scrollY, until: Date.now() + 2500 };
     [0, 60, 250, 600, 1200, 2000].forEach(function (ms) { setTimeout(holdPin, ms); });
   }
   function holdPin() {
     if (!pin || Date.now() > pin.until) return;
-    var el = null; pin.ids.some(function (id) { var s0 = document.querySelector('#bankView select[data-spend="' + id + '"]'); if (s0 && !s0.disabled) { el = s0.closest(".srow"); return true; } });
-    if (!el) { window.scrollTo(0, pin.y); return; }
-    var d = el.getBoundingClientRect().top - pin.top; if (Math.abs(d) > 1) window.scrollBy(0, d);
+    var rowOf = function (id) { var s0 = document.querySelector('#bankView select[data-spend="' + id + '"]'); return s0 && !s0.disabled ? s0.closest(".srow") : null; };
+    var d = null;
+    pin.sib.some(function (id) { var r = rowOf(id); if (r) { d = r.getBoundingClientRect().top - pin.top; return true; } });
+    if (d === null) pin.below.some(function (b) { var r = rowOf(b.id); if (r) { d = r.getBoundingClientRect().top - b.top; return true; } });
+    if (d === null) { var st = $("stotLine"); if (st && pin.stTop !== null) d = st.getBoundingClientRect().top - pin.stTop; }
+    if (d === null) { window.scrollTo(0, pin.y); return; }
+    if (Math.abs(d) > 1) window.scrollBy(0, d);
   }
   window.addEventListener("wheel", function () { pin = null; }, { passive: true });
   window.addEventListener("touchmove", function () { pin = null; }, { passive: true });
@@ -5048,9 +5056,22 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var ent = spendFind(id);
     if (ent && t.value.indexOf("in:") === 0 && notIncome(ent) && !window.confirm(money.format(ent.a) + " “" + ent.s + "” left your account (your bank shows it as money out). Counting it as income adds " + money.format(ent.a) + " to your income while your bank went down by that much, so they won’t match.\n\nCount it as income anyway?")) { t.value = ent.kind === "none" ? "" : ent.kind === "skip" ? "skip" : ent.kind + ":" + ent.cat; return; }
     if (ent && t.value.indexOf("ex:") === 0 && (ent.dir || "out") === "in" && !notIncome(ent) && !window.confirm(money.format(ent.a) + " “" + ent.s + "” came into your account. Counting it as spending adds to your expenses while your bank went up.\n\nCount it as spending anyway? (A refund is fine here.)")) { t.value = ent.kind === "none" ? "" : ent.kind === "skip" ? "skip" : ent.kind + ":" + ent.cat; return; }
-    t.disabled = true; pinNext(t);
+    t.disabled = true;
     spendRecat(id, t.value).then(function () {
-      var ex = spendFind(id); spendMsg = ex ? (ex.kind === "skip" ? "“" + esc(ex.s) + "” is no longer counted in your budget." : ex.kind === "in" ? "“" + esc(ex.s) + "” now counts as income in <b>" + esc(ex.cat) + "</b>." : "“" + esc(ex.s) + "” is now in <b>" + esc(ex.cat) + "</b>. Future purchases there will go to the same place.") : ""; renderBank();
+      var ex = spendFind(id);
+      // update just this row where it sits (no full redraw, so nothing moves under you); the full list tidies up next time the tab opens
+      var row = t.closest(".srow"), msg = ex ? (ex.kind === "skip" ? "not counted in your budget" : "✓ added to " + esc(ex.cat) + (ex.kind === "in" ? " (income)" : "")) : "";
+      pin = null; t.disabled = false;
+      if (row) {
+        row.classList.remove("wait", "off"); if (ex && ex.kind === "skip") row.classList.add("off");
+        var sm = row.querySelector(".ss small"); if (sm) sm.innerHTML = esc(ex && ex.raw && nk(ex.raw) !== nk(ex.s) ? ex.raw + " · " : "") + "Bank · <b class=\"stgood\">" + msg + "</b>";
+        var sa = row.querySelector(".sa"); if (sa && ex) sa.textContent = ((ex.dir === "in" || (ex.kind === "in" && ex.auto === false)) ? "+" : "") + money.format(ex.a);
+      }
+      var spentNow = spend.filter(function (z) { return z.key === spendMonth && z.kind === "ex"; }), totNow = spentNow.reduce(function (z, e2) { return z + e2.a; }, 0);
+      var line = $("stotLine"); if (line) { var mm = /(\d{4})-(\d{2})$/.exec(spendMonth); line.innerHTML = MONTHS[+mm[2] - 1] + " " + mm[1] + ": <b>" + money.format(totNow) + "</b> spent across " + spentNow.length + (spentNow.length === 1 ? " purchase" : " purchases") + "."; typedFill(spendMonth, totNow, spentNow.length); }
+      var keepY = window.scrollY, rTop = row ? row.getBoundingClientRect().top : null;
+      reconFill();
+      [80, 300, 700, 1300].forEach(function (ms) { setTimeout(function () { if (row && row.isConnected && rTop !== null) { var dd = row.getBoundingClientRect().top - rTop; if (Math.abs(dd) > 1) window.scrollBy(0, dd); } else window.scrollTo(0, keepY); }, ms); });
     }).catch(function (er) { spendMsg = er && er.message === "nocat" ? "That category isn’t in that month’s budget. Pick another." : "Couldn’t change it right now. Try again."; renderBank(); });
   });
   // what was actually bought, for the "Plan for…" card in Actual view
