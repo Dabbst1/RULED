@@ -4368,7 +4368,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
           var inc = activeEntries(s.Lm, s.st).income;
           byM[k].forEach(function (e) {
-            if (e.kind === "ex") rcApply(s, e.cat, e.col || 0, e.a, -1);
+            if (e.kind === "ex") rcApply(s, e.cat, e.col || 0, e.a, -1);   // "none" lines aren't in the budget: they just leave the record
             else if (e.kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (c) { var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.max(0, Math.round((cur - e.a) * 100) / 100); } }
             gone[e.id] = 1;
           });
@@ -4586,7 +4586,6 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return true;
       }
       var nk2 = pick === "skip" ? "skip" : pick.slice(0, 2), ncat = pick === "skip" ? "" : pick.slice(3);
-      if (nk2 === "in" && notIncome(e)) throw new Error("not_income");   // a transfer out is never someone's pay
       if (!move(nk2, ncat, 1)) throw new Error("nocat");
       move(e.kind, e.cat, -1);
       var wasWaiting = e.kind === "none";
@@ -4911,14 +4910,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var exG = '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
       var moneyIn = isIn || e.dir === "in" || /payroll|direct dep|salary|paycheck|deposit|transfer from|zelle from|venmo from|cashout|refund|hold on/i.test((e.raw || "") + " " + e.s);
       var inSide = !notIncome(e);
-      o += inSide ? incG + (e.kind === "ex" ? exG : "") : exG + (e.kind === "in" ? incG : "");
+      o += inSide ? incG + exG : exG + incG;
       return o;
     };
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
         '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
-        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
+        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" || (e.kind === "in" && e.auto === false) ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
     var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
@@ -4935,11 +4934,30 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return h + "</div>";
   }
   var spendMsg = "";
+  // Keep your place: after you pick a category the page redraws, so the next item is put right where the one you just did was.
+  var pin = null;
+  function pinNext(sel) {
+    var row = sel.closest(".srow"); if (!row) { pin = null; return; }
+    var top = row.getBoundingClientRect().top, nx = row.nextElementSibling;
+    while (nx && !nx.querySelector("select[data-spend]")) nx = nx.nextElementSibling;
+    var pv = row.previousElementSibling; while (pv && !pv.querySelector("select[data-spend]")) pv = pv.previousElementSibling;
+    var pick = function (el) { var s0 = el && el.querySelector("select[data-spend]"); return s0 ? s0.getAttribute("data-spend") : null; };
+    pin = { ids: [pick(nx), pick(pv)].filter(Boolean), top: top, y: window.scrollY, until: Date.now() + 2500 };
+    [0, 60, 250, 600, 1200, 2000].forEach(function (ms) { setTimeout(holdPin, ms); });
+  }
+  function holdPin() {
+    if (!pin || Date.now() > pin.until) return;
+    var el = null; pin.ids.some(function (id) { var s0 = document.querySelector('#bankView select[data-spend="' + id + '"]'); if (s0 && !s0.disabled) { el = s0.closest(".srow"); return true; } });
+    if (!el) { window.scrollTo(0, pin.y); return; }
+    var d = el.getBoundingClientRect().top - pin.top; if (Math.abs(d) > 1) window.scrollBy(0, d);
+  }
+  window.addEventListener("wheel", function () { pin = null; }, { passive: true });
+  window.addEventListener("touchmove", function () { pin = null; }, { passive: true });
   $("bankView").addEventListener("change", function (e) {
     var t = e.target;
     if (t.id === "spendMon") { spendMonth = t.value; spendMsg = ""; renderBank(); return; }
     var id = t.getAttribute && t.getAttribute("data-spend"); if (!id || !t.value) return;
-    t.disabled = true;
+    t.disabled = true; pinNext(t);
     spendRecat(id, t.value).then(function () {
       var ex = spendFind(id); spendMsg = ex ? (ex.kind === "skip" ? "“" + esc(ex.s) + "” is no longer counted in your budget." : ex.kind === "in" ? "“" + esc(ex.s) + "” now counts as income in <b>" + esc(ex.cat) + "</b>." : "“" + esc(ex.s) + "” is now in <b>" + esc(ex.cat) + "</b>. Future purchases there will go to the same place.") : ""; renderBank();
     }).catch(function (er) { spendMsg = er && er.message === "nocat" ? "That category isn’t in that month’s budget. Pick another." : "Couldn’t change it right now. Try again."; renderBank(); });
