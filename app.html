@@ -3888,14 +3888,21 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       (onBank ? '<button type="button" class="btn" data-bank="relink" data-id="' + esc(D[0].id) + '"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Reconnect " + esc(D[0].institution || "bank")) + "</button>"
               : '<button type="button" class="btn" data-gotool="bank">Reconnect</button>') + "</div>";
   }
+  function bankMsgShow() { var m = document.querySelector("#bankView .bmsg"); if (m) m.scrollIntoView({ block: "center", behavior: "smooth" }); }
   function bankRelink(id) {
     if (bankBusy || !id) return; bankBusy = true; bankMsg = ""; renderBank();
     var sid = null;
+    var relinkMode = "relink";
     bankCall("relink", { account: id }).then(function (r) {
+      relinkMode = r.mode || "relink";
       return loadStripeJs().then(function (S) { return S(CFG.stripePk).collectFinancialConnectionsAccounts({ clientSecret: r.clientSecret }); });
     }).then(function (res) {
       if (res.error) throw new Error(res.error.message || "relink_failed");
       var fs = res.financialConnectionsSession || {}, rr = fs.relink_result || {}; sid = fs.id;
+      if (relinkMode === "fresh") {   // a normal bank sign-in stood in for the reconnect: save whatever account was picked
+        if (!fs.accounts || !fs.accounts.length) { bankMsg = "No account was picked. Tap <b>Reconnect</b> and choose your account."; return null; }
+        return bankCall("save", { session: sid });
+      }
       if (!rr.authorization) {
         bankMsg = rr.failure_reason === "no_account" ? "You signed in, but that account wasn’t picked. Tap <b>Reconnect</b> and choose it this time." :
                   rr.failure_reason === "no_authorization" ? "The bank sign-in didn’t finish. Tap <b>Reconnect</b> to try again." : "Reconnecting didn’t finish. Tap <b>Reconnect</b> to try again.";
@@ -3910,8 +3917,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         bankMsg = still ? "Reconnected, but one account still isn’t sharing. Tap <b>Reconnect</b> on it." : "Reconnected. New transactions are on their way and will fill in your Actual numbers.";
         return Promise.resolve(syncCardsToDebt(r.accounts)).then(function () { return autoImport(r.review || [], true).catch(function () {}); });
       }
-    }).then(renderBank).catch(function (e) {
-      bankBusy = false; bankMsg = "Couldn’t reconnect (" + esc(e.message) + "). Please try again."; renderBank();
+    }).then(renderBank).then(bankMsgShow).catch(function (e) {
+      bankBusy = false; bankMsg = "Couldn’t reconnect (" + esc(e.message) + "). Please try again."; renderBank().then(bankMsgShow);
     });
   }
   function bankSelected() { return Array.prototype.filter.call(document.querySelectorAll("#bankView .bsel"), function (c) { return c.checked; }).map(function (c) { return c.getAttribute("data-id"); }); }

@@ -149,12 +149,12 @@ async function carryOver(userId: string, accountId: string, batch: Any[]) {
 
 async function view(userId: string, loading = false) {
   const [{ data: accts }, { data: tx }] = await Promise.all([
-    admin.from("bank_accounts").select("id,institution,name,last4,category,subcategory,status,status_action,balance,balance_at,updated_at").eq("user_id", userId).order("created_at"),
+    admin.from("bank_accounts").select("id,institution,name,last4,category,subcategory,status,status_action,balance,balance_at,updated_at").eq("user_id", userId).neq("status", "replaced").order("created_at"),
     admin.from("bank_transactions").select("id,account_id,amount_cents,description,transacted_at,status,dup_of").eq("user_id", userId).eq("state", "new").order("transacted_at", { ascending: false }).limit(300),
   ]);
   return {
     accounts: accts || [],
-    review: (tx || []).map((t: Any) => ({ id: t.id, account: t.account_id, amount: t.amount_cents / 100, description: t.description, date: t.transacted_at, status: t.status, dup_of: t.dup_of || null })),
+    review: (tx || []).filter((t: Any) => (accts || []).some((a: Any) => a.id === t.account_id)).map((t: Any) => ({ id: t.id, account: t.account_id, amount: t.amount_cents / 100, description: t.description, date: t.transacted_at, status: t.status, dup_of: t.dup_of || null })),
     loading,
   };
 }
@@ -189,23 +189,27 @@ Deno.serve(async (req) => {
       return json({ clientSecret: s.client_secret });
     }
 
-    // 1b. reconnect an account the bank stopped sharing (inactive): sign in again for the same connection
+    // 1b. reconnect an account the bank stopped sharing (inactive): sign in again for the same connection.
+    //     If Stripe can't reopen that exact connection, open a normal bank sign-in instead; the account that comes
+    //     back replaces the old one, and transactions we already have aren't counted again (see carryOver).
     if (action === "relink") {
       const id = String(body.account || "");
       const { data: row } = await admin.from("bank_accounts").select("id").eq("id", id).eq("user_id", user.id).maybeSingle();
       if (!row) return json({ error: "not_found" }, 404);
       const customer = await customerFor(user);
-      const acct: Any = await stripe.financialConnections.accounts.retrieve(id);
-      const auth = typeof acct.authorization === "string" ? acct.authorization : acct.authorization?.id;
-      if (!auth) return json({ error: "relink_not_available" }, 409);
-      const s: Any = await stripe.financialConnections.sessions.create({
-        account_holder: { type: "customer", customer },
-        permissions: ["balances", "transactions"],
-        prefetch: ["balances", "transactions"],
-        filters: { countries: ["US"] },
-        relink_options: { authorization: auth },
-      } as Any, { apiVersion: "2026-01-28.clover" } as Any);
-      return json({ clientSecret: s.client_secret, authorization: auth });
+      const base: Any = { account_holder: { type: "customer", customer }, permissions: ["balances", "transactions"], prefetch: ["balances", "transactions"], filters: { countries: ["US"] } };
+      let why = "";
+      try {
+        const acct: Any = await stripe.financialConnections.accounts.retrieve(id, {}, { apiVersion: "2026-01-28.clover" } as Any);
+        const auth = typeof acct.authorization === "string" ? acct.authorization : acct.authorization?.id;
+        if (auth) {
+          const s: Any = await stripe.financialConnections.sessions.create({ ...base, relink_options: { authorization: auth } } as Any, { apiVersion: "2026-01-28.clover" } as Any);
+          return json({ clientSecret: s.client_secret, mode: "relink" });
+        }
+        why = "no_authorization_on_account";
+      } catch (e) { why = String((e as Any)?.message || e).slice(0, 200); console.error("relink", why); }
+      const s = await stripe.financialConnections.sessions.create(base);
+      return json({ clientSecret: s.client_secret, mode: "fresh", why });
     }
 
     // 2. after the pop-up: save the accounts the member chose
@@ -217,6 +221,9 @@ Deno.serve(async (req) => {
       for (const a of accounts) {
         await admin.from("bank_accounts").upsert({ id: a.id, user_id: user.id, ...cleanAccount(a), updated_at: new Date().toISOString() }, { onConflict: "id" });
         try { await stripe.financialConnections.accounts.subscribe(a.id, { features: ["transactions"] }); } catch { /* prefetch already started */ }
+        const c = cleanAccount(a);
+        if (c.last4) await admin.from("bank_accounts").update({ status: "replaced", updated_at: new Date().toISOString() })
+          .eq("user_id", user.id).neq("id", a.id).eq("institution", c.institution).eq("last4", c.last4).eq("subcategory", c.subcategory || "").neq("status", "active");
       }
       return json({ linked: accounts.length, ...(await sync(user.id, true)) });
     }
