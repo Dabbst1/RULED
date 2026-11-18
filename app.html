@@ -3763,6 +3763,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function merchantKey(desc) { return String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(pos|debit|purchase|card|ach|online|www|com|inc|llc|store|sq|tst|pp)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" "); }
   var NOT_SPENDING = /payment|thank you|transfer|xfer|autopay|zelle to|venmo|cash app|withdrawal|atm|credit card|cc pymt/i;
   var PAYCHECK = /payroll|direct dep|dir dep|salary|paycheck|adp|gusto|paychex/i;
+  // money moved out to another account of yours (or someone else): never income, whatever the bank's sign says
+  var OUT_XFER = /transfer to|xfer to|trnsfr to|tfr to|\bto (chk|checking|sav|savings)\b|zelle to|venmo to|cash app to|payment to/i;
+  function notIncome(e) { return (e.dir || "out") !== "in" || OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }
   function payerKey(desc) {
     return "in|" + String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(direct|dep|deposit|dir|payroll|ppd|id|ach|credit|salary|paycheck|pay|co|corp|inc|llc|des|indn|ref|trace|web|online|from|transfer)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
   }
@@ -3783,6 +3786,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return { cat: near, off: true, want: grp ? grp[2] : "", why: grp ? grp[2] + " isn’t in your budget" : "store not recognized" };
   }
   function bankGuess(t, cats, incs) {
+    if (t.amount > 0 && OUT_XFER.test(t.description || "")) return "skip";
     if (t.amount > 0) {
       // money in: use what you chose last time for this payer; with more than one income, never guess whose pay it is
       var pr = rcRules[payerKey(t.description)];
@@ -3799,8 +3803,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var bankPoll = 0;
   function bankLoad(doSync, force) {
     bankMsg = ""; $("bankView").innerHTML = '<h1>Bank accounts</h1><p class="sub">' + (force ? "Asking your bank for the latest balance…" : "Loading…") + "</p>";
-    return Promise.all([rcLoad(), loadDebts(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
-      bankData = a[2]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
+    return Promise.all([rcLoad(), loadDebts(), fixBadIncome(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
+      bankData = a[3]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
       return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {});
     }).then(function () {
@@ -3887,6 +3891,23 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return '<div class="bdeadbox"><b>' + names + (D.length === 1 ? " stopped" : " stopped") + ' sharing new transactions.</b><span>Banks ask you to sign in again every so often. Until you do, new purchases won’t show up here and your Actual numbers will fall behind. It takes about a minute, and nothing gets counted twice.</span>' +
       (onBank ? '<button type="button" class="btn" data-bank="relink" data-id="' + esc(D[0].id) + '"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Reconnect " + esc(D[0].institution || "bank")) + "</button>"
               : '<button type="button" class="btn" data-gotool="bank">Reconnect</button>') + "</div>";
+  }
+  var badIncFixed = false;
+  function fixBadIncome() {
+    if (badIncFixed) return Promise.resolve(0); badIncFixed = true;
+    return Promise.all([spendLoad(), rcLoad()]).then(function () {
+      var bad = spend.filter(function (e) { return e.src === "bank" && e.kind === "in" && notIncome(e); }), n = 0, chain = Promise.resolve();
+      bad.forEach(function (e) {
+        chain = chain.then(function () {
+          var pk = payerKey(e.raw || e.s); if (rcRules[pk] && rcRules[pk] !== "__skip") rcRules[pk] = "__skip";
+          return spendRecat(e.id, "skip").then(function () { n++; }, function () {});
+        });
+      });
+      return chain.then(function () {
+        if (n) toast("<b>Fixed " + n + (n === 1 ? " transfer" : " transfers") + "</b><br>" + (n === 1 ? "It was" : "They were") + " counted as income but " + (n === 1 ? "was" : "were") + " money moving out. " + (n === 1 ? "It’s" : "They’re") + " now listed as not counted, and your income is corrected.");
+        return n;
+      });
+    }).catch(function () { return 0; });
   }
   function bankMsgShow() { var m = document.querySelector("#bankView .bmsg"); if (m) m.scrollIntoView({ block: "center", behavior: "smooth" }); }
   function bankRelink(id) {
@@ -4260,7 +4281,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function quietBankImport(force) {
     if (!session || CFG.devMode || quietBusy) return;
     if (!force && Date.now() - quietAt < 90 * 1000) return;
-    quietBusy = true; quietAt = Date.now();
+    quietBusy = true; quietAt = Date.now(); fixBadIncome();
     var tries = 0, last = "";
     var sig = function (d) { return JSON.stringify((d.review || []).map(function (t) { return t.id + t.status + t.amount; })); };
     var pull = function (action) {
@@ -4293,6 +4314,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return true;
       }
       var nk2 = pick === "skip" ? "skip" : pick.slice(0, 2), ncat = pick === "skip" ? "" : pick.slice(3);
+      if (nk2 === "in" && notIncome(e)) throw new Error("not_income");   // a transfer out is never someone's pay
       if (!move(nk2, ncat, 1)) throw new Error("nocat");
       move(e.kind, e.cat, -1);
       var wasWaiting = e.kind === "none";
@@ -4548,14 +4570,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var incG = '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
       var exG = '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
       var moneyIn = isIn || e.dir === "in" || /payroll|direct dep|salary|paycheck|deposit|transfer from|zelle from|venmo from|cashout|refund|hold on/i.test((e.raw || "") + " " + e.s);
-      o += moneyIn ? incG + exG : exG + incG;
+      o += notIncome(e) && e.kind !== "in" ? exG : moneyIn ? incG + exG : exG + incG;
       return o;
     };
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
         '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : " · not counted in your budget") : e.kind === "none" ? " · pick a category to add it" : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
-        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.kind === "in" || e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
+        '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
     var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
@@ -5487,6 +5509,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         stIs(!dupIds, dupIds + " entries share the same ID");
         if (twins.length) return stWarn(twins.length + " possible double count" + (twins.length === 1 ? "" : "s") + " (same day, amount and store from two accounts): " + twins.slice(0, 3).map(function (e) { return e.d + " " + (e.s || "") + " " + money.format(e.a); }).join("; "));
         return stPass(spend.length + " entries, each counted once");
+      });
+    }],
+    ["Your data", "No transfers counted as income", function () {
+      return spendLoad().then(function () {
+        var bad = spend.filter(function (e) { return e.src === "bank" && e.kind === "in" && notIncome(e); });
+        stIs(!bad.length, bad.length + " transfer" + (bad.length === 1 ? " is" : "s are") + " counted as income: " + bad.slice(0, 3).map(function (e) { return e.d + " " + (e.s || "") + " " + money.format(e.a) + " in " + e.cat; }).join("; ") + ". Open the Bank tab and Monerem fixes " + (bad.length === 1 ? "it" : "them") + ".");
+        stIs(bankGuess({ amount: 27.59, description: "ONLINE TRANSFER TO CHK ...1858 TRANSACTION#: 1" }, [], [{ name: "Paycheck" }]) === "skip", "a transfer to another account would still be guessed as pay");
+        return stPass("only real pay is counted as income");
       });
     }],
     ["Your data", "Nothing stuck waiting", function () {
