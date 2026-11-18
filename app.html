@@ -5006,6 +5006,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var t = e.target;
     if (t.id === "spendMon") { spendMonth = t.value; spendMsg = ""; renderBank(); return; }
     var id = t.getAttribute && t.getAttribute("data-spend"); if (!id || !t.value) return;
+    var ent = spendFind(id);
+    if (ent && t.value.indexOf("in:") === 0 && notIncome(ent) && !window.confirm(money.format(ent.a) + " “" + ent.s + "” left your account (your bank shows it as money out). Counting it as income adds " + money.format(ent.a) + " to your income while your bank went down by that much, so they won’t match.\n\nCount it as income anyway?")) { t.value = ent.kind === "none" ? "" : ent.kind === "skip" ? "skip" : ent.kind + ":" + ent.cat; return; }
+    if (ent && t.value.indexOf("ex:") === 0 && (ent.dir || "out") === "in" && !notIncome(ent) && !window.confirm(money.format(ent.a) + " “" + ent.s + "” came into your account. Counting it as spending adds to your expenses while your bank went up.\n\nCount it as spending anyway? (A refund is fine here.)")) { t.value = ent.kind === "none" ? "" : ent.kind === "skip" ? "skip" : ent.kind + ":" + ent.cat; return; }
     t.disabled = true; pinNext(t);
     spendRecat(id, t.value).then(function () {
       var ex = spendFind(id); spendMsg = ex ? (ex.kind === "skip" ? "“" + esc(ex.s) + "” is no longer counted in your budget." : ex.kind === "in" ? "“" + esc(ex.s) + "” now counts as income in <b>" + esc(ex.cat) + "</b>." : "“" + esc(ex.s) + "” is now in <b>" + esc(ex.cat) + "</b>. Future purchases there will go to the same place.") : ""; renderBank();
