@@ -1590,7 +1590,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
   var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [], hidden: [], removed: [] };
-  var actual = {}, view = "plan";   // 'actual' = what you really spent (Monthly only); the plan numbers stay untouched
+  var actual = {}, view = "plan";
+  try { if (localStorage.getItem("monerem-view") === "actual") view = "actual"; } catch (e) {}   // come back to the side you were on (Plan or Actual)   // 'actual' = what you really spent (Monthly only); the plan numbers stay untouched
   function vals() { return view === "actual" ? actual : inputs; }
   var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
 
@@ -1951,6 +1952,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 
   function setView(v, quiet) {
     view = v;
+    if (layout && layout.months) { try { localStorage.setItem("monerem-view", v); } catch (e) {} }
     Array.prototype.forEach.call(document.querySelectorAll("#viewSeg button, #viewFloat button"), function (b) { var on = b.getAttribute("data-view") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
     $("planTip").hidden = true; tipRow = null;
     $("actNote").hidden = v !== "actual" || !layout || !layout.months;
