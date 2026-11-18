@@ -3765,6 +3765,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var PAYCHECK = /payroll|direct dep|dir dep|salary|paycheck|adp|gusto|paychex/i;
   // money moved out to another account of yours (or someone else): never income, whatever the bank's sign says
   var OUT_XFER = /transfer to|xfer to|trnsfr to|tfr to|\bto (chk|checking|sav|savings)\b|zelle to|venmo to|cash app to|payment to/i;
+  var HOLD = /placed a hold|hold on (one|your|a|the)|funds? hold|hold placed|deposit hold/i;
   function notIncome(e) { return (e.dir || "out") !== "in" || OUT_XFER.test(String(e.raw || "") + " " + String(e.s || "")); }
   function payerKey(desc) {
     return "in|" + String(desc || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\b(direct|dep|deposit|dir|payroll|ppd|id|ach|credit|salary|paycheck|pay|co|corp|inc|llc|des|indn|ref|trace|web|online|from|transfer)\b/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
@@ -3792,7 +3793,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var pr = rcRules[payerKey(t.description)];
       if (pr === "__skip") return "skip";
       if (pr && incs.some(function (c) { return nk(c.name) === nk(pr); })) return "in:" + pr;
-      if (!PAYCHECK.test(t.description)) return "skip";
+      if (HOLD.test(t.description || "")) return "skip";                       // a hold notice isn't money yet: it's counted when the bank releases it
+      if (/transfer from|xfer from|trnsfr from|from (chk|checking|sav|savings)\b/i.test(t.description || "")) return "skip";   // your own money moving between accounts
+      if (!PAYCHECK.test(t.description)) return "";                            // a deposit we don't recognize (check, Zelle from a client…): you pick, once
       return incs.length === 1 ? "in:" + incs[0].name : "";   // "" = waits for you to pick which income it is, once
     }
     if (NOT_SPENDING.test(t.description)) return "skip";
@@ -3806,7 +3809,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return Promise.all([rcLoad(), loadDebts(), fixBadIncome(), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[3]; recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
-      return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {});
+      return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
     }).then(function () {
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
@@ -3891,6 +3894,43 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return '<div class="bdeadbox"><b>' + names + (D.length === 1 ? " stopped" : " stopped") + ' sharing new transactions.</b><span>Banks ask you to sign in again every so often. Until you do, new purchases won’t show up here and your Actual numbers will fall behind. It takes about a minute, and nothing gets counted twice.</span>' +
       (onBank ? '<button type="button" class="btn" data-bank="relink" data-id="' + esc(D[0].id) + '"' + (bankBusy ? " disabled" : "") + ">" + (bankBusy ? "Opening…" : "Reconnect " + esc(D[0].institution || "bank")) + "</button>"
               : '<button type="button" class="btn" data-gotool="bank">Reconnect</button>') + "</div>";
+  }
+  // A deposit the bank held shows up first as a hold notice, then (once released) as its own deposit.
+  // The deposit is counted in the category you picked for the hold, and the hold stops counting, so it's counted once.
+  var holdBusy = false;
+  function holdRelease() {
+    if (holdBusy) return Promise.resolve(0); holdBusy = true;
+    return Promise.all([spendLoad(), rcLoad()]).then(function () {
+      var holds = spend.filter(function (h) { return h.src === "bank" && (h.dir || "out") === "in" && HOLD.test(String(h.raw || "") + " " + String(h.s || "")) && !h.held && (h.kind === "in" || (h.kind === "skip" && h.wasKind === "in" && h.wasCat)); });
+      var pairs = [];
+      holds.forEach(function (h) {
+        var hd = parseD(h.d);
+        var dep = spend.filter(function (d) {
+          if (d === h || d.src !== "bank" || (d.dir || "out") !== "in" || d.fromHold || HOLD.test(String(d.raw || "") + " " + String(d.s || "")) || Math.abs(d.a - h.a) > 0.004) return false;
+          if (!(d.kind === "skip" || d.kind === "none") || d.why === "canceled by the bank" || (d.kind === "skip" && d.auto === false)) return false;   // you chose "not counted" yourself: leave it
+          var dd = daysApart(parseD(d.d), hd); return dd >= 0 && dd <= 14 && !pairs.some(function (p) { return p.d === d; });
+        }).sort(function (a, b) { return a.d < b.d ? -1 : 1; })[0];
+        if (dep) pairs.push({ h: h, d: dep, cat: h.kind === "in" ? h.cat : h.wasCat });
+      });
+      var n = 0, chain = Promise.resolve();
+      pairs.forEach(function (p) {
+        chain = chain.then(function () {
+          var pk = payerKey(p.d.raw || p.d.s), keepRule = rcRules[pk], hk = payerKey(p.h.raw || p.h.s), keepH = rcRules[hk];
+          return (p.h.kind === "in" ? spendRecat(p.h.id, "skip") : Promise.resolve()).then(function () { return spendRecat(p.d.id, "in:" + p.cat); }).then(function () {
+            // don't let one released hold teach Monerem that every deposit like it is this person's pay
+            if (keepRule === undefined) delete rcRules[pk]; else rcRules[pk] = keepRule;
+            if (keepH === undefined) delete rcRules[hk]; else rcRules[hk] = keepH;
+            p.h.held = p.d.id; p.h.kind = "skip"; p.h.why = "hold released: counted with the deposit on " + dayLbl(p.d.d); p.d.fromHold = p.h.id; p.d.why = "released from the hold on " + dayLbl(p.h.d);
+            n++; return Promise.all([spendSave(), rcSave()]);
+          }, function () {});
+        });
+      });
+      return chain.then(function () {
+        holdBusy = false;
+        if (n) { toast("<b>Hold released</b><br>" + (n === 1 ? "The deposit is" : n + " deposits are") + " now counted in the income you picked for the hold, once."); if (tool && (tool.id === "bank" || tool.type === "home")) openTool(); }
+        return n;
+      });
+    }).catch(function () { holdBusy = false; return 0; });
   }
   var badIncFixed = false;
   function fixBadIncome() {
@@ -4114,7 +4154,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           months[k].forEach(function (x) {
             var e = x.e, act = x.act;
             if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = "canceled by the bank"; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
-            if (act.v) { apply(e, e.a, -1); e.pend = false; e.kind = "skip"; e.cat = ""; e.why = "canceled by the bank"; out.voided.push(e.id); return; }
+            if (act.v) { apply(e, e.a, -1); e.pend = false; if (e.kind === "in" || e.kind === "ex") { e.wasKind = e.kind; e.wasCat = e.cat; } e.kind = "skip"; e.cat = ""; e.why = "canceled by the bank"; out.voided.push(e.id); return; }
             var d = Math.round((act.na - e.a) * 100) / 100; if (d) apply(e, Math.abs(d), d > 0 ? 1 : -1);
             e.a = act.na; if (act.post) { e.pend = false; out.posted.push(e.id); }
           });
@@ -4290,7 +4330,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var deadWas = deadAccts(bankData && bankData.accounts).length;
         bankData = d;
         if (deadAccts(d.accounts).length !== deadWas && tool && tool.type === "home") openTool();   // show (or clear) the "sign in again" warning
-        var sg = sig(d), go = sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve(); last = sg;
+        var sg = sig(d), go = (sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve()).then(holdRelease); last = sg;
         return go.then(function () {
           if (d.refreshing && ++tries < 10) setTimeout(function () { pull("sync"); }, 6000);   // the bank is still sending; check again shortly
           else quietBusy = false;
@@ -5517,6 +5557,17 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         stIs(!bad.length, bad.length + " transfer" + (bad.length === 1 ? " is" : "s are") + " counted as income: " + bad.slice(0, 3).map(function (e) { return e.d + " " + (e.s || "") + " " + money.format(e.a) + " in " + e.cat; }).join("; ") + ". Open the Bank tab and Monerem fixes " + (bad.length === 1 ? "it" : "them") + ".");
         stIs(bankGuess({ amount: 27.59, description: "ONLINE TRANSFER TO CHK ...1858 TRANSACTION#: 1" }, [], [{ name: "Paycheck" }]) === "skip", "a transfer to another account would still be guessed as pay");
         return stPass("only real pay is counted as income");
+      });
+    }],
+    ["Math", "Released holds are counted once", function () {
+      stIs(bankGuess({ amount: 629.77, description: "We've placed a hold on one or more electronic funds transfers or checks in your account" }, [], [{ name: "David" }]) === "skip", "a hold notice shouldn’t count as money yet");
+      stIs(bankGuess({ amount: 85, description: "ZELLE FROM JANE CLIENT" }, [], [{ name: "David" }]) === "", "an unknown deposit should wait for you to pick, not be left out");
+      stIs(bankGuess({ amount: 200, description: "ONLINE TRANSFER FROM SAV ...4421" }, [], [{ name: "David" }]) === "skip", "money from your own savings isn’t income");
+      return spendLoad().then(function () {
+        var open = spend.filter(function (h) { return h.src === "bank" && h.kind === "in" && HOLD.test(String(h.raw || "") + " " + String(h.s || "")) && !h.held; });
+        var waiting = open.filter(function (h) { return spend.some(function (d) { return d !== h && d.src === "bank" && d.dir === "in" && (d.kind === "skip" || d.kind === "none") && !d.fromHold && Math.abs(d.a - h.a) < 0.005 && !HOLD.test(String(d.raw || "")); }); });
+        if (waiting.length) return stWarn(waiting.length + " released hold" + (waiting.length === 1 ? " hasn’t" : "s haven’t") + " been moved onto the deposit yet. Open the Bank tab.");
+        return stPass("holds count once, when the bank releases the money");
       });
     }],
     ["Your data", "Nothing stuck waiting", function () {
