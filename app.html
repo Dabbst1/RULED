@@ -1323,6 +1323,15 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
+.stsum{margin:14px 0 4px;padding:10px 12px;border-radius:10px;background:var(--sheet,#fff);border:1px solid var(--rule,#dde5f3)}
+.stgood{color:#12805c}.stbad{color:#b42318}
+.strow{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--rule,#e6ecf6)}
+.strow b{display:block;font-weight:600}.strow small{display:block;color:var(--muted);line-height:1.4;margin-top:2px}
+.sti{flex:0 0 22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px}
+.st-pass .sti{background:#dff5ea;color:#12805c}.st-fail .sti{background:#fde4e1;color:#b42318}.st-warn .sti{background:#fff1d6;color:#9a5b00}.st-skip .sti{background:#eef1f6;color:#7a869c}.st-run .sti{background:#e3edff;color:#2b5fd9}
+.st-wait{opacity:.45}
+:root[data-theme="dark"] .st-pass .sti{background:#12351F;color:#6EE7A0}:root[data-theme="dark"] .st-fail .sti{background:#3D1620;color:#FF8A9A}:root[data-theme="dark"] .st-warn .sti{background:#3a2a0c;color:#FFC870}:root[data-theme="dark"] .st-skip .sti{background:#1c2638;color:#9AABCF}:root[data-theme="dark"] .st-run .sti{background:#1C2B4A;color:#8FB2FF}
+:root[data-theme="dark"] .stgood{color:#6EE7A0}:root[data-theme="dark"] .stbad{color:#FF8A9A}
 .bbtns{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .bdeadbox{border:1.5px solid #f0b4ae;background:#fff4f2;border-radius:12px;padding:14px 16px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px}
 .bdeadbox b{color:#8a1c12}.bdeadbox span{font-size:14px;color:#5b3a36;line-height:1.45}.bdeadbox .btn{align-self:flex-start}
@@ -1439,6 +1448,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         <button type="button" role="tab" data-admtab="members" aria-selected="false">Members</button>
         <button type="button" role="tab" data-admtab="demo" aria-selected="false">Demo data</button>
         <button type="button" role="tab" data-admtab="danger" aria-selected="false">Reset &amp; clear</button>
+        <button type="button" role="tab" data-admtab="selftest" aria-selected="false">Test everything</button>
       </div>
       <div id="bizWrap">
         <section class="admpane" data-admpane="overview" role="tabpanel">
@@ -1490,6 +1500,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><input id="clearConfirm" autocomplete="off" style="max-width:180px"><button class="btn danger" type="button" id="clearAll" disabled>Clear all numbers</button></div>
           <p class="pickmsg" id="clearMsg" role="status"></p>
         </div>
+      </section>
+      <section class="admpane" data-admpane="selftest" role="tabpanel" hidden>
+        <p class="sub admintro">Checks every part of Monerem and shows what works (<span class="stgood">✓</span>), what to look at (<b>!</b>) and what’s broken (<span class="stbad">✕</span>), with the reason.</p>
+        <p class="sub" id="stWhere"></p>
+        <div class="admrow"><button class="btn" type="button" id="stRun">Run all tests</button><button class="btn ghost" type="button" id="stFull">Run full test in Testing budget</button><button class="btn ghost" type="button" id="stCopy" hidden>Copy results</button></div>
+        <div class="admrow"><label class="sub" style="flex:1">Tester for the member-access test (optional)<input id="stTester" placeholder="a tester username, never a paying member" autocomplete="off" style="width:100%;margin-top:4px"></label></div>
+        <div id="stOut" aria-live="polite"></div>
       </section>
       <p class="pickmsg" id="admMsg" role="status"></p>
     </details>
@@ -5099,6 +5116,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       .then(function () { admMsg("Sample year loaded. Open Annual budget to see it. Months you open in Monthly budget fill in from it."); })
       .catch(function () { admMsg("Couldn’t load the sample year. Try again."); });
   }
+  function loadDebtExample(key) {
+    var ex = DEBT_EXAMPLES[key] || DEBT_EXAMPLES.mixed;
+    return loadDebts().then(function () {
+      var now = new Date(), list = ex.debts.map(function (d) { return { id: newId(), name: d[0], type: d[1], balance: d[2], apr: d[3], min: d[4], limit: d[5] || 0 }; });
+      var tot = list.reduce(function (a2, d) { return a2 + d.balance; }, 0), hist = [];
+      for (var k = 6; k >= 1; k--) { var dt = new Date(now.getFullYear(), now.getMonth() - k, 3); hist.push({ d: iso(dt), t: Math.round(tot + k * ex.pace) }); }
+      debtState = { extra: ex.extra, plan: ex.plan || "avalanche", hist: hist, debts: list };
+      debtLoaded = true; saveDebts();
+    });
+  }
+  function clearGoalsNow() { return loadGoals().then(function () { goals = []; return doSave("goals", { __goals: [] }); }); }
+  function clearBillsNow() { return loadBills().then(function () { bills = []; renderBanner(); return doSave(billsKey(), { __bills: [] }); }); }
+  function clearReceiptsNow() { return rcLoad().then(function () { receipts = []; return doSave("receipts", { __receipts: [], __rules: rcRules }); }); }
   function resetCategories() {
     if (!window.confirm("Put back the starter categories in every month and your Annual budget, and run first-time setup again? Amounts in categories you added yourself are cleared.")) return;
     admMsg("Resetting categories…"); flushSave();
@@ -5128,25 +5158,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (a === "sample") { if (window.confirm("Replace this month’s Monthly budget with a sample budget?")) loadSample(); }
     else if (a === "sampleyear") { if (window.confirm("Replace your Annual budget with a sample year? Months of this year you’ve already filled in are updated to match.")) loadSampleYear(); }
     else if (a === "resetcats") resetCategories();
-    else if (a === "sampledebts") { var ex = DEBT_EXAMPLES[$("debtEx").value] || DEBT_EXAMPLES.mixed; if (window.confirm("Replace your debts with the “" + ex.label + "” example?")) loadDebts().then(function () {
-      var now = new Date(), list = ex.debts.map(function (d) { return { id: newId(), name: d[0], type: d[1], balance: d[2], apr: d[3], min: d[4], limit: d[5] || 0 }; });
-      var tot = list.reduce(function (a2, d) { return a2 + d.balance; }, 0), hist = [];
-      for (var k = 6; k >= 1; k--) { var dt = new Date(now.getFullYear(), now.getMonth() - k, 3); hist.push({ d: iso(dt), t: Math.round(tot + k * ex.pace) }); }
-      debtState = { extra: ex.extra, plan: ex.plan || "avalanche", hist: hist, debts: list };
-      debtLoaded = true; saveDebts(); admMsg("“" + ex.label + "” loaded. Open the Debt tab to see it.");
-    }); }
+    else if (a === "sampledebts") { var ex = DEBT_EXAMPLES[$("debtEx").value] || DEBT_EXAMPLES.mixed; if (window.confirm("Replace your debts with the “" + ex.label + "” example?")) loadDebtExample($("debtEx").value).then(function () { admMsg("“" + ex.label + "” loaded. Open the Debt tab to see it."); }); }
     else if (a === "previewsetup") { tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0]; makeTabs(); openTool(); }
     else if (a === "previewinactive") { $("inactiveMsg").textContent = "Choose a plan to get into your tools."; $("inactivePortal").hidden = true; $("previewNote").hidden = false; show("inactive"); }
-    else if (a === "cleargoals") { if (window.confirm("Delete all your goals?")) loadGoals().then(function () { goals = []; return doSave("goals", { __goals: [] }); }).then(function () { admMsg("Goals cleared."); }); }
-    else if (a === "clearbills") { if (window.confirm("Delete all your bills and reminders?")) loadBills().then(function () { bills = []; renderBanner(); return doSave(billsKey(), { __bills: [] }); }).then(function () { admMsg("Bills cleared."); }); }
-    else if (a === "clearreceipts") { if (window.confirm("Delete all your saved receipts? Amounts they already added to your budget stay.")) rcLoad().then(function () { receipts = []; return doSave("receipts", { __receipts: [], __rules: rcRules }); }).then(function () { admMsg("Receipts cleared."); }); }
+    else if (a === "cleargoals") { if (window.confirm("Delete all your goals?")) clearGoalsNow().then(function () { admMsg("Goals cleared."); }); }
+    else if (a === "clearbills") { if (window.confirm("Delete all your bills and reminders?")) clearBillsNow().then(function () { admMsg("Bills cleared."); }); }
+    else if (a === "clearreceipts") { if (window.confirm("Delete all your saved receipts? Amounts they already added to your budget stay.")) clearReceiptsNow().then(function () { admMsg("Receipts cleared."); }); }
   });
   $("adminTools").addEventListener("click", function (e) {
     var t = e.target.closest && e.target.closest("[data-admtab]"); if (!t) return;
     var id = t.getAttribute("data-admtab");
     Array.prototype.forEach.call($("adminTools").querySelectorAll("[data-admtab]"), function (b) { var on = b === t; b.classList.toggle("on", on); b.setAttribute("aria-selected", on ? "true" : "false"); });
     Array.prototype.forEach.call($("adminTools").querySelectorAll("[data-admpane]"), function (p) { p.hidden = p.getAttribute("data-admpane") !== id; });
-    admMsg("");
+    admMsg(""); if (id === "selftest") stPaneInit();
   });
   $("adminTools").addEventListener("toggle", function () { if ($("adminTools").open) loadBiz(); });
   /* ---------- admin: business tools (the "admin" server function checks you're an admin) ---------- */
@@ -5222,6 +5246,542 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     adminCall("stats").then(function () { bizLoaded = false; loadBiz(true); setTimeout(function () { if (em && $("bizMember")) showMember(em); }, 700); }).catch(function () {});
   }
   $("exitPreview").addEventListener("click", function () { $("previewNote").hidden = true; show("app"); openTool(); });
+  /* ---------- admin: self-test. Checks every part of Monerem and shows what works and what needs attention ----------
+     Safe on your real budget: everything here only reads, or writes a throwaway "selftest" item and deletes it.
+     The Admin tools tests (sample data, clearing, resetting) change data, so they only run in your Testing budget. */
+  var stRes = [], stBusy = false, stErrs = [];
+  window.addEventListener("error", function (e) { if (stBusy) stErrs.push(String(e.message || e.error || "error")); });
+  window.addEventListener("unhandledrejection", function (e) { if (stBusy && e.reason && e.reason.message !== "stop") stErrs.push(String((e.reason && e.reason.message) || e.reason)); });
+  function stWait(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+  function stUntil(fn, ms) {   // wait (up to ms) for something on screen to be ready
+    var t0 = Date.now();
+    return new Promise(function (ok, bad) { (function again() { var v = false; try { v = fn(); } catch (e) {} if (v) return ok(v); if (Date.now() - t0 > ms) return bad(new Error("timed out after " + Math.round(ms / 1000) + "s")); setTimeout(again, 150); })(); });
+  }
+  function stEq(got, want, what) { if (typeof got !== "number" || isNaN(got) || Math.abs(got - want) > 0.005) throw new Error(what + ": expected " + want + ", got " + (typeof got === "number" ? got : JSON.stringify(got))); }
+  function stIs(cond, msg) { if (!cond) throw new Error(msg); }
+  function stTimeout(p, ms) { return Promise.race([p, stWait(ms).then(function () { throw new Error("no answer after " + Math.round(ms / 1000) + "s"); })]); }
+  function stAgo(t) { var m = Math.round((Date.now() - new Date(t).getTime()) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " hr ago" : Math.round(m / 1440) + " days ago"; }
+  function stPass(d) { return { s: "pass", d: d || "" }; }
+  function stWarn(d) { return { s: "warn", d: d }; }
+  function stSkip(d) { return { s: "skip", d: d }; }
+  function stLayout() { return fetch("monthly-budget.layout.json", { cache: "no-cache" }).then(function (r) { return r.json(); }); }
+  function stDirectRead(key) {   // straight from the database, past any quick copy
+    if (CFG.devMode) { try { return Promise.resolve(JSON.parse(localStorage.getItem("moneres-dev-" + key) || "null")); } catch (e) { return Promise.resolve(null); } }
+    return supa.from("member_inputs").select("inputs").eq("user_id", session.user.id).eq("sheet_id", key).maybeSingle().then(function (r) { if (r.error) throw r.error; return r.data ? r.data.inputs : null; });
+  }
+  function stDelete(key) {
+    if (CFG.devMode) { try { localStorage.removeItem("moneres-dev-" + key); } catch (e) {} return Promise.resolve(); }
+    delete savedCache[session.user.id + "|" + key];
+    return supa.from("member_inputs").delete().eq("user_id", session.user.id).eq("sheet_id", key).then(function () {});
+  }
+  function stFixture(Lm) {   // a small made-up month: two paychecks, rent, groceries, tithe switched on
+    var A = function (label, col) { var a = rowAddr(Lm, label, col); if (!a) throw new Error("the “" + label + "” row is missing from the monthly layout"); return a; };
+    var doc = { __meta: { labels: {}, custom: [], hidden: [], removed: [] } };
+    Lm.rows.forEach(function (r) { if (r.toggle) doc[r.toggle] = 0; });
+    doc[A("Check", "B")] = 2000; doc[A("Check", "C")] = 2000; doc[A("Rent", "B")] = 1500; doc[A("Groceries", "C")] = 300;
+    return { doc: doc, A: A, tithe: autoRows(Lm)[0] };
+  }
+  var stMemberKey = "monerem-selftest-tester";
+
+  var ST = [
+    /* ---- connections ---- */
+    ["Connections", "Signed in", function () {
+      if (CFG.devMode) return stPass("test mode");
+      stIs(session && session.user && session.user.email, "not signed in"); return stPass(session.user.email);
+    }],
+    ["Connections", "Membership is active", function () {
+      if (CFG.devMode) return stSkip("test mode has no membership");
+      return supa.from("members").select("status,current_period_end").eq("user_id", session.user.id).maybeSingle().then(function (r) {
+        if (r.error) throw r.error; var m = r.data;
+        if (!m) return isAdmin() ? stWarn("no membership row (you get in as an admin)") : { s: "fail", d: "no membership found" };
+        var on = (m.status === "active" || m.status === "trialing") && (!m.current_period_end || new Date(m.current_period_end) > new Date());
+        return on ? stPass(m.status + (m.current_period_end ? ", through " + shortDate(m.current_period_end) : ", no end date")) : { s: "fail", d: "status " + m.status };
+      });
+    }],
+    ["Connections", "Saving and loading", function () {
+      var key = wsKey("selftest"), stamp = Date.now() + "-" + Math.random().toString(36).slice(2), t0 = Date.now();
+      return doSave("selftest", { stamp: stamp }).then(function () { return stDirectRead(key); }).then(function (back) {
+        stIs(back && back.stamp === stamp, "saved a test value but read back " + JSON.stringify(back && back.stamp));
+        var ms = Date.now() - t0; return stDelete(key).then(function () { return stDirectRead(key); }).then(function (gone) {
+          stIs(!gone, "the test value didn’t delete"); return stPass("saved, read back and removed in " + ms + " ms");
+        });
+      });
+    }],
+    ["Connections", "Screens update each other live", function () {
+      if (CFG.devMode) return stSkip("needs the real database");
+      stIs(liveStart.on, "live updates never started on this page");
+      var key = wsKey("selftest-live"), stamp = String(Date.now()), ch = null, heard = false;
+      return new Promise(function (ok, bad) {
+        ch = supa.channel("st-" + stamp).on("postgres_changes", { event: "*", schema: "public", table: "member_inputs", filter: "user_id=eq." + session.user.id }, function (p) {
+          if (p.new && p.new.sheet_id === key && p.new.inputs && p.new.inputs.stamp === stamp) { heard = true; ok(); }
+        }).subscribe(function (status) {
+          if (status === "SUBSCRIBED") supa.from("member_inputs").upsert({ user_id: session.user.id, sheet_id: key, inputs: { stamp: stamp }, updated_at: new Date().toISOString() }).then(function (r) { if (r.error) bad(r.error); });
+          else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") bad(new Error("couldn’t connect to live updates (" + status + ")"));
+        });
+        setTimeout(function () { if (!heard) bad(new Error("a change was saved but never came back live. In Supabase SQL Editor run: alter publication supabase_realtime add table public.member_inputs;")); }, 10000);
+      }).then(function () { return stPass("a change reached this page in real time"); })
+        .finally(function () { try { supa.removeChannel(ch); } catch (e) {} return stDelete(key); });
+    }],
+    ["Connections", "Budget math (server)", function () {
+      return stLayout().then(function (Lm) {
+        var F = stFixture(Lm);
+        return calcMonthly(F.doc).then(function (v) {
+          stEq(v.D7, 4000, "take-home pay"); stEq(v.D34, 1800, "total expenses"); stEq(v.D35, 2200, "net income");
+          if (!F.tithe) return stPass("4,000 in − 1,800 out = 2,200 left");
+          F.doc[F.tithe.toggle] = 1;
+          return calcMonthly(F.doc).then(function (v2) {
+            stEq(v2.D34, 2200, "expenses with tithe on (10% of 4,000 added)"); stEq(v2.D35, 1800, "net with tithe on");
+            return stPass("4,000 in − 1,800 out = 2,200 left; tithe on adds 400 correctly");
+          });
+        });
+      });
+    }],
+    ["Connections", "Bank connection", function () {
+      if (testWs()) return stSkip("bank linking lives in your main budget");
+      if (CFG.devMode) return stSkip("test mode");
+      return bankCall("list").then(function (d) {
+        if (!bankData) bankData = d;
+        var A = d.accounts || [];
+        if (!A.length) return stWarn("no bank linked");
+        var dead = deadAccts(A);
+        if (dead.length) return { s: "fail", d: dead.map(function (a) { return (a.institution || a.name) + (a.last4 ? " ••" + a.last4 : ""); }).join(", ") + " stopped sharing. Tap Reconnect on the Bank tab." };
+        var last = A.map(function (a) { return a.balance && a.balance.tx_at; }).filter(Boolean).sort().pop();
+        var txt = A.length + (A.length === 1 ? " account" : " accounts") + " connected" + (last ? ", transactions checked " + stAgo(last) : "");
+        return last && Date.now() - new Date(last).getTime() > 26 * 36e5 ? stWarn(txt + ". That’s over a day old.") : stPass(txt);
+      }).catch(function (e) { if (e.status === 404) return { s: "fail", d: "the bank function isn’t deployed" }; throw e; });
+    }],
+    ["Connections", "Bank Reconnect is set up", function () {
+      if (testWs()) return stSkip("bank linking lives in your main budget");
+      if (CFG.devMode) return stSkip("test mode");
+      return bankCall("relink", { account: "selftest-none" }).then(function () { return stWarn("unexpected answer"); }, function (e) {
+        if (e.message === "not_found") return stPass("the bank function knows how to reconnect");
+        if (e.message === "unknown_action") return { s: "fail", d: "the bank function is the old version. Paste the new code into Supabase and click Deploy updates." };
+        if (/column|status_action|dup_of/i.test(e.message)) return { s: "fail", d: "run bank-relink.sql in Supabase SQL Editor (" + e.message + ")" };
+        throw e;
+      });
+    }],
+    ["Connections", "Bill reminder emails", function () {
+      if (CFG.devMode) return stSkip("test mode");
+      return Promise.all([loadBills(), supa.from("member_inputs").select("inputs").eq("user_id", session.user.id).eq("sheet_id", "reminders-log").maybeSingle()]).then(function (a) {
+        var on = acctPrefs.emailBills !== false, sent = (a[1].data && a[1].data.inputs && a[1].data.inputs.__sent) || {};
+        var last = Object.keys(sent).map(function (k) { return String(sent[k]); }).sort().pop();
+        if (!on) return stWarn("turned off for this account (Bills tab → Email me before bills are due)");
+        if (!bills.length) return stWarn("on, but there are no bills to remind you about");
+        return last ? stPass("on; last reminder email went out " + last.slice(0, 10)) : stWarn("on, but no reminder has gone out yet. If a bill was due in the last few days, check the bill-reminders function’s logs.");
+      });
+    }],
+
+    /* ---- the math the app does on your device ---- */
+    ["Math", "Actual totals count only what really happened", function () {
+      return stLayout().then(function (Lm) {
+        var F = stFixture(Lm), d = F.doc;
+        d["a:" + F.A("Check", "B")] = 1000; d["a:" + F.A("Rent", "B")] = 500;
+        if (F.tithe) d[F.tithe.toggle] = 1;
+        var R = monthActuals(Lm, d); stEq(R.inc, 1000, "income received"); stEq(R.exp, 500, "spent (tithe not paid yet, so not counted)"); stEq(R.net, 500, "net"); stEq(R.planInc, 4000, "planned income");
+        if (F.tithe) { d["a:" + F.tithe.cells.B.a] = 100; stEq(monthActuals(Lm, d).exp, 600, "spent after marking 100 of tithe paid"); }
+        var rentRow = Lm.rows.filter(function (r) { return r.type === "data" && r.label === "Rent"; })[0]; d.__meta.hidden = [rentRow.row];
+        stEq(monthActuals(Lm, d).exp, F.tithe ? 100 : 0, "spent with Rent hidden");
+        return stPass("received, spent, tithe only when paid, hidden rows left out");
+      });
+    }],
+    ["Math", "Home and the Monthly table agree (this month)", function () {
+      var n = new Date();
+      return rcMonthState(n.getFullYear(), n.getMonth()).then(function (st) {
+        var MA = monthActuals(st.Lm, st.doc), dm = st.doc.__meta || {}, hid = (dm.hidden || []).map(Number), o = {}, ins = [];
+        (function walk(x) { if (!x || typeof x !== "object") return; if (x.k === "input" && x.a) ins.push(x.a); Object.keys(x).forEach(function (k) { walk(x[k]); }); })(st.Lm.rows);
+        ins.forEach(function (a) { o[a] = hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : (typeof st.doc["a:" + a] === "number" ? st.doc["a:" + a] : 0); });
+        st.Lm.rows.forEach(function (r) { if (r.toggle) o[r.toggle] = 0; });
+        return calcMonthly(o).then(function (v) {
+          v = actualAdjust(v, function (a) { return hid.indexOf(+a.replace(/^[A-Z]+/, "")) >= 0 ? 0 : st.doc["a:" + a] || 0; }, st.Lm, function (t) { return !!st.doc[t]; });
+          stEq(v.D35, MA.net, "net in the table vs. net on Home");
+          return stPass("both show " + money.format(MA.net) + " net so far in " + MONTHS[n.getMonth()]);
+        });
+      });
+    }],
+    ["Math", "Safe to spend", function () {
+      return stLayout().then(function (Lm) {
+        var F = stFixture(Lm), d = F.doc; d["a:" + F.A("Check", "B")] = 2000; d["a:" + F.A("Check", "C")] = 2000; d["a:" + F.A("Groceries", "C")] = 120;
+        var R = safeData(Lm, d);
+        stIs(typeof R.safe === "number" && isFinite(R.safe), "Safe to spend came out as " + R.safe);
+        stIs(R.safe <= R.got + 0.005, "Safe to spend (" + R.safe + ") is more than the pay received (" + R.got + ")");
+        stEq(R.inc, 4000, "pay planned"); stEq(R.spent, 120, "spent so far");
+        return stPass("a real number that never exceeds the pay that came in (" + money.format(R.safe) + " on the sample)");
+      });
+    }],
+    ["Math", "Bill repeats (weekly, every 2 weeks, monthly, yearly)", function () {
+      var f = function (d) { return iso(d); };
+      stIs(f(occ({ date: "2026-11-02", freq: "weekly" }, 1)) === "2026-11-09", "weekly");
+      stIs(f(occ({ date: "2026-11-02", freq: "biweekly" }, 2)) === "2026-11-30", "every 2 weeks");
+      stIs(f(occ({ date: "2026-01-31", freq: "monthly" }, 1)) === "2026-02-28", "monthly on the 31st should fall on Feb 28");
+      stIs(f(occ({ date: "2028-02-29", freq: "yearly" }, 1)) === "2029-02-28", "yearly on Feb 29");
+      var nd = nextDue({ date: iso(todayD()), freq: "monthly" }); stIs(nd && iso(nd) === iso(todayD()), "a bill due today should show as due today");
+      return stPass("all four repeats land on the right days, month ends included");
+    }],
+    ["Math", "Debt payoff plans", function () {
+      var notes = [];
+      Object.keys(DEBT_EXAMPLES).forEach(function (k) {
+        var ex = DEBT_EXAMPLES[k], ds = ex.debts.map(function (d, i) { return { id: "d" + i, balance: d[2], apr: d[3], min: d[4] }; });
+        var av = simulate(ds, ex.extra, "avalanche"), sn = simulate(ds, ex.extra, "snowball"), mn = simulate(ds, 0, "min");
+        if (k === "growing") { stIs(mn.months === null, "the warning example should never finish on minimums"); notes.push("warning case caught"); return; }
+        stIs(av.months !== null, ex.label + ": avalanche never finishes");
+        stIs(mn.months === null || av.months <= mn.months, ex.label + ": paying extra took longer than minimums");
+        stIs(av.interest <= sn.interest + 0.01, ex.label + ": avalanche paid more interest than snowball");
+        var small = ds.slice().sort(function (a, b) { return a.balance - b.balance; })[0].id; stIs(sn.order[0] === small, ex.label + ": snowball didn’t start with the smallest balance");
+      });
+      return stPass(Object.keys(DEBT_EXAMPLES).length + " examples: extra payments finish sooner, avalanche saves the most interest, snowball starts smallest; " + notes.join(""));
+    }],
+    ["Math", "Savings finish dates", function () {
+      stEq(etaMonths(1000, 250), 4, "1,000 at 250 a month"); stEq(etaMonths(1001, 250), 5, "1,001 at 250 a month"); stEq(etaMonths(0, 100), 0, "already reached");
+      stIs(etaMonths(500, 0) === null, "nothing saved each month should have no finish date");
+      return stPass("finish dates round up to the month you’ll actually get there");
+    }],
+    ["Math", "Bank transactions sort themselves", function () {
+      return rcLoad().then(function () {
+        var keep = rcRules; rcRules = {};
+        try {
+          var one = [{ name: "Paycheck" }], two = [{ name: "David" }, { name: "Marysol" }];
+          stIs(bankGuess({ amount: 1690.85, description: "ACME CORP PAYROLL DIR DEP" }, [], one) === "in:Paycheck", "a paycheck with one income should go to that income");
+          stIs(bankGuess({ amount: 1690.85, description: "ACME CORP PAYROLL DIR DEP" }, [], two) === "", "with two incomes it should wait for you to pick whose pay it is");
+          rcRules[payerKey("ACME CORP PAYROLL DIR DEP")] = "Marysol";
+          stIs(bankGuess({ amount: 1690.85, description: "ACME CORP DIRECT DEPOSIT PPD" }, [], two) === "in:Marysol", "it should remember whose pay this payer is");
+          stIs(bankGuess({ amount: 50, description: "ZELLE FROM JOHN" }, [], one) === "skip", "money moved in isn’t pay");
+          ["ONLINE TRANSFER TO SAV 1234", "CHASE CREDIT CARD AUTOPAY", "ZELLE TO JOHN SMITH", "ATM WITHDRAWAL"].forEach(function (s) { stIs(bankGuess({ amount: -100, description: s }, [], one) === "skip", "“" + s + "” should be left out (it’s not spending)"); });
+          var c = cleanStore("TARGET T-1234 SANFORD FL"); stIs(/target/i.test(c) && !/\d/.test(c), "store name cleanup gave “" + c + "”");
+          stIs(merchantKey("PUBLIX SUPER MKT #512") === merchantKey("PUBLIX SUPER MKT #877"), "the same store at two locations should be one store");
+          return stPass("pay goes to the right person, transfers and card payments stay out, store names clean up");
+        } finally { rcRules = keep; }
+      });
+    }],
+    ["Math", "Nothing gets counted twice", function () {
+      return spendLoad().then(function () {
+        var keep = spend;
+        spend = [{ id: "m1", src: "manual", kind: "ex", dir: "out", a: 27.59, d: "2026-11-10", cat: "Vitamins" }];
+        try {
+          var m = handMatch({ amount: -27.59, description: "VITAMIN SHOPPE 123" }, new Date(2026, 10, 12));
+          stIs(m && m.exact && m.e.id === "m1", "a bank charge matching something you logged should merge with it");
+          stIs(!handMatch({ amount: -27.59, description: "ONLINE TRANSFER TO SAV" }, new Date(2026, 10, 12)), "a transfer must never merge with a purchase");
+          stIs(!handMatch({ amount: -27.59, description: "VITAMIN SHOPPE" }, new Date(2026, 10, 20)), "a charge 10 days later is a different purchase");
+          stIs(!handMatch({ amount: 27.59, description: "REFUND" }, new Date(2026, 10, 12)), "money in shouldn’t match a purchase");
+          return stPass("your logged purchase and the bank’s copy count once; transfers never merge");
+        } finally { spend = keep; }
+      });
+    }],
+
+    /* ---- your saved data ---- */
+    ["Your data", "Spending record has no double counts", function () {
+      return spendLoad().then(function () {
+        var ids = {}, dupIds = 0, by = {}, twins = [];
+        spend.forEach(function (e) { if (ids[e.id]) dupIds++; ids[e.id] = 1; });
+        spend.forEach(function (e) {
+          if (e.src !== "bank" || (e.kind !== "ex" && e.kind !== "in")) return;
+          var k = e.d + "|" + e.a + "|" + String(e.raw || e.s || "").toLowerCase().trim(); (by[k] = by[k] || []).push(e);
+        });
+        Object.keys(by).forEach(function (k) { var L = by[k]; if (L.length > 1 && L.some(function (x) { return x.acct !== L[0].acct; })) twins.push(L[0]); });
+        stIs(!dupIds, dupIds + " entries share the same ID");
+        if (twins.length) return stWarn(twins.length + " possible double count" + (twins.length === 1 ? "" : "s") + " (same day, amount and store from two accounts): " + twins.slice(0, 3).map(function (e) { return e.d + " " + (e.s || "") + " " + money.format(e.a); }).join("; "));
+        return stPass(spend.length + " entries, each counted once");
+      });
+    }],
+    ["Your data", "Nothing stuck waiting", function () {
+      return spendLoad().then(function () {
+        var old = new Date(); old.setDate(old.getDate() - 10);
+        var stuck = spend.filter(function (e) { return e.pend && parseD(e.d) < old; }), wait = spend.filter(function (e) { return e.kind === "none"; });
+        var parts = [];
+        if (stuck.length) parts.push(stuck.length + " pending for over 10 days");
+        if (wait.length) parts.push(wait.length + " waiting for you to pick a category (Bank tab)");
+        return parts.length ? stWarn(parts.join("; ")) : stPass("no old pending charges, nothing waiting on you");
+      });
+    }],
+    ["Your data", "Bank and Actual reconcile", function () {
+      if (testWs() || CFG.devMode) return stSkip("needs your main budget’s bank");
+      if (!bankData || !(bankData.accounts || []).length) return stSkip("no bank linked");
+      return reconCalc().then(function (R) {
+        if (!R) return stSkip("no cash account to check against");
+        if (Math.abs(R.rest) < 0.01) return stPass("bank " + money.format(R.avail) + ", fully explained");
+        return stWarn(money.format(Math.abs(R.rest)) + " between your bank and Actual isn’t explained yet. Open Bank → Check against my bank.");
+      });
+    }],
+    ["Your data", "Goals saved correctly", function () {
+      return loadGoals().then(function () {
+        var bad = goals.filter(function (g) { return [g.target, g.current].some(function (x) { return x !== undefined && x !== null && (typeof x !== "number" || !isFinite(x) || x < 0); }); });
+        stIs(!bad.length, "these goals have a broken amount: " + bad.map(function (g) { return g.name; }).join(", "));
+        return stPass(goals.length + (goals.length === 1 ? " goal" : " goals") + ", all amounts valid");
+      });
+    }],
+    ["Your data", "Bills saved correctly", function () {
+      return loadBills().then(function () {
+        var bad = bills.filter(function (b) { return !parseD(b.date) || ["once", "weekly", "biweekly", "monthly", "yearly"].indexOf(b.freq) < 0 || (b.amount !== undefined && !isFinite(+b.amount)); });
+        stIs(!bad.length, "these bills have a bad date, repeat or amount: " + bad.map(function (b) { return b.name; }).join(", "));
+        var lost = bills.filter(function (b) { return b.freq !== "once" && !nextDue(b); });
+        stIs(!lost.length, "these repeating bills have no next due date: " + lost.map(function (b) { return b.name; }).join(", "));
+        return stPass(bills.length + (bills.length === 1 ? " bill" : " bills") + ", every one has a next due date");
+      });
+    }],
+    ["Your data", "Debts saved correctly", function () {
+      return loadDebts().then(function () {
+        var bad = debtState.debts.filter(function (d) { return [d.balance, d.apr, d.min].some(function (x) { return !isFinite(+x) || +x < 0; }); });
+        stIs(!bad.length, "these debts have a broken amount: " + bad.map(function (d) { return d.name; }).join(", "));
+        return stPass(debtState.debts.length + (debtState.debts.length === 1 ? " debt" : " debts") + ", all amounts valid");
+      });
+    }],
+
+    /* ---- every screen opens without errors ---- */
+    ["Screens", "Every tab opens", function () {
+      var ids = { home: "homeView", bills: "billsView", calendar: "calendarView", goals: "goalsView", debt: "debtView", bank: "bankView", money: "moneyView" }, done = [], chain = Promise.resolve();
+      TOOLS.filter(function (t) { return !t.hidden; }).forEach(function (t) {
+        chain = chain.then(function () {
+          var before = stErrs.length; goTool(t.id);
+          return stUntil(function () {
+            if (ids[t.id]) { var v = $(ids[t.id]); return !v.hidden && v.textContent.length > 60 && !/^\s*(Loading…|Bank accounts\s*Loading…)/.test(v.textContent); }
+            return !$("sheetView").hidden && document.querySelectorAll("#sheet tr").length > 5;
+          }, 15000).then(function () { return stWait(400); }).then(function () {
+            if (stErrs.length > before) throw new Error(t.name + " showed an error: " + stErrs[stErrs.length - 1]);
+            done.push(t.name);
+          }, function (e) { throw new Error(t.name + " didn’t finish opening (" + e.message + ")"); });
+        });
+      });
+      return chain.then(function () { return stPass(done.join(", ")); });
+    }],
+    ["Screens", "Plan / Actual switch", function () {
+      goTool("monthly-budget");
+      return stUntil(function () { return !$("sheetView").hidden && document.querySelectorAll("#sheet tr").length > 5; }, 15000).then(function () {
+        var was = view, other = was === "actual" ? "plan" : "actual", btn = $("viewFloat") && $("viewFloat").querySelector("button");
+        if (btn) btn.click(); else setView(other);
+        return stWait(600).then(function () {
+          stIs(view === other, "tapping the switch didn’t change to " + other);
+          stIs($("sheet").classList.contains("actualview") === (other === "actual"), "the table didn’t redraw for " + other);
+          if (btn) btn.click(); else setView(was);
+          return stWait(500).then(function () { stIs(view === was, "couldn’t switch back"); return stPass("one tap flips between Plan and Actual, and back"); });
+        });
+      });
+    }],
+    ["Screens", "Log button", function () {
+      logOpen();
+      return stUntil(function () { return $("logDlg").open && $("logBody").querySelector("button,select,input"); }, 10000).then(function () {
+        $("logDlg").close(); stIs(!$("logDlg").open, "the Log window didn’t close"); return stPass("opens with your categories and closes");
+      });
+    }],
+    ["Screens", "Dark mode", function () {
+      var keep = getTheme();
+      applyTheme("dark"); var on = document.documentElement.getAttribute("data-theme") === "dark", bg = getComputedStyle(document.body).backgroundColor;
+      applyTheme("light"); var bg2 = getComputedStyle(document.body).backgroundColor;
+      applyTheme(keep);
+      stIs(on, "dark mode didn’t switch on"); stIs(bg !== bg2, "the page looks the same in dark and light");
+      return stPass("switches both ways");
+    }],
+    ["Screens", "Public pages load", function () {
+      var pages = ["index.html", "paycheck-calculator.html", "50-30-20-calculator.html", "privacy.html", "terms.html", "reminder.html"];
+      return Promise.all(pages.map(function (p) { return fetch(p, { cache: "no-cache" }).then(function (r) { return r.ok ? null : p + " (" + r.status + ")"; }, function () { return p + " (offline)"; }); })).then(function (bad) {
+        bad = bad.filter(Boolean); stIs(!bad.length, "didn’t load: " + bad.join(", "));
+        return stPass(pages.length + " pages, including both calculators");
+      });
+    }],
+    ["Screens", "Calculator hand-off into setup", function () {
+      var keep = null; try { keep = localStorage.getItem("monerem-start"); } catch (e) {}
+      try {
+        localStorage.setItem("monerem-start", JSON.stringify({ at: Date.now(), per: 1500, freq: "biweekly" }));
+        var h = readHandoff(); stIs(h && h.per === 1500, "a fresh hand-off from the calculator wasn’t picked up");
+        localStorage.setItem("monerem-start", JSON.stringify({ at: Date.now() - 20 * 864e5, per: 1500 }));
+        stIs(!readHandoff(), "a hand-off older than 14 days should be ignored");
+        return stPass("calculator numbers carry into setup, old ones are ignored");
+      } finally { try { if (keep === null) localStorage.removeItem("monerem-start"); else localStorage.setItem("monerem-start", keep); } catch (e) {} }
+    }],
+
+    /* ---- admin tools ---- */
+    ["Admin tools", "Business numbers", function () {
+      if (CFG.devMode) return stSkip("test mode");
+      return adminCall("stats").then(function (d) {
+        stIs(d && d.counts, "no numbers came back");
+        return stPass(d.counts.paying + " paying, " + d.counts.trial + " on trial, " + d.counts.accounts + " accounts; Stripe " + d.stripeMode + " mode");
+      }).catch(function (e) { if (e.status === 404) return { s: "fail", d: "the admin function isn’t deployed" }; if (e.status === 403) return { s: "fail", d: "add your email to ADMIN_EMAILS in Supabase" }; throw e; });
+    }],
+    ["Admin tools", "Look up a member", function () {
+      if (CFG.devMode) return stSkip("test mode");
+      return adminCall("lookup", { email: session.user.email }).then(function (m) { stIs(m && m.email, "no member came back"); return stPass("found you: " + m.access); });
+    }],
+    ["Admin tools", "Export members", function () {
+      if (CFG.devMode) return stSkip("test mode");
+      return adminCall("export", { filter: "all" }).then(function (d) {
+        stIs(typeof d.csv === "string" && /email/i.test(d.csv.split("\n")[0]), "the CSV has no header row");
+        return stPass(d.count + " members would be in the file (nothing downloaded)");
+      });
+    }],
+    ["Admin tools", "Give / end free access, extend trial", function () {
+      if (CFG.devMode) return stSkip("test mode");
+      var who = ""; try { who = (localStorage.getItem(stMemberKey) || "").trim(); } catch (e) {}
+      if (!who) return adminCall("grant", { email: "selftest-nobody-" + Date.now() + "@monerem.test" }).then(function () { return stWarn("unexpected answer"); }, function (e) {
+        if (e.message === "no_such_member") return stWarn("the server answers. Type a tester username above to run the full give → extend → end cycle on that tester.");
+        throw e;
+      });
+      var orig = null;
+      return adminCall("lookup", { email: who }).then(function (m) {
+        orig = m; if (m.stripe && /active|trialing|past_due/.test(m.stripe.status || "")) return stSkip(who + " has a paid plan; pick a tester without one");
+        var soon = new Date(); soon.setDate(soon.getDate() + 3); var until = iso(soon);
+        return adminCall("grant", { email: who, until: until }).then(function () { return adminCall("lookup", { email: who }); }).then(function (m2) {
+          stIs(m2.access === "free", "after giving free access the tester shows “" + m2.access + "”");
+          return adminCall("extend", { email: who, days: 7 });
+        }).then(function (r) {
+          stIs(r && r.newEnd && new Date(r.newEnd) > soon, "extending by 7 days didn’t move the end date");
+          return adminCall("revoke", { email: who });
+        }).then(function () { return adminCall("lookup", { email: who }); }).then(function (m3) {
+          stIs(m3.access === "inactive", "after ending free access the tester shows “" + m3.access + "”");
+          // put the tester back how it was
+          if (orig.access === "free") return adminCall("grant", { email: who, until: orig.accessUntil ? String(orig.accessUntil).slice(0, 10) : null });
+        }).then(function () { return stPass("give, extend and end all worked on " + who + " (put back how it was)"); });
+      });
+    }],
+    ["Admin tools", "Previews (setup, membership inactive)", function () {
+      $("previewNote").hidden = true;
+      goTool("setup");
+      return stUntil(function () { return !$("setupView").hidden && $("wizard").textContent.length > 40; }, 10000).then(function () {
+        $("inactiveMsg").textContent = "Choose a plan to get into your tools."; $("inactivePortal").hidden = true; $("previewNote").hidden = false; show("inactive");
+        stIs(!$("inactive").hidden, "the inactive screen didn’t show");
+        $("exitPreview").click();
+        return stWait(500).then(function () { stIs(!$("app").hidden, "Exit preview didn’t bring the app back"); goTool("home"); return stPass("first-time setup and the expired-member screen both show, and Exit preview works"); });
+      });
+    }],
+    ["Admin tools", "Workspace switch", function () {
+      if (!canTestWs()) return stSkip("this account can’t use a Testing budget");
+      var t = testWs(); stIs(t ? wsKey("goals") === "t~goals" : wsKey("goals") === "goals", "saved items aren’t kept apart between the budgets");
+      stIs(wsKey("prefs") === "prefs", "account settings should be shared between budgets");
+      return stPass(t ? "you’re in the Testing budget; its items are kept separate" : "you’re in your main budget; the Testing budget is kept separate");
+    }],
+    ["Admin tools", "Load sample month", function (full) {
+      if (!full) return stSkip("changes data: runs only in the Testing budget");
+      var n = new Date(), key = "monthly-budget:" + n.getFullYear() + "-" + pad(n.getMonth() + 1);
+      return loadSample().then(function () { return Promise.all([stLayout(), loadSaved(key)]); }).then(function (a) {
+        var Lm = a[0], d = a[1]; stIs(d && d[rowAddr(Lm, "Check", "B")] === 2000, "the sample month wasn’t saved");
+        stIs((d.__meta.labels || {})[d.__meta.custom[0]] === "Vacation Fund", "the Vacation Fund row is missing");
+        return calcMonthly(d).then(function (v) { stEq(v.D7, 4000, "sample take-home pay"); return stPass("sample saved; table math: " + money.format(v.D7) + " in, " + money.format(v.D35) + " net"); });
+      });
+    }],
+    ["Admin tools", "Load sample annual budget", function (full) {
+      if (!full) return stSkip("changes data: runs only in the Testing budget");
+      return loadSampleYear().then(function () { return Promise.all([loadSaved("yearly-projection"), loadGoals()]); }).then(function (a) {
+        var d = a[0]; stIs(d && d.__meta && d.__meta.custom.length === 3, "the three savings funds aren’t in the annual budget");
+        var ef = goals.filter(function (g) { return nk(g.name) === nk("Emergency Fund"); })[0]; stIs(ef && ef.target === 5000, "the Emergency Fund goal wasn’t made");
+        return stPass("12 months saved with 3 savings goals");
+      });
+    }],
+    ["Admin tools", "Debt examples (all " + Object.keys(DEBT_EXAMPLES).length + ")", function (full) {
+      if (!full) return stSkip("changes data: runs only in the Testing budget");
+      var chain = Promise.resolve();
+      Object.keys(DEBT_EXAMPLES).forEach(function (k) {
+        chain = chain.then(function () { return loadDebtExample(k); }).then(function () {
+          stIs(debtState.debts.length === DEBT_EXAMPLES[k].debts.length && debtState.hist.length >= 6, DEBT_EXAMPLES[k].label + " didn’t load fully");
+        });
+      });
+      return chain.then(function () { return stWait(1200); }).then(function () { return loadSaved("debts"); }).then(function (s) {
+        stIs(s && (s.__debts || []).length === DEBT_EXAMPLES[Object.keys(DEBT_EXAMPLES).pop()].debts.length, "the debts weren’t saved");
+        return stPass("every example loads with six months of history");
+      });
+    }],
+    ["Admin tools", "Clear goals, bills, receipts", function (full) {
+      if (!full) return stSkip("changes data: runs only in the Testing budget");
+      return clearGoalsNow().then(clearBillsNow).then(clearReceiptsNow).then(function () { return Promise.all([stDirectRead(wsKey("goals")), stDirectRead(wsKey(billsKey())), stDirectRead(wsKey("receipts"))]); }).then(function (a) {
+        stIs(a[0] && !a[0].__goals.length, "goals weren’t cleared"); stIs(a[1] && !a[1].__bills.length, "bills weren’t cleared"); stIs(a[2] && !a[2].__receipts.length, "receipts weren’t cleared");
+        return stPass("all three cleared");
+      });
+    }],
+    ["Admin tools", "Clear all numbers", function (full) {
+      if (!full) return stSkip("changes data: runs only in the Testing budget");
+      var n = new Date(), key = "monthly-budget:" + n.getFullYear() + "-" + pad(n.getMonth() + 1);
+      $("clearConfirm").value = "CLEAR"; $("clearConfirm").dispatchEvent(new Event("input", { bubbles: true }));
+      stIs(!$("clearAll").disabled, "typing CLEAR didn’t unlock the button");
+      $("clearAll").click();
+      return stUntil(function () { return !/Clearing/.test($("clearMsg").textContent) && $("clearMsg").textContent; }, 20000)
+        .then(function () { return Promise.all([stDirectRead(wsKey(key)), stLayout()]); }).then(function (a) {
+          var d = a[0] || {}, tog = {}; a[1].rows.forEach(function (r) { if (r.toggle) tog[r.toggle] = 1; });
+          var left = Object.keys(d).filter(function (k) { return /^(a:)?[A-Z]+\d+$/.test(k) && !tog[k] && typeof d[k] === "number" && d[k] !== 0; });
+          $("clearConfirm").value = "";
+          stIs(!left.length, left.length + " amounts are still there after clearing");
+          return stPass("every amount cleared; switches like tithe kept");
+        });
+    }],
+    ["Admin tools", "Reset categories", function (full) {
+      if (!full) return stSkip("changes data: runs only in the Testing budget");
+      var keepSetup = null, keepConfirm = window.confirm;
+      goTool("home");
+      return loadSaved("setup").then(function (s) { keepSetup = s; return stUntil(function () { return $("setupView").hidden; }, 10000); }).then(function () { window.confirm = function () { return true; }; resetCategories(); return stUntil(function () { return !$("setupView").hidden; }, 20000); })
+        .then(function () { return loadSaved("monthly-budget:" + new Date().getFullYear() + "-" + pad(new Date().getMonth() + 1)); }).then(function (d) {
+          stIs(!d || !d.__meta || !(d.__meta.custom || []).length, "categories you added are still there");
+          // put the testing budget's setup back, then refill it with the sample so it's ready to use
+          setup = keepSetup && keepSetup.__setup ? keepSetup.__setup : null; setupLoaded = true;
+          return doSave("setup", keepSetup || { __setup: null });
+        }).then(function () { return loadSample(); }).then(function () { return loadSampleYear(); }).then(function () {
+          return stPass("starter categories put back and setup started; your Testing budget was refilled with the sample");
+        }).finally(function () { window.confirm = keepConfirm; });
+    }]
+  ];
+
+  function stDraw(running) {
+    var cnt = { pass: 0, fail: 0, warn: 0, skip: 0 }; stRes.forEach(function (r) { if (r && cnt[r.s] !== undefined) cnt[r.s]++; });
+    var icon = { pass: "✓", fail: "✕", warn: "!", skip: "–", run: "…" }, h = "", grp = "";
+    if (stRes.length) h += '<div class="stsum">' + (running ? "Testing… " + stRes.filter(Boolean).length + " of " + ST.length : (cnt.fail ? "<b class=\"stbad\">" + cnt.fail + " not working</b>" : '<b class="stgood">Everything tested works</b>')) +
+      " · " + cnt.pass + " passed" + (cnt.warn ? " · " + cnt.warn + " to look at" : "") + (cnt.skip ? " · " + cnt.skip + " skipped" : "") + "</div>";
+    ST.forEach(function (t, i) {
+      var r = stRes[i]; if (!r && !running) return;
+      if (t[0] !== grp) { grp = t[0]; h += '<h4 class="admh4">' + esc(grp) + "</h4>"; }
+      var s = r ? r.s : (i === stRes.length ? "run" : "");
+      h += '<div class="strow st-' + (s || "wait") + '"><span class="sti">' + (icon[s] || "") + "</span><span><b>" + esc(t[1]) + "</b>" + (r && r.d ? "<small>" + esc(r.d) + "</small>" : "") + "</span></div>";
+    });
+    $("stOut").innerHTML = h;
+    $("stCopy").hidden = running || !stRes.length;
+  }
+  function stRun() {
+    if (stBusy) return; stBusy = true; stErrs = []; stRes = [];
+    var full = testWs() || CFG.devMode;
+    $("stRun").disabled = true; $("stFull").disabled = true; flushSave(); stDraw(true);
+    var chain = Promise.resolve();
+    ST.forEach(function (t, i) {
+      chain = chain.then(function () {
+        stDraw(true);
+        return stTimeout(Promise.resolve().then(function () { return t[2](full); }), 60000).then(function (r) { stRes[i] = r && r.s ? r : stPass(typeof r === "string" ? r : ""); },
+          function (e) { stRes[i] = { s: "fail", d: (e && (e.message || e.msg)) || String(e) }; });
+      });
+    });
+    chain.then(function () {
+      stBusy = false; $("stRun").disabled = false; $("stFull").disabled = false;
+      try { localStorage.setItem("monerem-selftest-last", JSON.stringify({ at: Date.now(), res: stRes })); } catch (e) {}
+      // come back to the results
+      tool = TOOLS.filter(function (x) { return x.id === "account"; })[0]; navPush("account"); makeTabs(); openTool();
+      stShowPane(); stDraw(false); $("stOut").scrollIntoView({ block: "start" });
+    });
+  }
+  function stShowPane() {
+    $("adminTools").open = true;
+    var t = $("adminTools").querySelector('[data-admtab="selftest"]'); if (t) t.click();
+  }
+  function stText() {
+    var grp = "", out = ["Monerem self-test, " + new Date().toLocaleString() + (testWs() ? " (Testing budget)" : " (main budget)")];
+    ST.forEach(function (t, i) { var r = stRes[i]; if (!r) return; if (t[0] !== grp) { grp = t[0]; out.push("", grp.toUpperCase()); } out.push(({ pass: "PASS", fail: "FAIL", warn: "LOOK", skip: "SKIP" })[r.s] + "  " + t[1] + (r.d ? " — " + r.d : "")); });
+    return out.join("\n");
+  }
+  $("adminTools").addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("#stRun,#stFull,#stCopy"); if (!b || !isAdmin()) return;
+    if (b.id === "stRun") stRun();
+    else if (b.id === "stFull") {
+      if (!window.confirm("Switch to your Testing budget and run every test there? The Admin tools tests load sample data, clear and reset that budget’s items, then refill it with the sample. Your main budget isn’t touched.")) return;
+      try { localStorage.setItem("monerem-selftest-auto", "1"); } catch (x) {}
+      flushSave(); setTimeout(function () { setWs("test"); }, 400);
+    } else if (b.id === "stCopy") {
+      var txt = stText(), done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy results"; }, 2000); };
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, function () { window.prompt("Copy these results:", txt); }); else window.prompt("Copy these results:", txt);
+    }
+  });
+  $("adminTools").addEventListener("input", function (e) { if (e.target.id === "stTester") try { localStorage.setItem(stMemberKey, e.target.value.trim()); } catch (x) {} });
+  function stPaneInit() {
+    try { $("stTester").value = localStorage.getItem(stMemberKey) || ""; } catch (e) {}
+    $("stWhere").innerHTML = testWs() ? "You’re in your <b>Testing budget</b>, so every test runs, including the ones that load sample data and clear things." :
+      "You’re in your <b>main budget</b>. Tests here only read your data (plus a throwaway test item that’s deleted right away). The Admin tools tests that change data are skipped. Use <b>Run full test</b> to run those in your Testing budget.";
+    $("stFull").hidden = testWs() || !canTestWs();
+    if (!stRes.length) { try { var last = JSON.parse(localStorage.getItem("monerem-selftest-last") || "null"); if (last && last.res && last.res.length === ST.length) { stRes = last.res; stDraw(false); $("stOut").insertAdjacentHTML("afterbegin", '<p class="sub">Last run ' + stAgo(last.at) + ".</p>"); } } catch (e) {} }
+  }
+  function stAutoStart() {   // after "Run full test" switched budgets: open the self-test and run it
+    var go = false; try { go = localStorage.getItem("monerem-selftest-auto") === "1"; localStorage.removeItem("monerem-selftest-auto"); } catch (e) {}
+    if (!go || !isAdmin()) return;
+    setTimeout(function () { tool = TOOLS.filter(function (x) { return x.id === "account"; })[0]; makeTabs(); openTool(); stShowPane(); stRun(); }, 2500);
+  }
   function renderAccount() {
     $("adminTools").hidden = !isAdmin(); $("clearMsg").textContent = ""; admMsg("");
     $("wsRow").hidden = !canTestWs(); $("wsMain").classList.toggle("on", !testWs()); $("wsTest").classList.toggle("on", testWs());
@@ -6771,7 +7331,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function start(h) {
     loadBills(); Promise.all([loadSetup(), loadPlaced(), loadPrefs(), spendLoad()]).then(function () {
       if (!setup && !h) tool = TOOLS.filter(function (t) { return t.id === "setup"; })[0];
-      seedNav(); makeTabs(); openTool(); setTimeout(quietBankImport, 1500); liveStart();
+      seedNav(); makeTabs(); openTool(); setTimeout(quietBankImport, 1500); liveStart(); stAutoStart();
     });
   }
 
