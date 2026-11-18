@@ -7698,6 +7698,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (left >= 0) return '<b class="tight">Yes, but it’s tight.</b> You’d have ' + f0(left) + " left until " + until + ", about " + f2(Math.max(0, dayAfter)) + " a day. Make sure nothing else comes up first.";
     return '<b class="no">Not from this pay.</b> It’s ' + f0(-left) + " more than you can safely spend until " + nd + ". Waiting until then keeps your bills covered.";
   }
+  document.addEventListener("input", function (e) {   // clear the answer when the box is emptied; once you've checked, it updates as you change the price
+    if (!e.target || e.target.id !== "safeAskIn") return;
+    var p = num(e.target.value), ans = $("safeAns");
+    if (!(p > 0)) ans.innerHTML = ""; else if (ans.innerHTML) ans.innerHTML = affordAnswer(p);
+  });
   document.addEventListener("submit", function (e) {
     if (!e.target || e.target.id !== "safeAsk") return; e.preventDefault();
     var p = num($("safeAskIn").value); $("safeAns").innerHTML = p > 0 ? affordAnswer(p) : "Type a price, like 45.";
