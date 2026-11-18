@@ -7724,7 +7724,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     }
     // Can I afford this? checked against the same Safe to spend number, right inside the bubble
     lastSafe = R;
-    h = h.replace(/<\/div>$/, '<form class="safeask" id="safeAsk"><label for="safeAskIn">Can I afford this?</label><span class="safeaskrow"><span class="safeaskin"><i>$</i><input id="safeAskIn" inputmode="decimal" autocomplete="off" placeholder="45"></span><button type="submit">Check</button></span><p class="safeans" id="safeAns" aria-live="polite"></p></form></div>');
+    h = h.replace(/<\/div>$/, '<form class="safeask" id="safeAsk"><label for="safeAskIn">Can I afford this?</label><span class="safeaskrow"><span class="safeaskin"><i>$</i><input id="safeAskIn" inputmode="decimal" autocomplete="off" aria-label="Price"></span><button type="submit">Check</button></span><p class="safeans" id="safeAns" aria-live="polite"></p></form></div>');
     h += '<div class="ovcards">' +
       '<button type="button" class="ov" data-go="monthly-budget" data-act="1"><small>Coming in</small><b>' + f0(R.inc) + "</b>" + bar(R.incGot, R.inc, "") + "<span>" + (R.incGot ? f0(R.incGot) + " received so far" : "Nothing marked received yet") + "</span></button>" +
       '<button type="button" class="ov" data-go="bills"><small>Bills</small><b>' + f0(R.bills) + "</b>" + bar(R.billsPaid, R.bills, "ok") + "<span>" + f0(R.billsPaid) + " paid" + (R.billsLeftM < 0.5 ? " · all paid" : R.mBillsDue > 0.5 ? " · " + f0(R.mBillsDue) + " still due from this pay" : " · on pace") + "</span></button>" +
