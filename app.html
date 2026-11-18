@@ -1323,6 +1323,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 /* installed from the home screen: no browser bar, so respect the notch */
 @media (display-mode:standalone){ body{-webkit-user-select:none;user-select:none} input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text} }
 .bdead{color:#b42318;font-weight:600}
+.srow.typed{background:var(--sheet,#fff);opacity:.92}.srow.typed .sd{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stsum{margin:14px 0 4px;padding:10px 12px;border-radius:10px;background:var(--sheet,#fff);border:1px solid var(--rule,#dde5f3)}
 .stgood{color:#12805c}.stbad{color:#b42318}
 .strow{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--rule,#e6ecf6)}
@@ -4625,7 +4626,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Spending you logged by hand or from a receipt that your bank hasn’t matched", sum(G.handOut), G.handOut],
         ["Income you logged by hand that your bank hasn’t matched", -sum(G.handIn), G.handIn],
         ["Counted twice: typed into Actual and also brought in by your bank (tap Fix)", -tSum(tDup), tDup.map(function (t) { return { s: t.n, a: t.d, fix: t.n }; })],
-        ["Money outside this bank account: amounts you typed into Actual for cash, another account or an outside service", -tSum(tOut), tOut.map(function (t) { return { s: t.n + (t.inc ? " (in)" : " (out)"), a: Math.abs(t.d) }; })],
+        ["Typed into Actual: money outside this bank, or from before it was linked", -tSum(tOut), tOut.map(function (t) { return { s: t.n + (t.inc ? " (in)" : " (out)"), a: Math.abs(t.d) }; })],
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
@@ -4645,7 +4646,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       });
       delete s.doc.__filled;
       return doSave(s.key, s.doc).then(function () { refreshOpenMonth([s.key]); toast("<b>Fixed</b><br>" + esc(name) + " was counted twice. The typed " + money.format(amt) + " was removed; the bank’s amount stays."); });
-    }).then(function () { reconFill(); if (tool && (tool.id === "monthly-budget" || tool.type === "home")) openTool(); });
+    }).then(function () { if (tool && tool.id === "bank") renderBank(); else reconFill(); if (tool && (tool.id === "monthly-budget" || tool.type === "home")) openTool(); });
   }
   document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-recfix]"); if (!b) return; b.disabled = true; reconFix(b.getAttribute("data-recfix"), +b.getAttribute("data-amt")); });
   function reconFill() {
@@ -4725,6 +4726,39 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var dy = e.target.closest && e.target.closest("[data-dupyes],[data-dupno]"); if (!dy) return;
     dy.disabled = true; dupResolve(dy.getAttribute("data-dupyes") || dy.getAttribute("data-dupno"), !!dy.getAttribute("data-dupyes"));
   });
+  // Amounts typed straight into Actual (money outside your bank, or from before it was linked) are real spending too:
+  // they're listed here by category so this record always adds up to the Actual table.
+  function typedAmounts(key) {
+    var m = /(\d{4})-(\d{2})$/.exec(key || ""); if (!m) return Promise.resolve([]);
+    return rcMonthState(+m[1], +m[2] - 1).then(function (st) {
+      var dm = st.doc.__meta || {}, hid = (dm.hidden || []).map(Number), rec = {}, out = [], ent = activeEntries(st.Lm, st.st);
+      spend.forEach(function (e) { if (e.key === key && (e.kind === "in" || e.kind === "ex") && e.cat) rec[(e.kind === "in" ? "in|" : "ex|") + nk(e.cat)] = (rec[(e.kind === "in" ? "in|" : "ex|") + nk(e.cat)] || 0) + e.a; });
+      var look = function (e, isInc) {
+        if (hid.indexOf(e.row) >= 0) return;
+        var act = e.addrs.reduce(function (t, ad) { return t + (typeof st.doc["a:" + ad] === "number" ? st.doc["a:" + ad] : 0); }, 0);
+        var d = Math.round((act - (rec[(isInc ? "in|" : "ex|") + nk(e.name)] || 0)) * 100) / 100;
+        if (Math.abs(d) >= 0.005) out.push({ n: e.name, d: d, inc: isInc, act: act });
+      };
+      ent.income.forEach(function (e) { look(e, true); }); st.cats.forEach(function (e) { look(e, false); });
+      return out;
+    });
+  }
+  function typedFill(key, tot, count) {
+    var box = $("typedRows"); if (!box) return;
+    typedAmounts(key).then(function (T) {
+      if (!$("typedRows") || spendMonth !== key) return;
+      var ex = T.filter(function (t) { return !t.inc; }), inc = T.filter(function (t) { return t.inc; });
+      var exSum = ex.reduce(function (z, t) { return z + t.d; }, 0), all = Math.round((tot + exSum) * 100) / 100;
+      if (!T.length) return;
+      var line = $("stotLine"), m = /(\d{4})-(\d{2})$/.exec(key);
+      if (line && Math.abs(exSum) >= 0.005) line.innerHTML = MONTHS[+m[2] - 1] + " " + m[1] + ": <b>" + money.format(all) + "</b> spent, the same as your Actual table: " + money.format(tot) + " across " + count + (count === 1 ? " purchase" : " purchases") + " below, plus " + money.format(exSum) + " you typed into Actual.";
+      var row = function (t) {
+        return '<div class="srow typed"><span class="sd">' + (t.inc ? "In" : "Typed") + '</span><span class="ss"><b>' + esc(t.n) + "</b><small>typed into Actual: outside your bank, or from before it was linked" + (t.d < 0 ? " (Actual is lower than what’s recorded below)" : "") + '</small></span><span class="sa' + (t.inc ? " in" : "") + '">' + (t.inc && t.d > 0 ? "+" : t.d < 0 ? "−" : "") + money.format(Math.abs(t.d)) + '</span><span class="sc"><small class="sub">' + esc(t.n) + "</small></span></div>";
+      };
+      box.innerHTML = (ex.length ? '<p class="sub" style="margin:10px 0 2px"><b>Typed into Actual</b> (spending with no bank or Log record)</p>' + ex.map(row).join("") : "") +
+        (inc.length ? '<p class="sub" style="margin:10px 0 2px"><b>Income typed into Actual</b></p>' + inc.map(row).join("") : "");
+    }).catch(function () {});
+  }
   function spendPanel(C) {
     var keys = {}; spend.forEach(function (e) { keys[e.key] = 1; });
     var cur = monthKeyOf(new Date()); keys[cur] = 1;
@@ -4756,7 +4790,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (wait.length) h += '<h3 class="dh3" style="margin-top:12px">Needs a category (' + wait.length + ")</h3>" + wait.map(row).join("");
     if (!rows.length) h += '<p class="sub" style="margin-top:10px">Nothing recorded for ' + mLabel(spendMonth) + " yet.</p>";
     else {
-      h += '<p class="stot">' + mLabel(spendMonth) + ": <b>" + money.format(tot) + "</b> spent across " + spent.length + (spent.length === 1 ? " purchase" : " purchases") + ".</p>";
+      h += '<p class="stot" id="stotLine">' + mLabel(spendMonth) + ": <b>" + money.format(tot) + "</b> spent across " + spent.length + (spent.length === 1 ? " purchase" : " purchases") + ".</p><div id=\"typedRows\"></div>";
+      setTimeout(function () { typedFill(spendMonth, tot, spent.length); }, 0);
       h += rows.filter(function (e) { return e.kind !== "none"; }).map(row).join("");
     }
     return h + "</div>";
