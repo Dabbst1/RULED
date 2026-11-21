@@ -7623,7 +7623,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     v.innerHTML = '<h1>Money tools</h1><p class="sub">Quick answers to the money questions nobody explains.</p>' +
       '<div class="mchips" role="tablist">' + subs.map(function (s) { return '<button type="button" role="tab" data-msub="' + s[0] + '" aria-selected="' + (s[0] === moneySub) + '">' + s[1] + "</button>"; }).join("") + "</div>" +
       '<div id="mBody"><p class="sub">Loading…</p></div>';
-    var sel = v.querySelector('[aria-selected="true"]'); if (sel) sel.scrollIntoView({ block: "nearest", inline: "center" });
+    // center the picked chip by scrolling only the chip row (scrollIntoView also slides the whole page sideways on iPhone)
+    var sel = v.querySelector('[aria-selected="true"]'); if (sel) { var row = sel.parentNode; row.scrollLeft = Math.max(0, sel.offsetLeft - row.offsetLeft - (row.clientWidth - sel.offsetWidth) / 2); }
     loadGrowth().then(function () {
       if (mine !== loadSeq) return;
       var f = { paycheck: drawPay, afford: drawAfford, subs: drawSubs, networth: drawNetWorth, reports: drawReports, roadmap: drawRoadmapTool, learn: drawLearn, weekly: drawWeekly }[moneySub] || drawPay;
