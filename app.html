@@ -4775,17 +4775,33 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return best;
   }
   var dayLbl = function (iso) { var d = parseD(iso); return d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""; };
+  /* Some banks (Livable payments, for one) never turn a pending charge into a posted one: they drop the pending one and send
+     the posted charge as a brand-new transaction with a new ID. This finds that posted twin: same account, money moving the
+     same way, same store, posted the same day or up to 7 days later, about the same amount (tips and gas holds change).
+     One-for-one, oldest first, so two real same-day payments still both count. */
+  function pendTwin(e, taken) {
+    var nm = nk(cleanStore(e.raw || e.s)).slice(0, 6); if (!nm || !e.d) return null;
+    var lim = parseD(e.d); lim.setDate(lim.getDate() + 7); var limS = iso(lim);
+    return spend.filter(function (x) {
+      return x !== e && x.src === "bank" && !x.pend && !x.fromPend && !taken[x.id] && x.kind !== "skip" && (x.acct || "") === (e.acct || "") && x.dir === e.dir &&
+        x.d >= e.d && x.d <= limS && Math.abs(x.a - e.a) <= Math.max(1, e.a * 0.25) && nk(cleanStore(x.raw || x.s)).slice(0, 6) === nm;
+    }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : Math.abs(a.a - e.a) - Math.abs(b.a - e.a); })[0] || null;
+  }
   /* a pending purchase was counted right away; now it posted (maybe for a different amount) or the bank dropped it */
   function settlePending(list, full) {
     var byId = {}, out = { posted: [], voided: [], touched: [] }; (list || []).forEach(function (t) { if (t && t.id) byId[t.id] = t; });
-    var months = {}, now = Date.now();
-    spend.forEach(function (e) {
-      if (!e.pend || e.src !== "bank") return;
+    var months = {}, now = Date.now(), taken = {};
+    spend.filter(function (e) { return e.pend && e.src === "bank"; }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; }).forEach(function (e) {
       var t = byId[e.id], act = null;
-      if (t) {
-        if (t.status === "void") act = { v: true };
-        else if (typeof t.amount === "number") { var na = Math.round(Math.abs(t.amount) * 100) / 100; if (Math.abs(na - e.a) > 0.004 || t.status !== "pending") act = { na: na, post: t.status !== "pending" }; }
-      } else if (full && now - (parseD(e.d) || new Date()).getTime() > 3 * 864e5) act = { v: true };   // gone from the bank's list: the hold was dropped
+      if (t && t.status !== "void") {
+        if (typeof t.amount === "number") { var na = Math.round(Math.abs(t.amount) * 100) / 100; if (Math.abs(na - e.a) > 0.004 || t.status !== "pending") act = { na: na, post: t.status !== "pending" }; }
+      } else {
+        // the pending one is gone (or voided): if it came back posted under a new ID, it's the same payment, counted once
+        var tw = pendTwin(e, taken);
+        if (tw) { taken[tw.id] = 1; act = tw.kind === "none" ? { na: tw.a, post: true, wait: tw } : { v: true, twin: tw }; }
+        else if (t) act = { v: true };
+        else if (full && now - (parseD(e.d) || new Date()).getTime() > 3 * 864e5) act = { v: true };   // gone from the bank's list: the hold was dropped
+      }
       if (act) (months[e.key] = months[e.key] || []).push({ e: e, act: act });
     });
     var keys = Object.keys(months); if (!keys.length) return Promise.resolve(out);
@@ -4801,9 +4817,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             else if (e.kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (c) { var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + sign * amt) * 100) / 100; changed = true; } }
           };
           months[k].forEach(function (x) {
-            var e = x.e, act = x.act;
-            if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = "canceled by the bank"; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
-            if (act.v) { apply(e, e.a, -1); e.pend = false; if (e.kind === "in" || e.kind === "ex") { e.wasKind = e.kind; e.wasCat = e.cat; } e.kind = "skip"; e.cat = ""; e.why = "canceled by the bank"; out.voided.push(e.id); return; }
+            var e = x.e, act = x.act, gone = act.twin ? "posted by the bank as its own entry, counted once there" : "canceled by the bank";
+            if (act.twin) act.twin.fromPend = e.id;
+            if (act.wait) { act.wait.kind = "skip"; act.wait.cat = ""; act.wait.why = "already counted when it was pending"; act.wait.fromPend = e.id; out.voided.push(act.wait.id); }
+            if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = gone; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
+            if (act.v) { apply(e, e.a, -1); e.pend = false; if (e.kind === "in" || e.kind === "ex") { e.wasKind = e.kind; e.wasCat = e.cat; } e.kind = "skip"; e.cat = ""; e.why = gone; out.voided.push(e.id); return; }
             var d = Math.round((act.na - e.a) * 100) / 100; if (d) apply(e, Math.abs(d), d > 0 ? 1 : -1);
             e.a = act.na; if (act.post) { e.pend = false; holdName(e); out.posted.push(e.id); }
           });
@@ -4955,7 +4973,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           });
         });
       });
-      return chain.then(function () {
+      return chain.then(function () {   // a posted twin that arrived in this same batch is caught right away
+        if (!added.length) return;
+        return settlePending(list, full).then(function (S2) { settled.posted = settled.posted.concat(S2.posted); settled.voided = settled.voided.concat(S2.voided); settled.touched = settled.touched.concat(S2.touched); });
+      }).then(function () {
         var jobs = [spendSave()];
         // pending ones stay on the bank's list so we see them post; posted ones are done
         var done = added.filter(function (id) { var e = spendFind(id); return !(e && e.pend); }).concat(settled.posted);
