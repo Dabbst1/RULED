@@ -4055,6 +4055,66 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return null;
   }
   // make sure this month has a Transfers line (added only when money actually moves out)
+  var UNS_OUT = "Not sorted yet", UNS_IN = "Income not sorted yet";
+  function isUns(name) { return nk(name) === nk(UNS_OUT) || nk(name) === nk(UNS_IN); }
+  function ensureLine(s, name, income) {
+    var have = income ? activeEntries(s.Lm, s.st).income : s.cats;
+    if (have.some(function (c) { return nk(c.name) === nk(name); })) return true;
+    var m = s.doc.__meta = s.doc.__meta || {}; m.labels = m.labels || {}; m.custom = m.custom || []; m.hidden = m.hidden || []; m.removed = m.removed || [];
+    var blk = s.Lm.rows.filter(function (r) { return r.type === "custom" && (income ? r.group === "income" : r.group !== "income"); })[0]; if (!blk) return false;
+    var slot = blk.slots.filter(function (sl) { return m.custom.indexOf(sl.row) < 0; })[0]; if (!slot) return false;
+    m.custom.push(slot.row); m.labels[slot.row] = name; m.hidden = m.hidden.filter(function (x) { return x !== slot.row; });
+    s.st = { labels: m.labels, custom: m.custom, removed: m.removed };
+    var keep = s.cats.filter(function (c) { return c.auto; }); s.cats = activeEntries(s.Lm, s.st).expense.concat(keep);
+    return true;
+  }
+  // Everything your bank reports counts in Actual right away. What Monerem can't place yet goes in "Not sorted yet"
+  // (or "Income not sorted yet") until you pick; if it later knows where something goes, it moves it there itself.
+  var cwBusy = false;
+  function countWaiting() {
+    if (cwBusy) return Promise.resolve(0); cwBusy = true;
+    return Promise.all([spendLoad(), rcLoad()]).then(function () {
+      var ids = bankData && bankData.accounts ? bankData.accounts.map(function (a) { return a.id; }) : null;
+      var L = spend.filter(function (e) { return e.src === "bank" && (e.kind === "none" || e.unsorted) && (!ids || !e.acct || ids.indexOf(e.acct) >= 0); });
+      if (!L.length) { cwBusy = false; return 0; }
+      var byM = {}; L.forEach(function (e) { (byM[e.key] = byM[e.key] || []).push(e); });
+      var added = 0, placed = 0, marks = [], chain = Promise.resolve();
+      Object.keys(byM).forEach(function (k) {
+        chain = chain.then(function () {
+          var m = /(\d{4})-(\d{2})$/.exec(k); if (!m) return;
+          return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
+            var later = [];
+            byM[k].forEach(function (e) {
+              var isIn = (e.dir || "out") === "in" && !notIncome(e);
+              if (e.unsorted) {   // already counted: does Monerem know where it goes now?
+                var g = bankGuess({ amount: isIn ? e.a : -e.a, description: e.raw || e.s }, s.cats, activeEntries(s.Lm, s.st).income);
+                if (g && g !== "skip" && !isUns(g.slice(3))) later.push([e, g]);
+                return;
+              }
+              var name = isIn ? UNS_IN : UNS_OUT;
+              if (!ensureLine(s, name, isIn)) return;
+              if (isIn) {
+                var c = activeEntries(s.Lm, s.st).income.filter(function (x) { return nk(x.name) === nk(name); })[0]; if (!c) return;
+                var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0;
+                s.doc["a:" + a] = Math.round((cur + e.a) * 100) / 100;
+              } else if (rcApply(s, name, e.col || 0, e.a, 1) === null) return;
+              e.kind = isIn ? "in" : "ex"; e.cat = name; e.unsorted = true; added++; marks.push(e.id);
+            });
+            delete s.doc.__filled;
+            return doSave(s.key, s.doc).then(function () {
+              var c2 = Promise.resolve();
+              later.forEach(function (x) { c2 = c2.then(function () { return spendRecat(x[0].id, x[1]).then(function () { x[0].auto = true; placed++; }, function () {}); }); });
+              return c2;
+            });
+          });
+        });
+      });
+      return chain.then(function () {
+        var jobs = [spendSave()]; if (marks.length) jobs.push(bankCall("mark", { ids: marks, state: "imported" }).catch(function () {}));
+        return Promise.all(jobs);
+      }).then(function () { cwBusy = false; if (added || placed) refreshOpenMonth(Object.keys(byM)); return added + placed; });
+    }).catch(function () { cwBusy = false; return 0; });
+  }
   function ensureXferCat(s) {
     if (s.cats.some(function (c) { return nk(c.name) === nk(XFER_CAT); })) return true;
     var m = s.doc.__meta = s.doc.__meta || {}; m.labels = m.labels || {}; m.custom = m.custom || []; m.hidden = m.hidden || []; m.removed = m.removed || [];
@@ -4116,7 +4176,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return Promise.all([rcLoad(), loadDebts(), guessUndo().then(holdUndo).then(fixBadIncome).then(depositRescue).then(xferRescue).then(unZelle).then(rentRescue), bankCall(doSync ? "sync" : "list", force ? { force: true } : null)]).then(function (a) {
       bankData = a[3]; orphanSweep(); recordTx(bankData.review).catch(function () {}); return syncCardsToDebt(bankData.accounts);
     }).then(function () {
-      return autoImport(bankData.review, true).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
+      return autoImport(bankData.review, true).then(function (r) { return countWaiting().then(function () { return r; }); }).then(function (r) { if (r && (r.added || r.matched)) spendMsg = (r.added ? "Added " + r.added + (r.added === 1 ? " new transaction" : " new transactions") + " to your Actual numbers." : "") + (r.matched ? " " + r.matched + (r.matched === 1 ? " matched something" : " matched things") + " you already logged, so " + (r.matched === 1 ? "it wasn’t" : "they weren’t") + " added twice." : ""); }).catch(function () {}).then(holdRelease);
     }).then(function () {
       renderBank();
       // a fresh balance takes a few seconds to arrive from the bank; check back a few times, then stop
@@ -4903,7 +4963,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function quietBankImport(force) {
     if (!session || CFG.devMode || quietBusy) return;
     if (!force && Date.now() - quietAt < 90 * 1000) return;
-    quietBusy = true; quietAt = Date.now(); guessUndo().then(holdUndo).then(fixBadIncome).then(depositRescue).then(xferRescue).then(unZelle).then(rentRescue);
+    quietBusy = true; quietAt = Date.now(); guessUndo().then(holdUndo).then(fixBadIncome).then(depositRescue).then(xferRescue).then(unZelle).then(rentRescue).then(countWaiting);
     var tries = 0, last = "";
     var sig = function (d) { return JSON.stringify((d.review || []).map(function (t) { return t.id + t.status + t.amount; })); };
     var pull = function (action) {
@@ -4912,7 +4972,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var deadWas = deadAccts(bankData && bankData.accounts).length;
         bankData = d; orphanSweep();
         if (deadAccts(d.accounts).length !== deadWas && tool && tool.type === "home") openTool();   // show (or clear) the "sign in again" warning
-        var sg = sig(d), go = (sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve()).then(holdRelease); last = sg;
+        var sg = sig(d), go = (sg !== last ? autoImport(d.review, true).catch(function () {}) : Promise.resolve()).then(holdRelease).then(countWaiting); last = sg;
         return go.then(function () {
           if (d.refreshing && ++tries < 10) setTimeout(function () { pull("sync"); }, 6000);   // the bank is still sending; check again shortly
           else quietBusy = false;
@@ -4939,7 +4999,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       if (!move(nk2, ncat, 1)) throw new Error("nocat");
       move(e.kind, e.cat, -1);
       var wasWaiting = e.kind === "none";
-      e.kind = nk2; e.cat = ncat; e.auto = false; e.want = ""; e.why = ""; e.off = nk2 === "ex" && !(catSum(s.doc, s.cats.filter(function (c) { return nk(c.name) === nk(ncat); })[0] || { addrs: [] }, "") > 0); if (e.off) e.why = "nothing planned";
+      delete e.unsorted; e.kind = nk2; e.cat = ncat; e.auto = false; e.want = ""; e.why = ""; e.off = nk2 === "ex" && !(catSum(s.doc, s.cats.filter(function (c) { return nk(c.name) === nk(ncat); })[0] || { addrs: [] }, "") > 0); if (e.off) e.why = "nothing planned";
       if (nk2 !== "in" && e.dir !== "in") [merchantKey(e.s), merchantKey(e.raw || ""), payeeKey(e.raw || e.s)].forEach(function (k) { if (k && !GENERIC_PAY.test(k)) rcRules[nk(k)] = nk2 === "skip" ? "__skip" : ncat; });   // your pick is learned for this store or payee
       if (e.src === "bank" && (e.dir === "in" || nk2 === "in")) rcRules[payerKey(e.raw || e.s)] = nk2 === "in" ? ncat : "__skip";   // remember whose pay this payer is
       var jobs = [doSave(s.key, s.doc), spendSave(), rcSave()];
@@ -5161,7 +5221,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (e.kind === "ex" && nk(e.cat) === nk(XFER_CAT) && (e.dir || "out") === "out" && e.auto !== false) {   // a transfer Monerem filed under Transfers: maybe it paid a bill
       var fit = billFits(e, R); return fit.length ? { picks: fit.map(function (n) { return "ex:" + n; }), why: "this transfer fits what’s still unpaid on " + fit.join(" or ") + ". Was it that bill?" } : null;
     }
-    if (!(e.kind === "none" || e.kind === "skip")) return null;
+    if (!(e.kind === "none" || e.kind === "skip" || e.unsorted)) return null;
     if (e.why === "canceled by the bank" || /^hold released|before you linked|on record only/.test(e.why || "")) return null;
     var txt = String(e.raw || "") + " " + String(e.s || ""), isIn = (e.dir || "out") === "in" && !(OUT_XFER.test(txt) && !HOLD.test(txt));
     var has = function (n) { return R.cats.some(function (c) { return nk(c.name) === nk(n); }); };
@@ -5183,7 +5243,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return '<div class="rsugg"><h4 class="admh4">Suggested fixes (' + L.length + ')</h4><p class="sub" style="margin:0 0 6px">From your bank, but not in your Actual numbers. Tap where each belongs; nothing changes until you do.</p>' +
       L.map(function (x) {
         var e = x.e, exact = gap >= 0.005 && Math.abs(e.a - gap) < 0.01;
-        return '<div class="srow sugrow"><span class="sd">' + dayLbl(e.d) + '</span><span class="ss"><b>' + esc(e.s) + "</b><small>" + (e.kind === "none" ? "waiting for a category" : e.kind === "ex" ? "filed under " + esc(e.cat) : "marked not counted") + " · " + esc(x.s.why) + (exact ? ' · <b class="bdead">same amount as what’s not explained</b>' : "") + '</small></span><span class="sa">' + ((e.dir || "out") === "in" ? "+" : "−") + money.format(e.a) + '</span><span class="sc sugbtns">' +
+        return '<div class="srow sugrow"><span class="sd">' + dayLbl(e.d) + '</span><span class="ss"><b>' + esc(e.s) + "</b><small>" + (e.unsorted ? "counted in " + esc(e.cat) + " for now" : e.kind === "none" ? "waiting for a category" : e.kind === "ex" ? "filed under " + esc(e.cat) : "marked not counted") + " · " + esc(x.s.why) + (exact ? ' · <b class="bdead">same amount as what’s not explained</b>' : "") + '</small></span><span class="sa">' + ((e.dir || "out") === "in" ? "+" : "−") + money.format(e.a) + '</span><span class="sc sugbtns">' +
           x.s.picks.map(function (p) { return '<button type="button" class="btn ghost" data-sugg="' + esc(e.id) + '" data-pick="' + esc(p) + '">' + esc(p.slice(3)) + "</button>"; }).join("") +
           '<button type="button" class="linkbtn" data-suggno="' + esc(e.id) + '">Leave it</button></span></div>';
       }).join("") + "</div>";
@@ -5316,13 +5376,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var cur = monthKeyOf(new Date()); keys[cur] = 1;
     var list = Object.keys(keys).sort().reverse(); if (!spendMonth || !keys[spendMonth]) spendMonth = cur;
     var rows = spend.filter(function (e) { return e.key === spendMonth; }).sort(function (a, b) { return a.d < b.d ? 1 : -1; });
-    var wait = rows.filter(function (e) { return e.kind === "none"; }), spent = rows.filter(function (e) { return e.kind === "ex"; }), tot = spent.reduce(function (t, e) { return t + e.a; }, 0);
+    var wait = rows.filter(function (e) { return e.kind === "none" || e.unsorted; }), spent = rows.filter(function (e) { return e.kind === "ex"; }), tot = spent.reduce(function (t, e) { return t + e.a; }, 0);
     var mLabel = function (k) { var m = /(\d{4})-(\d{2})$/.exec(k); return MONTHS[+m[2] - 1] + " " + m[1]; };
     var opts = function (e) {
-      var v = e.kind === "skip" ? "skip" : e.kind === "none" ? "" : e.kind + ":" + e.cat, isIn = e.kind === "in";
-      var o = (e.kind === "none" ? '<option value="" selected>Choose a category</option>' : "") + '<option value="skip"' + (v === "skip" ? " selected" : "") + ">Not counted (transfer, card payment)</option>";
-      var incG = '<optgroup label="Income">' + C.inc.map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
-      var exG = '<optgroup label="Spending">' + C.ex.map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      var v = e.kind === "skip" ? "skip" : e.kind === "none" || e.unsorted ? "" : e.kind + ":" + e.cat, isIn = e.kind === "in" && !e.unsorted;
+      var o = (e.kind === "none" || e.unsorted ? '<option value="" selected>Choose a category</option>' : "") + '<option value="skip"' + (v === "skip" ? " selected" : "") + ">Not counted (transfer, card payment)</option>";
+      var incG = '<optgroup label="Income">' + C.inc.filter(function (c) { return !isUns(c.name); }).map(function (c) { return '<option value="in:' + esc(c.name) + '"' + (v === "in:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
+      var exG = '<optgroup label="Spending">' + C.ex.filter(function (c) { return !isUns(c.name); }).map(function (c) { return '<option value="ex:' + esc(c.name) + '"' + (v === "ex:" + c.name ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</optgroup>";
       var moneyIn = isIn || e.dir === "in" || /payroll|direct dep|salary|paycheck|deposit|transfer from|zelle from|venmo from|cashout|refund|hold on/i.test((e.raw || "") + " " + e.s);
       var inSide = !notIncome(e);
       o += inSide ? incG + exG : exG + incG;
@@ -5330,8 +5390,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     };
     var row = function (e) {
       var d = parseD(e.d);
-      return '<div class="srow' + (e.kind === "none" ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+      return '<div class="srow' + (e.kind === "none" || e.unsorted ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.unsorted ? ' · <b class="bdead">counted in ' + esc(e.cat) + " until you pick where it goes</b>" : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" || (e.kind === "in" && e.auto === false) ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
@@ -5345,7 +5405,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       h += '<p class="stot" id="stotLine">' + mLabel(spendMonth) + ": <b>" + money.format(tot) + "</b> spent across " + spent.length + (spent.length === 1 ? " purchase" : " purchases") + ".</p>";
       // the full list folds up like "History of this check"; it remembers whether you left it open or closed
       var listOpen = false; try { listOpen = localStorage.getItem("monerem-spendlist") === "open"; } catch (x) {}   // folded up unless you left it open
-      var shown = rows.filter(function (e) { return e.kind !== "none"; });
+      var shown = rows.filter(function (e) { return e.kind !== "none" && !e.unsorted; });
       h += '<details class="spendlist" id="spendList"' + (listOpen ? " open" : "") + '><summary class="dh3">All transactions (' + shown.length + (spent.length ? ", " + money.format(tot) + " spent" : "") + ")</summary><div id=\"typedRows\"></div>";
       setTimeout(function () { typedFill(spendMonth, tot, spent.length); }, 0);
       h += shown.map(row).join("") + "</details>";
@@ -6424,7 +6484,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     ["Your data", "Nothing stuck waiting", function () {
       return spendLoad().then(function () {
         var old = new Date(); old.setDate(old.getDate() - 10);
-        var stuck = spend.filter(function (e) { return e.pend && parseD(e.d) < old; }), wait = spend.filter(function (e) { return e.kind === "none"; });
+        var stuck = spend.filter(function (e) { return e.pend && parseD(e.d) < old; }), wait = spend.filter(function (e) { return e.kind === "none" || e.unsorted; });
         var parts = [];
         if (stuck.length) parts.push(stuck.length + " pending for over 10 days");
         if (wait.length) parts.push(wait.length + " waiting for you to pick a category (Bank tab)");
@@ -7706,7 +7766,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return monthDoc(y, mi).then(function (s) {
       if (!s) return [];
       var out = [];
-      s.cats.forEach(function (e) { var plan = catSum(s.doc, e, ""), act = catSum(s.doc, e, "a:"), lv = budgetLevel(plan, act); if (lv && lv.k !== "wnone") out.push({ name: e.name, plan: plan, act: act, k: lv.k }); });
+      s.cats.forEach(function (e) { if (isUns(e.name)) return; var plan = catSum(s.doc, e, ""), act = catSum(s.doc, e, "a:"), lv = budgetLevel(plan, act); if (lv && lv.k !== "wnone") out.push({ name: e.name, plan: plan, act: act, k: lv.k }); });
       return out.sort(function (a, b) { return (b.act / b.plan) - (a.act / a.plan); });
     }).catch(function () { return []; });
   }
@@ -7890,6 +7950,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     function sum(addrs, pre) { return addrs.reduce(function (t, a) { var x = saved[pre + a]; return t + (typeof x === "number" ? x : 0); }, 0); }
     ent.expense.forEach(function (e) {
       var plan = sum(e.addrs, ""), act = sum(e.addrs, "a:"); if (!plan && !act) return;
+      if (isUns(e.name)) { if (act) { hasAct = true; ta += act; } return; }   /* counted in the total, but it isn't a category you planned, so no bar */
       var has = !!act; if (has) { hasAct = true; ta += act; tr += plan; }
       tp += plan; rows.push({ name: e.name, plan: plan, act: has ? act : null, diff: has ? act - plan : 0 });
     });
