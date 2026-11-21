@@ -904,7 +904,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .recon{margin:12px 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#F7FAFF}
 .rhist{margin-top:12px}.rhist summary{cursor:pointer;font-weight:700}.rhist .rrow b small{display:block;font-weight:400;text-align:right}.recon .dh3{margin:0 0 8px}.rtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .rtop small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}.rtop b{font-size:20px;font-variant-numeric:tabular-nums}
-.rhow summary{cursor:pointer;font-weight:600;color:var(--blue);margin:6px 0}.rlist{margin-top:10px;border-top:1px solid var(--line)}
+.rtot{display:flex;flex-wrap:wrap;gap:4px 18px;margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px}.rtot>b{flex:1 1 100%}.rtot small{flex:1 1 100%;color:var(--muted)}.rhow summary{cursor:pointer;font-weight:600;color:var(--blue);margin:6px 0}.rlist{margin-top:10px;border-top:1px solid var(--line)}
 .rrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #E4ECFA;font-size:14px}
 .rrow b{white-space:nowrap;font-variant-numeric:tabular-nums}.rrow small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
 .rrow.rest span{color:var(--muted)}.rrow.tot{border-bottom:0;font-weight:700}
@@ -5217,12 +5217,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           start = Math.round(bal0 * 100) / 100; carried = true; fromMon = MONTHS[(m0 + 11) % 12];
         }
       }
-      var autoStart = false, flows = 0;
+      var autoStart = false, flows = 0, tot = { inP: 0, outP: 0, inQ: 0, outQ: 0 };   // this account's deposits and withdrawals, posted and pending, as Monerem has them
       // what your bank's own transactions say your balance was on the 1st: today's balance minus everything in and out since
       rows.forEach(function (e) {
         var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);
         if (e.src !== "bank" || !isCash || (e.kind === "skip" && e.why === "canceled by the bank")) return;
-        flows += (e.kind === "in" || (e.dir === "in" && e.kind !== "ex")) ? e.a : -e.a;
+        var inn = (e.kind === "in" || (e.dir === "in" && e.kind !== "ex"));
+        flows += inn ? e.a : -e.a;
+        if (inn) { if (e.pend) tot.inQ += e.a; else tot.inP += e.a; } else { if (e.pend) tot.outQ += e.a; else tot.outP += e.a; }
       });
       flows += tSum(tThru);   // typed amounts you said went through this account are part of its money in and out
       var bankStart = Math.round((avail + heldUnknown - flows) * 100) / 100;
@@ -5248,7 +5250,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var pl = c.addrs.reduce(function (t, a) { return t + (typeof st.doc[a] === "number" ? st.doc[a] : 0); }, 0), ac = c.addrs.reduce(function (t, a) { return t + (typeof st.doc["a:" + a] === "number" ? st.doc["a:" + a] : 0); }, 0);
         roomOf[c.name] = Math.round((pl - ac) * 100) / 100;
       });
-      var Rr = { roomOf: roomOf, cats: st.cats, incs: ents.income.filter(function (e) { return hid.indexOf(e.row) < 0; }), bankStart: bankStart, autoStart: autoStart, fresh: fresh, acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
+      var Rr = { roomOf: roomOf, cats: st.cats, incs: ents.income.filter(function (e) { return hid.indexOf(e.row) < 0; }), bankStart: bankStart, autoStart: autoStart, fresh: fresh, tot: tot, acts: acts, carried: carried, avail: avail, cur: cur, held: held, heldUnknown: heldUnknown, net: net, start: start, items: items, rest: rest, gap: gap, typedList: typedList, rows: rows, mon: mon, ym: ym, multi: cash.length > 1 };
       reconLog(Rr); return Rr;
     });
   }
@@ -5354,6 +5356,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>" + (ok ? "</details>" : "");
       }
       if (!ok && !R.fresh) h += '<p class="sub" style="margin:8px 0 0">Your ' + mon + ' 1 balance (' + money.format(R.bankStart) + ') is worked out from your bank’s own transactions, so it can’t be mistyped.</p>';
+      if (R.tot) {
+        var T = R.tot, r2 = function (x) { return money.format(Math.round(x * 100) / 100); };
+        h += '<div class="rtot"><b>This account’s transactions in Monerem, ' + mon + '</b><span>Deposits <b>+' + r2(T.inP) + "</b>" + (T.inQ ? " (plus " + r2(T.inQ) + " pending)" : "") + '</span><span>Withdrawals <b>−' + r2(T.outP) + "</b>" + (T.outQ ? " (plus " + r2(T.outQ) + " pending)" : "") + '</span><small>Compare these with your bank app’s “deposits” and “withdrawals” for this month. If they’re different, a transaction is missing from Monerem or counted twice, and that’s where to look.</small></div>';
+      }
       h += suggHtml(R);
       h += reconHistHtml(R);
       box.innerHTML = h;
