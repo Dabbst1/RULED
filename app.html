@@ -4378,7 +4378,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var hd = parseD(h.d);
         var dep = spend.filter(function (d) {
           if (d === h || d.src !== "bank" || (d.dir || "out") !== "in" || d.fromHold || HOLD.test(String(d.raw || "") + " " + String(d.s || "")) || Math.abs(d.a - h.a) > 0.004) return false;
-          if (!(d.kind === "skip" || d.kind === "none" || d.kind === "in") || d.why === "canceled by the bank" || (d.kind === "skip" && d.auto === false)) return false;   // you chose "not counted" yourself: leave it
+          if (!(d.kind === "skip" || d.kind === "none" || d.kind === "in") || goneByBank(d) || (d.kind === "skip" && d.auto === false)) return false;   // you chose "not counted" yourself: leave it
           var dd = daysApart(parseD(d.d), hd); return dd >= -3 && dd <= 14 && !pairs.some(function (p) { return p.d === d; });
         }).sort(function (a, b) { return a.d < b.d ? -1 : 1; })[0];
         if (dep) pairs.push({ h: h, d: dep, cat: h.kind === "in" ? h.cat : h.wasCat });
@@ -4458,7 +4458,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (xferDone) return Promise.resolve(0); xferDone = true;
     return Promise.all([spendLoad(), rcLoad()]).then(function () {
       // everything that left the bank and isn't counted anywhere (transfers, card payments, "not counted" choices) is recorded under Transfers
-      var L = spend.filter(function (e) { var txt = String(e.raw || "") + " " + String(e.s || ""); return e.src === "bank" && e.kind === "skip" && e.why !== "canceled by the bank" && !/^hold released|before you linked|on record only/.test(e.why || "") && !e.held && !HOLD.test(txt) && ZELLE.test(txt) && ((e.dir || "out") === "out" || OUT_XFER.test(txt)); });
+      var L = spend.filter(function (e) { var txt = String(e.raw || "") + " " + String(e.s || ""); return e.src === "bank" && e.kind === "skip" && !goneByBank(e) && !/^hold released|before you linked|on record only/.test(e.why || "") && !e.held && !HOLD.test(txt) && ZELLE.test(txt) && ((e.dir || "out") === "out" || OUT_XFER.test(txt)); });
       if (!L.length) return 0;
       var byM = {}; L.forEach(function (e) { (byM[e.key] = byM[e.key] || []).push(e); });
       var n = 0, chain = Promise.resolve();
@@ -4486,7 +4486,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function rentRescue() {
     if (rentDone) return Promise.resolve(0); rentDone = true;
     return Promise.all([spendLoad(), rcLoad()]).then(function () {
-      var L = spend.filter(function (e) { var txt = String(e.raw || "") + " " + String(e.s || ""); return e.src === "bank" && (e.dir || "out") === "out" && RENT_PAY.test(txt) && !HOLD.test(txt) && !e.held && e.why !== "canceled by the bank" && !/^hold released|before you linked/.test(e.why || ""); });
+      var L = spend.filter(function (e) { var txt = String(e.raw || "") + " " + String(e.s || ""); return e.src === "bank" && (e.dir || "out") === "out" && RENT_PAY.test(txt) && !HOLD.test(txt) && !e.held && !goneByBank(e) && !/^hold released|before you linked/.test(e.why || ""); });
       if (!L.length) return 0;
       var n = 0, chain = Promise.resolve();
       L.forEach(function (e) {
@@ -4515,7 +4515,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var txt = String(e.raw || "") + " " + String(e.s || "");
         if (e.src !== "bank" || HOLD.test(txt) || ZELLE.test(txt) || (e.dir || "out") !== "out") return false;
         if (e.kind === "ex" && nk(e.cat) === nk(XFER_CAT) && e.auto !== false) return true;   // Monerem put it in Transfers, not you
-        return e.kind === "skip" && e.why !== "canceled by the bank" && !/^hold released|before you linked|on record only/.test(e.why || "") && !e.held && e.auto !== false;
+        return e.kind === "skip" && !goneByBank(e) && !/^hold released|before you linked|on record only/.test(e.why || "") && !e.held && e.auto !== false;
       });
       if (!L.length) return 0;
       var byM = {}; L.forEach(function (e) { (byM[e.key] = byM[e.key] || []).push(e); });
@@ -4552,7 +4552,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return Promise.all([spendLoad(), rcLoad()]).then(function () {
       var L = spend.filter(function (e) {
         var txt = String(e.raw || "") + " " + String(e.s || "");
-        return e.src === "bank" && (e.dir || "out") === "in" && e.kind === "skip" && e.why !== "canceled by the bank" && !/^hold released|before you linked|on record only/.test(e.why || "") && !e.held && !e.fromHold && !(OUT_XFER.test(txt) && !HOLD.test(txt));
+        return e.src === "bank" && (e.dir || "out") === "in" && e.kind === "skip" && !goneByBank(e) && !/^hold released|before you linked|on record only/.test(e.why || "") && !e.held && !e.fromHold && !(OUT_XFER.test(txt) && !HOLD.test(txt));
       });
       if (!L.length) return 0;
       var n = 0, w = 0, chain = Promise.resolve();
@@ -4787,6 +4787,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         x.d >= e.d && x.d <= limS && Math.abs(x.a - e.a) <= Math.max(1, e.a * 0.25) && nk(cleanStore(x.raw || x.s)).slice(0, 6) === nm;
     }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : Math.abs(a.a - e.a) - Math.abs(b.a - e.a); })[0] || null;
   }
+  // taken out by the bank (canceled, or counted once under its posted twin): the clean-up passes must never bring these back
+  var TWIN_WHY = "posted by the bank as its own entry, counted once there", WAIT_WHY = "already counted when it was pending";
+  function goneByBank(e) { return !!e && (e.why === "canceled by the bank" || e.why === TWIN_WHY || e.why === WAIT_WHY); }
   /* a pending purchase was counted right away; now it posted (maybe for a different amount) or the bank dropped it */
   function settlePending(list, full) {
     var byId = {}, out = { posted: [], voided: [], touched: [] }; (list || []).forEach(function (t) { if (t && t.id) byId[t.id] = t; });
@@ -4817,9 +4820,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             else if (e.kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (c) { var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + sign * amt) * 100) / 100; changed = true; } }
           };
           months[k].forEach(function (x) {
-            var e = x.e, act = x.act, gone = act.twin ? "posted by the bank as its own entry, counted once there" : "canceled by the bank";
+            var e = x.e, act = x.act, gone = act.twin ? TWIN_WHY : "canceled by the bank";
             if (act.twin) act.twin.fromPend = e.id;
-            if (act.wait) { act.wait.kind = "skip"; act.wait.cat = ""; act.wait.why = "already counted when it was pending"; act.wait.fromPend = e.id; out.voided.push(act.wait.id); }
+            if (act.wait) { act.wait.kind = "skip"; act.wait.cat = ""; act.wait.why = WAIT_WHY; act.wait.fromPend = e.id; out.voided.push(act.wait.id); }
             if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = gone; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
             if (act.v) { apply(e, e.a, -1); e.pend = false; if (e.kind === "in" || e.kind === "ex") { e.wasKind = e.kind; e.wasCat = e.cat; } e.kind = "skip"; e.cat = ""; e.why = gone; out.voided.push(e.id); return; }
             var d = Math.round((act.na - e.a) * 100) / 100; if (d) apply(e, Math.abs(d), d > 0 ? 1 : -1);
@@ -5236,7 +5239,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         var isIn = e.kind === "in" || (e.dir === "in" && e.kind !== "ex");
         if ((e.kind === "in" || e.kind === "ex") && e.cat) recBy[nk(e.cat)] = (recBy[nk(e.cat)] || 0) + e.a;
         if (e.src === "bank") {
-          if (e.kind === "skip" && e.why === "canceled by the bank") return;
+          if (e.kind === "skip" && goneByBank(e)) return;
           if (e.pend && !isIn && !credit[e.acct]) pendOut += e.a;
           if (credit[e.acct]) { if (e.kind === "ex") G.card.push(e); else if (e.kind === "in") G.cardIn.push(e); return; }
           if (e.kind === "skip") (isIn ? G.skipIn : G.skipOut).push(e);
@@ -5278,7 +5281,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             var kk = monthKeyOf(dd);
             spend.forEach(function (e) {
               var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);   // older entries without an account: only one kind is linked
-              if (e.key !== kk || e.src !== "bank" || !isCash || (e.kind === "skip" && e.why === "canceled by the bank")) return;
+              if (e.key !== kk || e.src !== "bank" || !isCash || (e.kind === "skip" && goneByBank(e))) return;
               bal0 += (e.kind === "in" || (e.dir === "in" && e.kind !== "ex")) ? e.a : -e.a;
             });
             dd.setMonth(dd.getMonth() + 1);
@@ -5290,7 +5293,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       // what your bank's own transactions say your balance was on the 1st: today's balance minus everything in and out since
       rows.forEach(function (e) {
         var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);
-        if (e.src !== "bank" || !isCash || (e.kind === "skip" && e.why === "canceled by the bank")) return;
+        if (e.src !== "bank" || !isCash || (e.kind === "skip" && goneByBank(e))) return;
         var inn = (e.kind === "in" || (e.dir === "in" && e.kind !== "ex"));
         flows += inn ? e.a : -e.a;
         if (inn) { if (e.pend) tot.inQ += e.a; else tot.inP += e.a; } else { if (e.pend) tot.outQ += e.a; else tot.outP += e.a; }
@@ -5366,7 +5369,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var fit = billFits(e, R); return fit.length ? { picks: fit.map(function (n) { return "ex:" + n; }), why: "this transfer fits what’s still unpaid on " + fit.join(" or ") + ". Was it that bill?" } : null;
     }
     if (!(e.kind === "none" || e.kind === "skip" || e.unsorted)) return null;
-    if (e.why === "canceled by the bank" || /^hold released|before you linked|on record only/.test(e.why || "")) return null;
+    if (goneByBank(e) || /^hold released|before you linked|on record only/.test(e.why || "")) return null;
     var txt = String(e.raw || "") + " " + String(e.s || ""), isIn = (e.dir || "out") === "in" && !(OUT_XFER.test(txt) && !HOLD.test(txt));
     var has = function (n) { return R.cats.some(function (c) { return nk(c.name) === nk(n); }); };
     if (isIn) {
@@ -5541,7 +5544,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" || e.unsorted ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (e.why === "canceled by the bank" ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.unsorted ? ' · <b class="bdead">counted in ' + esc(e.cat) + " until you pick where it goes</b>" : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (goneByBank(e) ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.unsorted ? ' · <b class="bdead">counted in ' + esc(e.cat) + " until you pick where it goes</b>" : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" || (e.kind === "in" && e.auto === false) ? "+" : "") + money.format(e.a) + "</span>" +
         '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
     };
