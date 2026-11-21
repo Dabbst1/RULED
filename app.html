@@ -1613,6 +1613,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 
   var tool = TOOLS[0], layout = null, inputs = {}, meta = { labels: {}, custom: [], hidden: [], removed: [] };
   var actual = {}, view = "plan";
+  var baseA = {}, baseMeta = "", pendDelta = {}, metaDirty = false;   // what the open month held when loaded; your changes since then
   try { if (localStorage.getItem("monerem-view") === "actual") view = "actual"; } catch (e) {}   // come back to the side you were on (Plan or Actual)   // 'actual' = what you really spent (Monthly only); the plan numbers stay untouched
   function vals() { return view === "actual" ? actual : inputs; }
   var supa = null, session = null, seq = 0, ctrl = null, calcTimer = null, saveTimer = null, loadSeq = 0;
@@ -2806,9 +2807,46 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         else $("saved").textContent = "Saved " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       });
   }
+  /* A month's save carries only what you changed. Bank updates may have changed the saved month since it was opened;
+     those are kept, your change is added on top, and what you typed is written down in __typed. */
+  function mergeMonth(data, fresh, dl, md) {
+    if (!fresh) { var T0 = {}; Object.keys(dl).forEach(function (a) { if (dl[a] > 0) T0[a] = dl[a]; }); data.__typed = T0; return data; }
+    var out = {}, r2 = function (x) { return Math.round(x * 100) / 100; };
+    Object.keys(data).forEach(function (k) { if (k.slice(0, 2) !== "a:") out[k] = data[k]; });
+    Object.keys(fresh).forEach(function (k) { if (k.slice(0, 2) === "a:" || k === "__tl") out[k] = fresh[k]; });
+    var T = Object.assign({}, fresh.__typed || {});
+    Object.keys(dl).forEach(function (a) {
+      var v = r2((typeof fresh["a:" + a] === "number" ? fresh["a:" + a] : 0) + dl[a]);
+      if (Math.abs(v) < 0.005) delete out["a:" + a]; else out["a:" + a] = v;
+      var t = r2(Math.max(0, (T[a] || 0) + dl[a])); if (t) T[a] = t; else delete T[a];
+    });
+    out.__typed = T;
+    if (!md && fresh.__meta) out.__meta = fresh.__meta;
+    else if (fresh.__meta && data.__meta) {   // you changed the rows: keep yours, plus any holding line a bank update just added
+      var M = JSON.parse(JSON.stringify(data.__meta)); M.custom = M.custom || []; M.labels = M.labels || {};
+      (fresh.__meta.custom || []).forEach(function (rn) { var lb = (fresh.__meta.labels || {})[rn]; if (M.custom.indexOf(rn) < 0 && lb && (isUns(lb) || nk(lb) === nk("Transfers"))) { M.custom.push(rn); M.labels[rn] = lb; } });
+      out.__meta = M;
+    }
+    return out;
+  }
   function scheduleSave() {
     histNote();
     clearTimeout(saveTimer); var key = storageKey(), data = payload(), Lm = layout;
+    if (Lm.months) {
+      Object.keys(Object.assign({}, actual, baseA)).forEach(function (a) { var d = Math.round(((+actual[a] || 0) - (+baseA[a] || 0)) * 100) / 100; if (Math.abs(d) > 0.004) pendDelta[a] = Math.round(((pendDelta[a] || 0) + d) * 100) / 100; });
+      baseA = Object.assign({}, actual); if (JSON.stringify(meta) !== baseMeta) metaDirty = true;
+      pendingSave = function () {
+        var dl = pendDelta, md = metaDirty; pendDelta = {}; metaDirty = false; baseMeta = JSON.stringify(meta);
+        inBankQ(function () { return loadSaved(key).then(function (fresh) { var out = mergeMonth(data, fresh, dl, md); return doSave(key, out).then(function () { return out; }); }); })
+          .then(function (out) {
+            afterSave(key, out, Lm);
+            var differs = Object.keys(out).some(function (k) { return k.slice(0, 2) === "a:" && Math.abs((out[k] || 0) - (+actual[k.slice(2)] || 0)) > 0.004; });
+            if (differs) setTimeout(function () { refreshOpenMonth([key]); }, 0);   // a bank update landed meanwhile: show it
+          }).catch(function () {});
+      };
+      saveTimer = setTimeout(function () { var f = pendingSave; pendingSave = null; if (f) f(); }, 1000);
+      return;
+    }
     pendingSave = function () { var pr = doSave(key, data); if (pr && pr.then) pr.then(function () { afterSave(key, data, Lm); }); };
     saveTimer = setTimeout(function () { var f = pendingSave; pendingSave = null; if (f) f(); }, 1000);
   }
@@ -2842,6 +2880,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     meta.gone = Array.isArray(m.gone) ? m.gone : [];
     pruneMeta();
     Object.keys(saved).forEach(function (a) { if (a in inputs && typeof saved[a] === "number") inputs[a] = saved[a]; });
+    baseA = Object.assign({}, actual); baseMeta = JSON.stringify(meta); pendDelta = {}; metaDirty = false;
     // A typed-in category named like a worked-out row (e.g. an extra "Tithe") is folded back into the real row
     var fixed = false;
     meta.custom.slice().forEach(function (slotRow) {
@@ -4144,7 +4183,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           var m = /(\d{4})-(\d{2})$/.exec(k); if (!m) return;
           return rcMonthState(+m[1], +m[2] - 1).then(function (s) {
             if (!s || !s.doc) return;
-            var inc = activeEntries(s.Lm, s.st).income, changed = false;
+            var inc = activeEntries(s.Lm, s.st).income, changed = false, T = s.doc.__typed || {}, init = !s.doc.__tl;
             var lines = s.cats.map(function (c) { return { c: c, kind: "ex" }; }).concat(inc.map(function (c) { return { c: c, kind: "in" }; }));
             lines.forEach(function (L) {
               var c = L.c, A = c.addrs || []; if (!A.length) return;
@@ -4155,18 +4194,27 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
               A.forEach(function (a) {
                 var rec = 0; inIt.forEach(function (e) { if (addrOf(e) === a) rec += e.a; }); rec = Math.round(rec * 100) / 100;
                 var cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0;
+                if (!init) {   // the box must hold its transactions plus exactly what you typed: nothing more, nothing less
+                  var want = Math.round((rec + (T[a] || 0)) * 100) / 100;
+                  if (Math.abs(cur - want) < 0.005) return;
+                  s.doc["a:" + a] = want; changed = true;
+                  fixed.push(cur < want ? money.format(want - cur) + " put back in " + c.name : money.format(cur - want) + " removed from " + c.name + " (no transaction or typed amount behind it)");
+                  return;
+                }
                 if (cur < rec - 0.004) { s.doc["a:" + a] = rec; changed = true; fixed.push(money.format(rec - cur) + " put back in " + c.name); return; }
-                var extra = Math.round((cur - rec) * 100) / 100; if (extra < 0.005) return;
+                var extra = Math.round((cur - rec) * 100) / 100; if (extra < 0.005) { delete T[a]; return; }
                 var G = gone.filter(function (e) { return addrOf(e) === a; }).slice(0, 14), best = null;
                 for (var mask = 1; mask < (1 << G.length); mask++) {   // which moved-out payments add up to exactly the extra
                   var t = 0, pick = []; for (var i = 0; i < G.length; i++) if (mask & (1 << i)) { t += G[i].a; pick.push(G[i]); }
                   if (Math.abs(t - extra) < 0.005 && (!best || pick.length > best.length)) best = pick;
                 }
-                if (!best) return;
-                s.doc["a:" + a] = rec; changed = true; best.forEach(function (e) { e.lfDone = 1; });
+                if (!best) { T[a] = extra; return; }   // first time: what's above the transactions is taken as what you typed
+                s.doc["a:" + a] = rec; changed = true; best.forEach(function (e) { e.lfDone = 1; }); delete T[a];
                 fixed.push(money.format(extra) + " left over in " + c.name + " from " + best.length + (best.length === 1 ? " payment" : " payments") + " that moved out");
               });
             });
+            if (init) { s.doc.__tl = 1; changed = true; }
+            s.doc.__typed = T;
             if (!changed) return;
             delete s.doc.__filled; return doSave(s.key, s.doc).then(function () { refreshOpenMonth([s.key]); });
           });
@@ -8341,7 +8389,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var oldGone = (meta.gone || []).slice(), oldActual = actual;
       Object.keys(inputs).forEach(function (a) { inputs[a] = 0; });
       meta = { labels: {}, custom: [], hidden: [], removed: [] };
-      applySaved(saved); actual = oldActual;
+      applySaved(saved); actual = oldActual; baseA = Object.assign({}, oldActual); baseMeta = "";
       // don't bring back categories you've deleted here or on the Annual budget
       return annualSnapshot().then(function (snap) {
         var have = {}; snap.rows.forEach(function (r) { have[nk(r.name)] = 1; });
