@@ -1379,10 +1379,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .wkbar b{position:absolute;top:-4px;width:2px;height:20px;border-radius:1px;background:var(--ink)}
 .wkst{font-size:13px;font-weight:600}.wkst.ok{color:#15803D}.wkst.warn{color:#B45309}
 .wknote{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:14px;line-height:1.5;background:#FFF7E6;border:1px solid #F5D9A3;color:#4A3410}
-.wknote:first-of-type{margin-top:0}.wknote b{display:block;font-size:15px}.wknote.win{background:#EAF7EF;border-color:#B9E3C8;color:#1F3B2A}
-:root[data-theme="dark"] .wkbar{background:#22304D}:root[data-theme="dark"] .wknote{background:#33260E;border-color:#5C4415;color:#FDE68A}:root[data-theme="dark"] .wknote.win{background:#10291B;border-color:#1E5235;color:#BBF7D0}
+.wknote:first-of-type{margin-top:0}.wknote.tip{background:#EEF4FF;border-color:#C7D7FB;color:#13285C}.wknote>span{font-weight:700;line-height:1.5}
+.wkverdict{margin:10px 0 0;font-size:15px;font-weight:600;line-height:1.45}.wkh3{font-size:15px;margin:14px 0 0}.wknote b{display:block;font-size:15px}.wknote.win{background:#EAF7EF;border-color:#B9E3C8;color:#1F3B2A}
+:root[data-theme="dark"] .wkbar{background:#22304D}:root[data-theme="dark"] .wknote{background:#33260E;border-color:#5C4415;color:#FDE68A}:root[data-theme="dark"] .wknote.win{background:#10291B;border-color:#1E5235;color:#BBF7D0}:root[data-theme="dark"] .wknote.tip{background:#16213A;border-color:#2B3A5A;color:#C7D7FB}
 :root[data-theme="dark"] .wkst.ok{color:#4ADE80}:root[data-theme="dark"] .wkst.warn{color:#FBBF24}:root[data-theme="dark"] .wkbar b{background:#E2E8F5}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wkbar{background:#22304D}:root:not([data-theme="light"]) .wknote{background:#33260E;border-color:#5C4415;color:#FDE68A}:root:not([data-theme="light"]) .wknote.win{background:#10291B;border-color:#1E5235;color:#BBF7D0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wkbar{background:#22304D}:root:not([data-theme="light"]) .wknote{background:#33260E;border-color:#5C4415;color:#FDE68A}:root:not([data-theme="light"]) .wknote.win{background:#10291B;border-color:#1E5235;color:#BBF7D0}:root:not([data-theme="light"]) .wknote.tip{background:#16213A;border-color:#2B3A5A;color:#C7D7FB}
 :root:not([data-theme="light"]) .wkst.ok{color:#4ADE80}:root:not([data-theme="light"]) .wkst.warn{color:#FBBF24}:root:not([data-theme="light"]) .wkbar b{background:#E2E8F5}}
 </style>
 </head>
@@ -4793,7 +4794,10 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* a pending purchase was counted right away; now it posted (maybe for a different amount) or the bank dropped it */
   function settlePending(list, full) {
     var byId = {}, out = { posted: [], voided: [], touched: [] }; (list || []).forEach(function (t) { if (t && t.id) byId[t.id] = t; });
-    var months = {}, now = Date.now(), taken = {};
+    var months = {}, now = Date.now(), taken = {}, drop = {};
+    // older versions kept the pending line next to its posted twin, marked "canceled". Those lines are already settled
+    // (their amounts were taken back out), so they just go: the posted line is the one record of the payment.
+    spend = spend.filter(function (e) { return !(e.kind === "skip" && (e.why === TWIN_WHY || e.why === WAIT_WHY)); });
     spend.filter(function (e) { return e.pend && e.src === "bank"; }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; }).forEach(function (e) {
       var t = byId[e.id], act = null;
       if (t && t.status !== "void") {
@@ -4801,7 +4805,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       } else {
         // the pending one is gone (or voided): if it came back posted under a new ID, it's the same payment, counted once
         var tw = pendTwin(e, taken);
-        if (tw) { taken[tw.id] = 1; act = tw.kind === "none" ? { na: tw.a, post: true, wait: tw } : { v: true, twin: tw }; }
+        if (tw) { taken[tw.id] = 1; act = { twin: tw }; }
         else if (t) act = { v: true };
         else if (full && now - (parseD(e.d) || new Date()).getTime() > 3 * 864e5) act = { v: true };   // gone from the bank's list: the hold was dropped
       }
@@ -4820,9 +4824,23 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             else if (e.kind === "in") { var c = inc.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (c) { var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0; s.doc["a:" + a] = Math.round((cur + sign * amt) * 100) / 100; changed = true; } }
           };
           months[k].forEach(function (x) {
-            var e = x.e, act = x.act, gone = act.twin ? TWIN_WHY : "canceled by the bank";
-            if (act.twin) act.twin.fromPend = e.id;
-            if (act.wait) { act.wait.kind = "skip"; act.wait.cat = ""; act.wait.why = WAIT_WHY; act.wait.fromPend = e.id; out.voided.push(act.wait.id); }
+            var e = x.e, act = x.act, gone = "canceled by the bank";
+            if (act.twin) {
+              /* pending → posted on ONE line: the posted transaction takes the pending one's place. The pending line keeps
+                 its spot and its category (in case you changed it); its amount becomes the posted amount, and the separate
+                 posted line goes away. The bank may do it as two transactions; Monerem records one payment. */
+              var tw = act.twin, oldId = e.id;
+              out.voided.push(oldId);
+              if (e.kind === "none" || tw.key !== e.key) {   // pending was never counted (or the posted one landed in another month): keep the posted line as is
+                if (e.kind !== "none") apply(e, e.a, -1);
+                drop[oldId] = e; tw.fromPend = oldId; out.posted.push(tw.id); return;
+              }
+              if (tw.kind === "ex" || tw.kind === "in") apply(tw, tw.a, -1);   // the posted copy was counted on its own: take it back out
+              var dd = Math.round((tw.a - e.a) * 100) / 100; if (dd) apply(e, Math.abs(dd), dd > 0 ? 1 : -1);
+              drop[tw.id] = tw;
+              e.id = tw.id; e.a = tw.a; e.d = tw.d; e.s = tw.s; e.raw = tw.raw; e.pend = false; e.fromPend = oldId; if (e.kind === "none") { e.kind = tw.kind; e.cat = tw.cat; }
+              holdName(e); out.posted.push(e.id); return;
+            }
             if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = gone; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
             if (act.v) { apply(e, e.a, -1); e.pend = false; if (e.kind === "in" || e.kind === "ex") { e.wasKind = e.kind; e.wasCat = e.cat; } e.kind = "skip"; e.cat = ""; e.why = gone; out.voided.push(e.id); return; }
             var d = Math.round((act.na - e.a) * 100) / 100; if (d) apply(e, Math.abs(d), d > 0 ? 1 : -1);
@@ -4832,7 +4850,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         });
       });
     });
-    return chain.then(function () { return out; });
+    return chain.then(function () { spend = spend.filter(function (e) { return drop[e.id] !== e; }); return out; });
   }
   /* add new bank transactions to Actual without asking */
   // accounts whose transactions go into your budget automatically (you OK'd them, or they were linked before this check existed)
@@ -8010,7 +8028,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   function makeWeekly() {
     var n = new Date(), y = n.getFullYear(), mi = n.getMonth();
-    return Promise.all([loadWeekly(), loadBills(), loadGoals(), loadDebts(), loadGrowth(), loadPlaced()]).then(function () { return monthDoc(y, mi); }).then(function (s) {
+    return Promise.all([loadWeekly(), loadBills(), loadGoals(), loadDebts(), loadGrowth(), loadPlaced(), spendLoad()]).then(function () { return monthDoc(y, mi); }).then(function (s) {
       if (!s) return null;
       var MA = monthActuals(s.Lm, s.doc), pm = MA.inc > 0.5 && MA.planInc > 0 ? Math.min(1, MA.inc / MA.planInc) : null;
       var SD = safeData(s.Lm, s.doc, pm === null ? undefined : pm);
@@ -8028,44 +8046,100 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   function weeklySnap(s, MA, SD, pm, safe) {
     var doc = s.doc, dm = doc.__meta || {}, st = { labels: dm.labels || {}, custom: dm.custom || [], removed: dm.removed || [] };
-    var ent = activeEntries(s.Lm, st), hid = (dm.hidden || []).map(Number), t = todayD(), wk = weekStart(t);
-    var B = { need: { plan: 0, act: 0 }, want: { plan: 0, act: 0 }, save: { plan: 0, act: 0 } }, cats = [];
+    var ent = activeEntries(s.Lm, st), hid = (dm.hidden || []).map(Number), t = todayD(), wk = weekStart(t), today = iso(t);
+    var B = { need: { plan: 0, act: 0 }, want: { plan: 0, act: 0 }, save: { plan: 0, act: 0 } }, cats = [], kindOf = {};
     ent.expense.forEach(function (e) {
       if (hid.indexOf(e.row) >= 0 || isUns(e.name)) return;
-      var d = detailOf(e.name), k = BUCKET[d] || "want", plan = catSum(doc, e, ""), act = catSum(doc, e, "a:");
+      var d = detailOf(e.name), k = BUCKET[d] || "want", plan = catSum(doc, e, ""), act = catSum(doc, e, "a:"), sec = SECTION_OF[d];
+      kindOf[nk(e.name)] = sec === "bills" ? "bill" : k === "save" ? "save" : d === "giving" ? "give" : "flex";
       B[k].plan += plan; B[k].act += act;
-      if (k !== "save" && SECTION_OF[d] !== "bills" && plan > 0) cats.push({ n: e.name, plan: plan, act: act });   // bills are paid all at once, so they don't get "pace" warnings
+      if (kindOf[nk(e.name)] === "flex" && plan > 0) cats.push({ n: e.name, plan: plan, act: act });   // bills are paid all at once, so they don't get "pace" warnings
     });
     Object.keys(B).forEach(function (k) { B[k].plan = Math.round(B[k].plan * 100) / 100; B[k].act = Math.round(B[k].act * 100) / 100; });
-    var pace = pm === null ? null : Math.round(pm * 1000) / 1000;
+    var pace = pm === null ? null : Math.round(pm * 1000) / 1000, r2 = function (x) { return Math.round(x * 100) / 100; };
     var daysLeft = Math.max(1, dim(s.y, s.m) - t.getDate() + 1), weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
-    // heads-ups: spending that's running ahead of the pay that has come in. Each one ends with a small, doable next step.
-    var heads = cats.filter(function (c) { return c.act / c.plan >= WARN_AT && (pace === null || c.act > c.plan * pace + 0.5); })
-      .sort(function (a, b) { return b.act / b.plan - a.act / a.plan; }).slice(0, 2).map(function (c) {
-        var left = c.plan - c.act;
-        if (left > 0.5) return { h: c.n + " is at " + Math.round(c.act / c.plan * 100) + "%", t: "You’ve used " + wkM(c.act) + " of " + wkM(c.plan) + ". About " + wkM(left / weeksLeft) + (weeksLeft > 1 ? " a week" : "") + " for the rest of " + MONTHS[s.m] + " keeps it on plan. Nothing else needs to change." };
-        return { h: c.n + " is " + wkM(-left) + " over", t: "Take it from another Wants category this month to keep your total on plan, or raise its plan if this is just what it really costs." };
-      });
-    // wins
-    var wins = [], hist = debtState.hist || [], tot = Math.round(totalDebt() * 100) / 100, ago = new Date(t); ago.setDate(ago.getDate() - 7);
-    var before = hist.filter(function (h) { return h.d <= iso(ago); }).pop(), chg = before ? Math.round((tot - before.t) * 100) / 100 : null;
-    if (B.save.act > 0.5 && (pace === null || B.save.act >= B.save.plan * pace - 0.5)) wins.push({ h: "Savings in step with your pay", t: wkM(B.save.act) + " of " + wkM(B.save.plan) + " set aside so far this month." });
-    if (chg !== null && chg < -0.5) wins.push({ h: "Debt down " + wkM(-chg) + " this week", t: wkM(tot) + " left across your debts." });
-    if (!heads.length && pace !== null && cats.length) wins.push({ h: "Everything’s in step", t: "No category is running ahead of the pay that’s come in." });
-    // money in: this week is the change since the last update in the same month
-    var prev = weekly.filter(function (w) { return w.ym === s.y + "-" + pad(s.m + 1) && w.wk < wk; }).pop();
-    var incWeek = prev ? Math.round((MA.inc - prev.incGot) * 100) / 100 : null;
+    var nextPay = parseD(iso(SD.next)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    var EAT = /restaurant|fast food|takeout|delivery|dining|coffee|bakery|nightlife|eating out|food out/i;
+
+    // ---- this week's spending, from the spending record (bank, receipts and what you logged) ----
+    var ls = parseD(wk); ls.setDate(ls.getDate() - 7); var le = parseD(wk); le.setDate(le.getDate() - 1);
+    var outs = spend.filter(function (e) { return e.kind === "ex" && (e.dir || "out") === "out" && !goneByBank(e) && e.d && e.cat; });
+    var flexOf = function (e) { var k = kindOf[nk(e.cat)]; return k ? k === "flex" : SECTION_OF[detailOf(e.cat)] !== "bills" && (BUCKET[detailOf(e.cat)] || "want") !== "save" && detailOf(e.cat) !== "giving"; };
+    var thisW = outs.filter(function (e) { return e.d >= wk && e.d <= today; }), lastW = outs.filter(function (e) { return e.d >= iso(ls) && e.d <= iso(le); });
+    var flexW = thisW.filter(flexOf), flexL = lastW.filter(flexOf), sum = function (L) { return r2(L.reduce(function (a, e) { return a + (+e.a || 0); }, 0)); };
+    var byCat = {}; flexW.forEach(function (e) { byCat[e.cat] = (byCat[e.cat] || 0) + (+e.a || 0); });
+    var top = Object.keys(byCat).map(function (c) { return { c: c, a: r2(byCat[c]) }; }).sort(function (a, b) { return b.a - a.a; }).slice(0, 4);
+    var big = flexW.slice().sort(function (a, b) { return b.a - a.a; })[0];
+    var small = flexW.filter(function (e) { return e.a < 15; }), eat = flexW.filter(function (e) { return EAT.test(e.cat); });
+    var W = { spent: sum(flexW), n: flexW.length, bills: sum(thisW.filter(function (e) { return kindOf[nk(e.cat)] === "bill"; })), last: lastW.length ? sum(flexL) : null,
+      top: top, big: big ? { s: big.s || "", a: r2(big.a), c: big.cat } : null, small: { n: small.length, a: sum(small) }, eat: { n: eat.length, a: sum(eat) }, from: wk, to: today };
+    var waiting = spend.filter(function (e) { return e.src === "bank" && e.kind === "none"; }).length, pendN = spend.filter(function (e) { return e.src === "bank" && e.pend && e.kind !== "skip"; }).length;
+
+    // ---- bills in the next 7 days ----
     var soon = [];
     bills.forEach(function (b) { var d = nextDue(b); if (!d) return; var n = daysUntil(d); if (n <= 7) soon.push({ n: b.name, d: iso(d), a: +b.amount || 0, late: n < 0 }); });
     soon.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+    var billsSoon = r2(soon.reduce(function (a, b) { return a + b.a; }, 0));
+
+    // ---- debt ----
+    var hist = debtState.hist || [], tot = r2(totalDebt()), ago = new Date(t); ago.setDate(ago.getDate() - 7);
+    var before = hist.filter(function (h) { return h.d <= iso(ago); }).pop(), chg = before ? r2(tot - before.t) : null;
+    var live = debtState.debts.filter(function (d) { return +d.balance > 0; }), hiApr = live.filter(function (d) { return +d.apr > 0; }).sort(function (a, b) { return b.apr - a.apr; })[0];
+    var interest = r2(live.reduce(function (a, d) { return a + (+d.balance || 0) * (+d.apr || 0) / 100 / 12; }, 0));
+    var ef = (goals || []).filter(function (g) { return isEF(g); })[0], efAmt = ef ? +ef.current || 0 : 0;
+
+    // ---- warnings: what could hurt you if nobody says anything (monere: to warn) ----
+    var warns = [], money0 = wkM;
+    if (typeof safe === "number" && safe < 0) warns.push({ h: "This pay is already spent", t: "You’re " + money0(-safe) + " past what this paycheck covers. Until " + nextPay + ", spend only on needs: food at home, gas, and bills. The next paycheck puts you back on track; don’t borrow from bill money to get there." });
+    if (pm !== null && billsSoon > 0.5 && MA.net < billsSoon) warns.push({ h: "Bills next week need " + money0(billsSoon), t: "Only " + money0(Math.max(0, MA.net)) + " of this month’s pay is left in hand. Hold off on anything optional until " + (soon[0] ? (soon[0].n) : "your next bill") + " is paid, so nothing bounces or comes in late." });
+    cats.filter(function (c) { return c.act / c.plan >= WARN_AT && (pace === null || c.act > c.plan * pace + 0.5); })
+      .sort(function (a, b) { return b.act / b.plan - a.act / a.plan; }).slice(0, 3).forEach(function (c) {
+        var left = c.plan - c.act;
+        if (left > 0.5) warns.push({ h: c.n + " is at " + Math.round(c.act / c.plan * 100) + "% with " + daysLeft + " days left", t: "You’ve used " + money0(c.act) + " of " + money0(c.plan) + (pace !== null ? ", but only " + Math.round(pace * 100) + "% of the month’s pay is in" : "") + ". Keep it to about " + money0(left / weeksLeft) + (weeksLeft > 1 ? " a week" : "") + " for the rest of " + MONTHS[s.m] + " and it lands right on plan." });
+        else warns.push({ h: c.n + " is " + money0(-left) + " over plan", t: "Don’t try to win it back all at once. Pull " + money0(-left) + " from another Wants category this month, or raise " + c.n + "’s plan if this is just what it really costs. A plan that matches real life is easier to keep." });
+      });
+    if (W.eat.n >= 4) warns.push({ h: W.eat.n + " meals out this week (" + money0(W.eat.a) + ")", t: "At this pace that’s about " + money0(W.eat.a / 7 * 30) + " a month. Eating out is the easiest category to drift in. Pick the 2 that matter most next week and cook the rest." });
+    if (W.small.n >= 6) warns.push({ h: W.small.n + " small purchases added up to " + money0(W.small.a), t: "Each one under $15 feels like nothing, which is why they’re easy to miss. Check whether any are repeats you don’t need, like snacks, delivery fees or app charges." });
+    if (W.last !== null && W.last > 25 && W.spent > W.last * 1.25 && W.spent - W.last > 25) warns.push({ h: "Everyday spending up " + money0(W.spent - W.last) + " from last week", t: money0(W.spent) + " this week vs. " + money0(W.last) + " last week" + (top[0] ? ", mostly " + (top[0].c) : "") + ". One expensive week is fine. Two in a row is a pattern worth stopping." });
+    if (SD.inc > 0 && SD.inc - SD.bills - SD.spend - SD.save < -0.5) warns.push({ h: "Your plan spends more than you make", t: "This month’s plan is " + money0(-(SD.inc - SD.bills - SD.spend - SD.save)) + " over your pay, so something will come up short. Lower a Wants category or the savings amount until the plan fits; a smaller plan you can keep beats a big one you can’t." });
+    if (interest >= 15) warns.push({ h: "Debt is costing you about " + money0(interest) + " a month", t: "That’s interest alone, money that buys nothing. " + (hiApr ? (hiApr.name || "Your highest-rate debt") + " at " + (+hiApr.apr) + "% costs the most." : "") });
+    if (waiting) warns.push({ h: waiting + (waiting === 1 ? " transaction is" : " transactions are") + " waiting for a category", t: "Until you sort " + (waiting === 1 ? "it" : "them") + " in Bank, " + (waiting === 1 ? "it isn’t" : "they aren’t") + " in your numbers, so Safe to spend may look better than it really is." });
+
+    // ---- advice: what to do about it (monere: to advise) ----
+    var advice = [], flexLeft = Math.max(0, SD.spend - SD.spent), perWeek = flexLeft / weeksLeft;
+    var tgt = typeof safe === "number" ? Math.min(perWeek, Math.max(0, safe)) : perWeek;
+    if (SD.spend > 0) advice.push(typeof safe === "number" && safe < 0 ? { h: "Next week: needs only", t: "Food at home, gas and bills until " + nextPay + ". Everything else can wait for the next paycheck." } :
+      { h: "Next week’s spending target: " + money0(tgt), t: money0(flexLeft) + " is left for everyday spending over the next " + weeksLeft + (weeksLeft === 1 ? " week" : " weeks") + ". About " + money0(tgt) + " a week keeps " + MONTHS[s.m] + " on plan" + (tgt < perWeek - 0.5 ? ", and it’s capped at what’s safe to spend until payday." : ".") + " Check Safe to spend on Home before anything big." });
+    if (efAmt < 1000 && typeof safe === "number" && safe >= 0) advice.push({ h: "Keep building a $1,000 cushion", t: (ef ? money0(efAmt) + " saved so far, " + money0(1000 - efAmt) + " to go." : "You don’t have an emergency fund goal yet.") + " A small cushion is what stops a flat tire from turning into credit card debt. Even $20 a week gets you there." });
+    else if (hiApr && efAmt >= 1000) advice.push({ h: "Send extra money to " + (hiApr.name || "your highest-rate debt") + " first", t: "At " + (+hiApr.apr) + "% it costs the most. Pay the minimum on everything else and put anything extra here; when it’s gone, roll that payment into the next one." });
+    if (B.save.plan > 0 && pace !== null && B.save.act < B.save.plan * pace - 0.5 && (typeof safe !== "number" || safe < perWeek)) advice.push({ h: "Don’t force savings this week", t: "Savings is a little behind your pay, but money is tight until " + nextPay + ". Cover bills and needs first; set savings aside from the next paycheck. Saving only works if it doesn’t leave you short." });
+    else if (typeof safe === "number" && safe > perWeek * 1.5 && safe - perWeek > 40 && !warns.length) { var extra = Math.floor((safe - perWeek) / 2 / 5) * 5, g = (goals || []).filter(function (x) { return x.kind === "save" && +x.target > +x.current; })[0];
+      if (extra >= 10) advice.push({ h: "You have room this week", t: "After next week’s spending, about " + money0(safe - perWeek) + " is still free. Moving " + money0(extra) + (g ? " to " + (g.name) : " to savings") + " now, before it gets spent, is the easiest way to get ahead." }); }
+    if (soon.length) advice.push({ h: "Before " + parseD(soon[0].d).toLocaleDateString("en-US", { weekday: "long" }) + ": check " + (soon[0].n), t: "Make sure " + (soon[0].a ? money0(soon[0].a) + " is" : "the money is") + " in the account it pays from" + (soon.length > 1 ? ". " + (soon.length - 1) + " more " + (soon.length === 2 ? "bill follows" : "bills follow") + " in the next 7 days (" + money0(billsSoon) + " total)." : ".") });
+
+    // ---- next week's plan, category by category ----
+    var plan = cats.map(function (c) { return { n: c.n, left: r2(c.plan - c.act), wk: r2(Math.max(0, c.plan - c.act) / weeksLeft) }; }).sort(function (a, b) { return b.wk - a.wk; }).slice(0, 6);
+
+    // ---- wins ----
+    var wins = [];
+    if (B.save.act > 0.5 && (pace === null || B.save.act >= B.save.plan * pace - 0.5)) wins.push({ h: "Savings in step with your pay", t: money0(B.save.act) + " of " + money0(B.save.plan) + " set aside so far this month." });
+    if (chg !== null && chg < -0.5) wins.push({ h: "Debt down " + money0(-chg) + " this week", t: money0(tot) + " left across your debts." });
+    if (W.last !== null && W.last > 25 && W.spent < W.last * 0.85) wins.push({ h: "You spent " + money0(W.last - W.spent) + " less than last week", t: "That’s the habit that makes a budget work." });
+    if (!warns.length && pace !== null && cats.length) wins.push({ h: "Everything’s in step", t: "No category is running ahead of the pay that’s come in." });
+
+    var prev = weekly.filter(function (w) { return w.ym === s.y + "-" + pad(s.m + 1) && w.wk < wk; }).pop();
+    var incWeek = prev ? r2(MA.inc - prev.incGot) : null;
     var gl = (goals || []).filter(function (g) { return g.kind === "save" && +g.target > 0; }).slice(0, 3).map(function (g) { return { n: g.name, c: +g.current || 0, t: +g.target }; });
+    var status = typeof safe === "number" && safe < 0 ? "tight" : warns.length ? "heads" : "pace";
+    var verdict = status === "tight" ? "Tight week. This pay is used up, so the goal until " + nextPay + " is simple: bills and needs only." :
+      status === "heads" ? (warns.length === 1 ? "Mostly on track, with one thing to watch before it turns into a problem." : "Mostly on track, with " + warns.length + " things to watch before they turn into problems.") :
+      "Solid week. You’re in step with your pay and nothing needs fixing.";
     return {
-      v: 1, wk: wk, made: iso(t), ym: s.y + "-" + pad(s.m + 1), month: MONTHS[s.m],
+      v: 2, wk: wk, made: today, ym: s.y + "-" + pad(s.m + 1), month: MONTHS[s.m],
       safe: safe, est: pm === null, full: !!SD.full, next: iso(SD.next), days: SD.days,
-      inc: Math.round(SD.inc * 100) / 100, incGot: MA.inc, incWeek: incWeek, pace: pace, B: B,
-      heads: heads, wins: wins.slice(0, 2), bills: soon.slice(0, 6),
-      debt: { tot: tot, chg: chg, n: debtState.debts.filter(function (d) { return +d.balance > 0; }).length }, goals: gl,
-      status: typeof safe === "number" && safe < 0 ? "tight" : heads.length ? "heads" : "pace"
+      inc: r2(SD.inc), incGot: MA.inc, incWeek: incWeek, pace: pace, B: B, verdict: verdict,
+      heads: warns.slice(0, 6), advice: advice.slice(0, 4), wins: wins.slice(0, 3), plan: plan, wkSpend: W, pend: pendN,
+      bills: soon.slice(0, 6), debt: { tot: tot, chg: chg, n: live.length, interest: interest }, goals: gl, status: status
     };
   }
   function wkPill(w) { return w.status === "tight" ? '<span class="wkpill tight">Tight week</span>' : w.status === "heads" ? '<span class="wkpill heads">' + w.heads.length + (w.heads.length === 1 ? " heads-up" : " heads-ups") + "</span>" : '<span class="wkpill">On pace</span>'; }
@@ -8082,15 +8156,38 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   }
   function weeklyHtml(w) {
     var nd = parseD(w.next).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }), neg = typeof w.safe === "number" && w.safe < 0;
+    var note = function (x, k, ico) { return '<div class="wknote' + (k ? " " + k : "") + '"><span aria-hidden="true">' + ico + "</span><div><b>" + esc(x.h) + "</b>" + esc(x.t) + "</div></div>"; };
+    var day = function (d) { return parseD(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }); };
     var h = '<p style="margin:0 0 12px"><button type="button" class="linkbtn" data-wkall="1">‹ All weekly updates</button></p>';
     h += '<div class="safe' + (neg ? " neg" : "") + '"><small>Week of ' + wkLabel(w.wk) + " · " + (w.full ? "Safe to spend for the rest of the month" : "Safe to spend until payday") + "</small>" +
       "<b>" + (typeof w.safe === "number" ? (neg ? "−" : "") + wkM(Math.abs(w.safe)) : "—") + '</b><p class="safepace" style="font-size:14px">' +
-      (neg ? "This pay is already used up. Stick to needs until " + nd + " and your next paycheck puts you back on track." : w.est ? "An estimate from your plan. Mark your pay as received to see your real number." : "Based on the money that’s actually come in, after bills and savings still due from this pay. Next paycheck " + nd + ".") + "</p>" +
-      '<div class="wkpills"><span>' + (w.status === "tight" ? "Tight week" : w.status === "heads" ? w.heads.length + (w.heads.length === 1 ? " heads-up" : " heads-ups") : "On pace for " + esc(w.month)) + "</span>" + (w.bills.length ? "<span>" + w.bills.length + (w.bills.length === 1 ? " bill" : " bills") + " due next week</span>" : "") + "</div></div>";
-    // money in
-    h += '<div class="panel"><h2>Money in</h2>' + (w.incWeek !== null && w.incWeek !== undefined ? '<div class="kv"><span>Came in this week</span><b>' + wkM(w.incWeek) + "</b></div>" : "") +
-      '<div class="kv"><span>So far in ' + esc(w.month) + "</span><b>" + wkM(w.incGot) + ' <small class="wkof">of ' + wkM(w.inc) + "</small></b></div>" +
-      '<div class="ovbar"><i style="width:' + (w.inc > 0 ? Math.min(100, w.incGot / w.inc * 100) : 0).toFixed(1) + '%"></i></div></div>';
+      (neg ? "Stick to needs until " + nd + " and your next paycheck puts you back on track." : w.est ? "An estimate from your plan. Mark your pay as received to see your real number." : "Based on money that’s actually come in, after bills and savings still due from this pay. Next paycheck " + nd + ".") + "</p>" +
+      (w.verdict ? '<p class="wkverdict">' + esc(w.verdict) + "</p>" : "") +
+      '<div class="wkpills"><span>' + (w.status === "tight" ? "Tight week" : w.status === "heads" ? w.heads.length + (w.heads.length === 1 ? " warning" : " warnings") : "On pace for " + esc(w.month)) + "</span>" + (w.bills.length ? "<span>" + w.bills.length + (w.bills.length === 1 ? " bill" : " bills") + " due next week</span>" : "") + "</div></div>";
+    // warn
+    h += '<div class="panel"><h2>Heads up</h2>' + (w.heads.length ? '<p class="sub">Caught early, these are easy fixes.</p>' + w.heads.map(function (x) { return note(x, "", "⚠"); }).join("") : '<p class="sub" style="margin:0">Nothing to warn you about this week. That’s what on track looks like.</p>') + "</div>";
+    // advise
+    if (w.advice && w.advice.length) h += '<div class="panel"><h2>Be advised</h2>' + w.advice.map(function (x) { return note(x, "tip", "➜"); }).join("") + "</div>";
+    if (w.wins && w.wins.length) h += '<div class="panel"><h2>Check this out</h2>' + w.wins.map(function (x) { return note(x, "win", "✓"); }).join("") + "</div>";
+    // this week's spending
+    var S = w.wkSpend;
+    if (S) {
+      h += '<div class="panel"><h2>Your spending this week</h2><p class="sub">' + day(S.from) + " to " + day(S.to) + ", everyday spending (bills and savings not included).</p>" +
+        '<div class="kv"><span>Everyday spending</span><b>' + wkM(S.spent) + "</b></div>" +
+        (S.last !== null ? '<div class="kv"><span>Last week</span><b>' + wkM(S.last) + (S.spent !== S.last ? ' <small class="' + (S.spent > S.last ? "cmpbad" : "cmpgood") + '">' + (S.spent > S.last ? "+" : "−") + wkM(Math.abs(S.spent - S.last)) + "</small>" : "") + "</b></div>" : "") +
+        (S.bills ? '<div class="kv"><span>Bills paid this week</span><b>' + wkM(S.bills) + "</b></div>" : "") +
+        (S.top.length ? '<h3 class="wkh3">Where it went</h3>' + S.top.map(function (c) { var pc = S.spent > 0 ? c.a / S.spent * 100 : 0; return '<div class="wkb"><div class="wkbh"><b>' + esc(c.c) + "</b><span>" + wkM(c.a) + '</span></div><div class="wkbar"><i class="wk-want" style="width:' + pc.toFixed(1) + '%"></i></div></div>'; }).join("") : '<p class="sub" style="margin:8px 0 0">No everyday spending recorded this week yet.</p>') +
+        (S.big ? '<div class="kv"><span>Biggest purchase</span><b>' + esc(S.big.s || S.big.c) + " · " + wkM(S.big.a) + "</b></div>" : "") +
+        (S.eat.n ? '<div class="kv"><span>Eating out</span><b>' + S.eat.n + (S.eat.n === 1 ? " time · " : " times · ") + wkM(S.eat.a) + "</b></div>" : "") +
+        (S.small.n ? '<div class="kv"><span>Purchases under $15</span><b>' + S.small.n + " · " + wkM(S.small.a) + "</b></div>" : "") +
+        (w.pend ? '<p class="sub" style="margin:8px 0 0">' + w.pend + (w.pend === 1 ? " charge is" : " charges are") + " still pending at your bank and already counted. If an amount changes when it posts, Monerem updates it.</p>" : "") + "</div>";
+    }
+    // next week's plan
+    if (w.plan && w.plan.length) {
+      h += '<div class="panel"><h2>Your plan for next week</h2><p class="sub">What’s left in each everyday category, spread over the rest of ' + esc(w.month) + ".</p>" + w.plan.map(function (p) {
+        return '<div class="kv"><span>' + esc(p.n) + "<br><small>" + (p.left > 0.5 ? wkM(p.left) + " left this month" : p.left < -0.5 ? wkM(-p.left) + " over" : "All used") + "</small></span><b" + (p.left <= 0.5 ? ' class="cmpbad"' : "") + ">" + (p.left > 0.5 ? wkM(p.wk) + " a week" : "Hold off") + "</b></div>";
+      }).join("") + "</div>";
+    }
     // the month so far, in 50/30/20 buckets
     var p = w.pace;
     h += '<div class="panel"><h2>' + esc(w.month) + " so far</h2><p class=\"sub\">" + (p === null ? "No pay marked as received yet, so there’s no pace line." : Math.round(p * 100) + "% of " + esc(w.month) + "’s pay is in. The line on each bar is where you’d be if spending builds up in step with your pay.") + "</p>";
@@ -8106,19 +8203,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         '<span class="wkst ' + cls + '">' + msg + "</span></div>";
     });
     h += "</div>";
-    // from the Beaver
-    if (w.heads.length || w.wins.length) {
-      h += '<div class="panel"><h2>From the Beaver</h2>' + w.heads.map(function (x) { return '<div class="wknote"><span aria-hidden="true">⚠</span><div><b>' + esc(x.h) + "</b>" + esc(x.t) + "</div></div>"; }).join("") +
-        w.wins.map(function (x) { return '<div class="wknote win"><span aria-hidden="true">✓</span><div><b>' + esc(x.h) + "</b>" + esc(x.t) + "</div></div>"; }).join("") + "</div>";
-    }
+    // money in
+    h += '<div class="panel"><h2>Money in</h2>' + (w.incWeek !== null && w.incWeek !== undefined ? '<div class="kv"><span>Came in this week</span><b>' + wkM(w.incWeek) + "</b></div>" : "") +
+      '<div class="kv"><span>So far in ' + esc(w.month) + "</span><b>" + wkM(w.incGot) + ' <small class="wkof">of ' + wkM(w.inc) + "</small></b></div>" +
+      '<div class="ovbar"><i style="width:' + (w.inc > 0 ? Math.min(100, w.incGot / w.inc * 100) : 0).toFixed(1) + '%"></i></div></div>';
     // bills next week
     var bt = w.bills.reduce(function (a, b) { return a + b.a; }, 0);
     h += '<div class="panel"><h2>Bills next week' + (bt ? ' <small class="wkof">' + wkM(bt) + "</small>" : "") + "</h2>" + (w.bills.length ? w.bills.map(function (b) {
-      return '<div class="kv"><span>' + esc(b.n) + "<br><small>" + (b.late ? "Overdue · " : "") + parseD(b.d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + "</small></span><b>" + (b.a ? wkM(b.a) : "") + "</b></div>";
+      return '<div class="kv"><span>' + esc(b.n) + "<br><small>" + (b.late ? "Overdue · " : "") + day(b.d) + "</small></span><b>" + (b.a ? wkM(b.a) : "") + "</b></div>";
     }).join("") : '<p class="sub" style="margin:0">No bills due in the 7 days after this update.</p>') + "</div>";
     // debt and savings
     if (w.debt.n || w.goals.length) {
-      h += '<div class="panel"><h2>Debt &amp; savings</h2>' + (w.debt.n ? '<div class="kv"><span>Debt left' + (w.debt.chg !== null && Math.abs(w.debt.chg) > 0.5 ? "<br><small class=\"" + (w.debt.chg < 0 ? "cmpgood" : "cmpbad") + '">' + (w.debt.chg < 0 ? "−" : "+") + wkM(Math.abs(w.debt.chg)) + " this week</small>" : "") + "</span><b>" + wkM(w.debt.tot) + "</b></div>" : "") +
+      h += '<div class="panel"><h2>Debt &amp; savings</h2>' + (w.debt.n ? '<div class="kv"><span>Debt left' + (w.debt.chg !== null && Math.abs(w.debt.chg) > 0.5 ? "<br><small class=\"" + (w.debt.chg < 0 ? "cmpgood" : "cmpbad") + '">' + (w.debt.chg < 0 ? "−" : "+") + wkM(Math.abs(w.debt.chg)) + " this week</small>" : "") + "</span><b>" + wkM(w.debt.tot) + "</b></div>" +
+        (w.debt.interest ? '<div class="kv"><span>Interest it costs each month</span><b class="cmpbad">about ' + wkM(w.debt.interest) + "</b></div>" : "") : "") +
         w.goals.map(function (g) { var pc = Math.min(100, Math.round(g.c / g.t * 100)); return '<div class="kv"><span>' + esc(g.n) + "<br><small>" + pc + "% of " + wkM(g.t) + "</small></span><b>" + wkM(g.c) + "</b></div>"; }).join("") + "</div>";
     }
     h += '<p class="sub">Saved ' + parseD(w.made).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) + ". This update keeps the numbers from that day.</p>";
