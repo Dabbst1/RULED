@@ -5225,7 +5225,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var bankStart = Math.round((avail + heldUnknown - flows) * 100) / 100;
       start = bankStart; autoStart = true; carried = false;   // always the bank's own figure: a typed starting balance can't throw this off
       var items = [
-        [start !== null ? "Your balance on " + mon + " 1 (" + (autoStart ? "worked out from your bank’s transactions" : carried ? "carried over from " + fromMon + "’s bank activity" : "you entered it") + ")" : null, start || 0, []],
+        [start !== null ? "Already in your account when " + mon + " started (" + (autoStart ? "worked out from your bank’s transactions" : carried ? "carried over from " + fromMon + "’s bank activity" : "you entered it") + ")" : null, start || 0, []],
         ["Money into your account that isn’t income (transfers in, refunds, Zelle)", sum(G.skipIn), G.skipIn],
         ["Money out of your account that isn’t spending (transfers, card payments, ATM)", -sum(G.skipOut), G.skipOut],
         ["Waiting for a category, so not in Actual yet (pick one below)", sum(G.waitIn) - sum(G.waitOut), G.waitIn.concat(G.waitOut)],
@@ -5234,7 +5234,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         ["Spending you logged by hand or from a receipt that your bank hasn’t matched", sum(G.handOut), G.handOut],
         ["Income you logged by hand that your bank hasn’t matched", -sum(G.handIn), G.handIn],
         ["Counted twice: typed into Actual and also brought in by your bank (tap Fix)", -tSum(tDup), tDup.map(function (t) { return { s: t.n, a: t.d, fix: t.n }; })],
-        ["Outside your bank: amounts typed into Actual (cash, another account, an outside service)", -tSum(tOut), tOut.map(function (t) { return { s: t.n + (t.inc ? " (in)" : " (out)"), a: Math.abs(t.d) }; })],
+        ["Didn’t go through this account: amounts you typed into Actual (cash, another account, an outside service)", -tSum(tOut), tOut.map(function (t) { return { s: t.n + (t.inc ? " (in)" : " (out)"), a: Math.abs(t.d) }; })],
         ["Being held by your bank and not sent to Monerem yet (your balance is " + money.format(cur) + ", " + money.format(held) + " is on hold)", -heldUnknown, []]
       ].filter(function (x) { return x[0] && Math.abs(x[1]) >= 0.005; });
       var explained = items.reduce(function (t, x) { return t + x[1]; }, 0), rest = Math.round((avail - net - explained) * 100) / 100, gap = Math.round((avail - net) * 100) / 100;
@@ -5336,7 +5336,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       h += ok ? '<p class="rok">&#10003; Every dollar in your bank is accounted for.</p>' : "";
       if (dups) h += '<p class="rwarn">' + dups + (dups === 1 ? " purchase might be" : " purchases might be") + " counted twice. Answer the “Same purchase?” question" + (dups === 1 ? "" : "s") + " below.</p>";
       {
-        h += (ok ? '<details class="rhow"><summary>How it adds up</summary>' : "") + '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
+        h += (ok ? '<details class="rhow"><summary>How it adds up</summary>' : "") + '<p class="sub" style="margin:4px 0 6px">Your Actual numbers cover only this month, and they can include money that never touched this account. These lines show how they connect to what your bank holds.</p><div class="rlist"><div class="rrow"><span>This month’s income minus spending (your Actual)</span><b>' + money.format(net) + "</b></div>" +
           items.map(function (x) { return '<div class="rrow"><span>' + x[0] + (x[2] === null ? typedHtml : names(x[2])) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
           (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>" + (!R.autoStart && !R.carried && Math.abs(R.bankStart - start) >= 0.01 ? "Your bank’s own transactions put your " + mon + " 1 balance at <b>" + money.format(R.bankStart) + "</b>, not the " + money.format(start) + " entered below. If you typed " + money.format(start) + " from something other than your statement, tap <b>Use " + money.format(R.bankStart) + "</b>. <button type=\"button\" class=\"linkbtn\" data-usestart=\"" + R.bankStart + "\">Use " + money.format(R.bankStart) + "</button>" : "Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.") + "</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
           '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>" + (ok ? "</details>" : "");
@@ -5362,11 +5362,11 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var h = '<h2>Your money, reconciled with your bank</h2><p class="sub">Net Income is what came in minus what went out this month. Here’s how it adds up to what’s in your account right now.</p><div class="rlist">';
       if (R.start === null) h += row("Your balance on " + R.mon + " 1", "?", "", "Not entered yet. Add it below so every dollar is accounted for.");
       h += R.items.map(function (x) {
-        var lab = x[0].indexOf("Your balance on") === 0 ? "Carried in on " + R.mon + " 1" : x[0];
-        return x[0].indexOf("Your balance on") === 0 ? row(lab, money.format(x[1])) : "";
+        var lab = x[0].indexOf("Already in your account") === 0 ? "Already in your account when " + R.mon + " started" : x[0];
+        return x[0].indexOf("Already in your account") === 0 ? row(lab, money.format(x[1])) : "";
       }).join("");
-      h += row("Net Income this month (Actual)", sgn(R.net));
-      h += R.items.filter(function (x) { return x[0].indexOf("Your balance on") !== 0; }).map(function (x) {
+      h += row("This month’s income minus spending (your Actual)", sgn(R.net));
+      h += R.items.filter(function (x) { return x[0].indexOf("Already in your account") !== 0; }).map(function (x) {
         var sub = x[2] === null ? R.typedList.map(function (t) { return esc(t.n) + " " + money.format(t.act); }).join(" · ") : (x[2] || []).slice(0, 3).map(function (e) { return esc(e.s) + " " + money.format(e.a) + (e.fix ? ' <button type="button" class="linkbtn" data-recfix="' + esc(e.fix) + '" data-amt="' + e.a + '">Fix</button>' : ""); }).join(" · ");
         return row(x[0], sgn(x[1]), "", sub);
       }).join("");
