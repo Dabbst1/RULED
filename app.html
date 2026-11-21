@@ -904,7 +904,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .recon{margin:12px 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#F7FAFF}
 .rhist{margin-top:12px}.rhist summary{cursor:pointer;font-weight:700}.rhist .rrow b small{display:block;font-weight:400;text-align:right}.recon .dh3{margin:0 0 8px}.rtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .rtop small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}.rtop b{font-size:20px;font-variant-numeric:tabular-nums}
-.rlist{margin-top:10px;border-top:1px solid var(--line)}
+.rhow summary{cursor:pointer;font-weight:600;color:var(--blue);margin:6px 0}.rlist{margin-top:10px;border-top:1px solid var(--line)}
 .rrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #E4ECFA;font-size:14px}
 .rrow b{white-space:nowrap;font-variant-numeric:tabular-nums}.rrow small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
 .rrow.rest span{color:var(--muted)}.rrow.tot{border-bottom:0;font-weight:700}
@@ -5330,16 +5330,18 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var names = function (L) { return L && L.length ? "<small>" + L.slice(0, 4).map(function (e) { return esc(e.s) + " " + money.format(e.a) + (e.fix ? ' <button type="button" class="linkbtn" data-recfix="' + esc(e.fix) + '" data-amt="' + e.a + '">Fix</button>' : ""); }).join(" · ") + (L.length > 4 ? " · and " + (L.length - 4) + " more" : "") + "</small>" : ""; };
       var typedHtml = "<small>" + typedList.map(function (t) { return esc(t.n) + ": " + money.format(t.act) + " in Actual, " + money.format(t.rec) + " from your bank or Log"; }).join("<br>") + "</small>";
       var dups = rows.filter(function (e) { return e.maybeDup && spendFind(e.maybeDup) && spendFind(e.maybeDup).src !== "bank"; }).length;
-      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank, available</small><b>' + money.format(avail) + "</b></div><div><small>Net in Actual, " + mon + "</small><b>" + money.format(net) + "</b></div><div><small>Difference</small><b>" + (Math.abs(gap) < 0.005 ? '<span class="stgood">None ✓</span>' : money.format(Math.abs(gap))) + "</b></div></div>";
-      h += Math.abs(gap) < 0.005 ? '<p class="rok">&#10003; Your Actual numbers match your bank to the cent.</p>' : "";
+      /* Monerem records what IS: what your bank shows, and how every dollar of it is accounted for. No "should be". */
+      var ok = Math.abs(rest) < 0.005, record = Math.round((avail - rest) * 100) / 100;
+      var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank, available</small><b>' + money.format(avail) + "</b></div><div><small>Monerem’s record adds up to</small><b>" + money.format(record) + "</b></div><div><small>Not accounted for</small><b>" + (ok ? '<span class="stgood">None ✓</span>' : money.format(Math.abs(rest))) + "</b></div></div>";
+      h += ok ? '<p class="rok">&#10003; Every dollar in your bank is accounted for.</p>' : "";
       if (dups) h += '<p class="rwarn">' + dups + (dups === 1 ? " purchase might be" : " purchases might be") + " counted twice. Answer the “Same purchase?” question" + (dups === 1 ? "" : "s") + " below.</p>";
-      if (Math.abs(gap) >= 0.005) {
-        h += '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
+      {
+        h += (ok ? '<details class="rhow"><summary>How it adds up</summary>' : "") + '<div class="rlist"><div class="rrow"><span>Net in Actual this month</span><b>' + money.format(net) + "</b></div>" +
           items.map(function (x) { return '<div class="rrow"><span>' + x[0] + (x[2] === null ? typedHtml : names(x[2])) + "</span><b>" + sgn(x[1]) + "</b></div>"; }).join("") +
           (Math.abs(rest) >= 0.005 ? '<div class="rrow rest"><span>' + (start !== null ? "Still not explained<small>" + (!R.autoStart && !R.carried && Math.abs(R.bankStart - start) >= 0.01 ? "Your bank’s own transactions put your " + mon + " 1 balance at <b>" + money.format(R.bankStart) + "</b>, not the " + money.format(start) + " entered below. If you typed " + money.format(start) + " from something other than your statement, tap <b>Use " + money.format(R.bankStart) + "</b>. <button type=\"button\" class=\"linkbtn\" data-usestart=\"" + R.bankStart + "\">Use " + money.format(R.bankStart) + "</button>" : "Usually a transaction your bank hasn’t sent yet, one that’s counted twice, or a typo in an amount.") + "</small>" : "Not in " + mon + "’s records<small>Mostly your balance on " + mon + " 1. Enter it below and this line shows only what’s truly unexplained.</small>") + "</span><b>" + sgn(rest) + "</b></div>" : "") +
-          '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>";
+          '<div class="rrow tot"><span>Your bank, available</span><b>' + money.format(avail) + "</b></div></div>" + (ok ? "</details>" : "");
       }
-      if (Math.abs(gap) >= 0.005) h += '<p class="sub" style="margin:8px 0 0">Your ' + mon + ' 1 balance (' + money.format(R.bankStart) + ') is worked out from your bank’s own transactions, so it can’t be mistyped.</p>';
+      if (!ok) h += '<p class="sub" style="margin:8px 0 0">Your ' + mon + ' 1 balance (' + money.format(R.bankStart) + ') is worked out from your bank’s own transactions, so it can’t be mistyped.</p>';
       h += suggHtml(R);
       h += reconHistHtml(R);
       box.innerHTML = h;
@@ -5369,9 +5371,9 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         return row(x[0], sgn(x[1]), "", sub);
       }).join("");
       var expect = Math.round((R.avail - R.rest) * 100) / 100;
-      h += row("Should be in your bank", R.start === null ? "—" : money.format(expect), "tot") + row("Your bank says (available)", money.format(R.avail), "tot");
+      h += row("Monerem’s record adds up to", R.start === null ? "—" : money.format(expect), "tot") + row("Your bank, available", money.format(R.avail), "tot");
       h += "</div>";
-      if (Math.abs(R.gap) < 0.005) h += '<p class="rok">&#10003; Matches your bank to the cent.</p>';
+      if (R.start !== null && Math.abs(R.rest) < 0.005) h += '<p class="rok">&#10003; Every dollar in your bank is accounted for.</p>';
       else if (R.start === null) h += '<form class="rstart" id="actStartF"><label>Your balance on ' + R.mon + ' 1<span class="wizmoney"><i>$</i><input id="actStartIn" inputmode="decimal" autocomplete="off" placeholder="from your statement"></span></label><button class="btn" type="submit">Save</button></form>';
       else h += '<p class="rwarn">Off by ' + money.format(Math.abs(R.rest)) + '. Usually a charge your bank hasn’t sent yet, something counted twice, or a typo. Open <b>Bank</b> → <b>Check against my bank</b> to find it.</p>';
       box.innerHTML = h;
@@ -6584,7 +6586,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         if (!R) return stSkip("no cash account to check against");
         var twice = R.typedList.filter(function (t) { return t.dup; });
         if (twice.length) return { s: "fail", d: twice.map(function (t) { return t.n + " " + money.format(t.dup); }).join(", ") + " counted twice (typed in and also from your bank). Tap Fix in Bank → Check against my bank." };
-        if (Math.abs(R.gap) < 0.01) return stPass("Actual and your bank both show " + money.format(R.avail));
+        if (Math.abs(R.rest) < 0.01) return stPass("every dollar of the " + money.format(R.avail) + " in your bank is accounted for");
         return stWarn(money.format(Math.abs(R.rest)) + " between your bank and Actual isn’t explained yet. Open Bank → Check against my bank.");
       });
     }],
