@@ -2571,6 +2571,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       else if (left > 0.5) t += "Add <b>" + money.format(more) + "</b> more. You have " + money.format(left) + " not assigned, so trim about <b>" + money.format(more - left) + "</b> from Wants to get there.";
       else t += "Add <b>" + money.format(more) + "</b> more. Everything is already assigned, so this would come from trimming Wants first, then Needs.";
       hint.innerHTML = t + ' <button type="button" class="linkbtn tipshide" data-tips="off">Hide suggestions</button>'; hint.parentNode.parentNode.hidden = tipsOff;
+      // this month: the same "realistic to save" number as Goals, from what has really come in and gone out
+      if (layout.id === "monthly-budget" && storageKey() === monthKeyOf(new Date())) {
+        var sk = storageKey();
+        loadSavePlan().then(function (R) {
+          var h2 = $("saveHint"); if (!R || !R.month || !h2 || storageKey() !== sk) return;
+          h2.innerHTML = "<b>Realistic to save this month: " + f0(R.month.real) + "</b>. " + realNote(R.month) + ' <span class="sub">(The 50/30/20 target is ' + f0(goal20) + ', 20% of your income. Details in <a href="#goals">Goals</a>.)</span> <button type="button" class="linkbtn tipshide" data-tips="off">Hide suggestions</button>';
+        }).catch(function () {});
+      }
     }
     var parts = [
       { t: "need", v: byTag.need, note: "" },
@@ -5820,6 +5828,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   function monthsTill(due) { var d = parseD(due), n = new Date(); return (d.getFullYear() - n.getFullYear()) * 12 + d.getMonth() - n.getMonth(); }
   function etaMonths(left, m) { return left <= 0 ? 0 : m > 0 ? Math.ceil(left / m - 1e-9) : null; }
   function f0(x) { return money.format(Math.round(x)).replace(/\.00$/, ""); }
+  // the advice under "Realistic to save this month" (Goals, and the Savings line in the Monthly budget)
+  function realNote(M) {
+    var nd = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(M.payday);
+    return M.real > 0 ? (M.now >= M.real ? "You can set this aside <b>today</b> and still cover your bills and planned spending." : M.now > 0 ? "Set aside <b>" + f0(M.now) + " today</b>, and the rest after your " + (M.full ? "next paycheck" : "paycheck on " + nd) + "." : "Wait for your " + (M.full ? "next paycheck" : "paycheck on " + nd) + ", then set it aside.") :
+      "Not this month. After your bills and the spending left in your plan, there’s nothing extra. That’s okay. Next month is a fresh start.";
+  }
   // the "when will I get there" block on a savings goal card
   function goalPlanHtml(g) {
     if (!(g.target > 0)) return '<p class="gplan">Set a goal amount (tap <b>Edit goal</b>) to see when you’ll reach it.</p>';
@@ -5874,8 +5888,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     if (SP.month) {
       var M = SP.month, nd = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(M.payday);
       h += '<div class="spmonth"><div class="spmhead"><div><small>Realistic to save this month</small><b>' + f0(M.real) + "</b></div><p>" +
-        (M.real > 0 ? (M.now >= M.real ? "You can set this aside <b>today</b> and still cover your bills and planned spending." : M.now > 0 ? "Set aside <b>" + f0(M.now) + " today</b>, and the rest after your " + (M.full ? "next paycheck" : "paycheck on " + nd) + "." : "Wait for your " + (M.full ? "next paycheck" : "paycheck on " + nd) + ", then set it aside.") :
-          "Not this month. After your bills and the spending left in your plan, there’s nothing extra. That’s okay. Next month is a fresh start.") + "</p></div>" +
+        realNote(M) + "</p></div>" +
         '<div class="spmmath"><span>' + f0(M.left) + " in hand</span><span>+ " + f0(M.comingIn) + " still coming</span><span>− " + f0(M.billsLeft) + " bills left</span><span>− " + f0(M.flexLeft) + " planned spending left</span><span>− " + f0(M.cushion) + " cushion</span></div>" +
         (M.room.length ? '<p class="sub" style="margin:8px 0 0">Want more? ' + M.room.map(function (r) { var half = Math.floor(r.left / 2 / 5) * 5; return "Spending " + f0(half) + " less on <b>" + esc(r.n) + "</b> adds " + f0(half); }).join(" · ") + ".</p>" : "") + "</div>";
     }
