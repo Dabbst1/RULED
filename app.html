@@ -1430,7 +1430,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     <div id="homeBody"></div>
   </section>
   <div id="sheetView">
-  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="projectYear" title="Use this month's plan for the rest of the year">Project my year</button></div>
+  <div class="picker" id="picker" hidden><select id="selMonth" aria-label="Month"></select><select id="selYear" aria-label="Year"></select><button type="button" class="tab" id="copyPrev" title="Fill this month with last month's amounts">Copy last month</button><button type="button" class="tab" id="projectYear" title="Use this month's plan for the rest of the year">Project my year</button><button type="button" class="tab" id="openAnnual" title="See and change your plan for every month of the year">Full year plan</button></div>
   <h1 id="title"></h1>
   <p class="sub" id="hint"></p>
   <div class="seg viewfloat" id="viewFloat" hidden role="group" aria-label="Switch between Plan and Actual" title="Tap to switch between Plan and Actual"><button type="button" class="on" data-view="plan">Plan</button><button type="button" data-view="actual">Actual</button></div>
@@ -8227,6 +8227,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* ---------- copy last month ---------- */
   /* ---------- project this month's plan across the year ---------- */
   function hasAmounts(doc) { return !!doc && Object.keys(doc).some(function (k) { return k.slice(0, 2) !== "a:" && k.slice(0, 2) !== "__" && typeof doc[k] === "number" && doc[k] !== 0 && !/^Q\d+$/.test(k); }); }
+  $("openAnnual").addEventListener("click", function () { flushSave(); goTool("yearly-projection"); });   /* the Annual budget, one tap from the month (it also stays in Tools) */
   $("projectYear").addEventListener("click", function () {
     if (!layout || !layout.months || view === "actual") return;
     if (!Object.keys(inputs).some(function (k) { return inputs[k] !== 0; })) { setStatus("Fill in this month’s plan first, then project your year.", true); return; }
