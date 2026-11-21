@@ -2071,6 +2071,21 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("sheet").addEventListener("focusin", function (e) { if (view === "actual" && e.target.classList && e.target.classList.contains("in")) showTip(e.target.closest("tr")); });
   $("planTip").addEventListener("mousedown", function (e) { e.preventDefault(); });
   window.addEventListener("scroll", function () { $("planTip").hidden = true; tipRow = null; }, true);
+  /* what this row's bank, + Log and receipt transactions put in each of its boxes (Paycheck 1 / Paycheck 2) */
+  function rowRec(row, ad) {
+    var r = {}; ad.forEach(function (a) { r[a] = 0; });
+    var nmE = row && row.querySelector("input.nm"), nm = nmE ? nmE.value : ""; if (!nm || !Array.isArray(spend)) return r;
+    var k = storageKey();
+    spend.forEach(function (e) { if (e.key !== k || (e.kind !== "ex" && e.kind !== "in") || nk(e.cat) !== nk(nm)) return; var a = ad[Math.min(e.col || 0, ad.length - 1)]; r[a] = Math.round((r[a] + e.a) * 100) / 100; });
+    return r;
+  }
+  /* take an amount out of a row: first what sits above each box's own transactions (what was typed), then the rest from the largest.
+     Taking it from the box that holds a bank payment would leave that payment short, and the bank sync would put it right back. */
+  function takeOut(ad, amt, rec) {
+    var left = Math.round(amt * 100) / 100;
+    ad.forEach(function (a) { if (left < 0.005) return; var cur = +actual[a] || 0, tk = Math.min(Math.max(0, cur - (rec[a] || 0)), left); if (tk > 0) { actual[a] = Math.round((cur - tk) * 100) / 100; left = Math.round((left - tk) * 100) / 100; } });
+    if (left >= 0.005) ad.slice().sort(function (a, b) { return (+actual[b] || 0) - (+actual[a] || 0); }).forEach(function (a) { if (left < 0.005) return; var c0 = +actual[a] || 0, tk = Math.min(c0, left); actual[a] = Math.round((c0 - tk) * 100) / 100; left = Math.round((left - tk) * 100) / 100; });
+  }
   $("planTip").addEventListener("click", function (e) {
     var ur = e.target.closest && e.target.closest("[data-userec]");
     if (ur && tipRow) {   // set this category to exactly what your bank, + Log and receipts recorded
@@ -2079,7 +2094,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       bx.forEach(function (el) { boxAddrs(el).forEach(function (a) { ad.push(a); }); });
       var have = ad.reduce(function (z, a) { return z + (+actual[a] || 0); }, 0), diff = Math.round((want - have) * 100) / 100;
       if (diff > 0) actual[ad[0]] = Math.round(((+actual[ad[0]] || 0) + diff) * 100) / 100;
-      else { var lft = -diff; ad.slice().sort(function (a, b) { return (+actual[b] || 0) - (+actual[a] || 0); }).forEach(function (a) { if (lft < 0.005) return; var c0 = +actual[a] || 0, tk = Math.min(c0, lft); actual[a] = Math.round((c0 - tk) * 100) / 100; lft = Math.round((lft - tk) * 100) / 100; }); }
+      else takeOut(ad, -diff, rowRec(tipRow, ad));
       bx.forEach(function (el) { el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(actual[el.getAttribute("data-a")] || 0); });
       $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave();
       toast("<b>" + esc(nmv || "This category") + " set to " + money.format(want) + "</b><br>Exactly what your bank and Log recorded. Tap <b>Undo</b> to go back.");
@@ -2090,10 +2105,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var amt = +ux.getAttribute("data-untype"), nmEl = tipRow.querySelector("input.nm"), nm = nmEl ? nmEl.value : "", left = amt;
       var boxes = Array.prototype.slice.call(tipRow.querySelectorAll("input.in")), addrs = [];
       boxes.forEach(function (el) { boxAddrs(el).forEach(function (a) { addrs.push(a); }); });
-      addrs.sort(function (a, b) { return (+actual[b] || 0) - (+actual[a] || 0); }).forEach(function (a) {
-        if (left < 0.005) return; var cur = +actual[a] || 0, take = Math.min(cur, left);
-        actual[a] = Math.round((cur - take) * 100) / 100; left = Math.round((left - take) * 100) / 100;
-      });
+      takeOut(addrs, left, rowRec(tipRow, addrs));
       boxes.forEach(function (el) { el.value = el.classList.contains("fullin") ? fmt(fullSum(el)) : fmt(actual[el.getAttribute("data-a")] || 0); });
       $("planTip").hidden = true; tipRow = null; schedule(); scheduleSave();
       toast("<b>Removed " + money.format(amt) + "</b><br>The amount typed into " + esc(nm || "this category") + " is gone; what came from your bank stays. Tap <b>Undo</b> to bring it back.");
@@ -2209,6 +2221,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("sheet").addEventListener("input", function (e) {
     var t = e.target; if (!t.classList || !t.classList.contains("fullin")) return;
     var x = parseMoney(t.value), r = typeof t._ratio === "number" ? t._ratio : fullRatio(t), b = Math.round(x * r * 100) / 100;
+    if (view === "actual") {   // each paycheck keeps its own bank payments; only the amount above them is yours to place
+      var fb = t.getAttribute("data-fb"), fc = t.getAttribute("data-fc"), rc = rowRec(t.closest("tr"), [fb, fc]), tr = Math.round((rc[fb] + rc[fc]) * 100) / 100;
+      if (tr > 0 && x >= tr - 0.004) {
+        var extra = Math.round((x - tr) * 100) / 100, toC = ((+actual[fc] || 0) - rc[fc]) > ((+actual[fb] || 0) - rc[fb]) + 0.004;
+        actual[fb] = Math.round((rc[fb] + (toC ? 0 : extra)) * 100) / 100; actual[fc] = Math.round((rc[fc] + (toC ? extra : 0)) * 100) / 100;
+        schedule(); scheduleSave(); return;
+      }
+    }
     vals()[t.getAttribute("data-fb")] = b; vals()[t.getAttribute("data-fc")] = Math.round((x - b) * 100) / 100;
     schedule(); scheduleSave();
   });
