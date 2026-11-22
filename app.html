@@ -4061,8 +4061,13 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     else if (a === "paid") { var d = debtState.debts.filter(function (x) { return x.id === id; })[0]; if (d) { d.balance = 0; pushDebtToGoal(d); debtEditing = null; saveDebts(); renderDebt(); } }
     else if (a === "usebudget" && budgetLeft > 0) { debtState.extra = Math.round(budgetLeft * 100) / 100; saveDebts(); renderDebt(); }
   });
-  var debtResize = null;
-  window.addEventListener("resize", function () { if ($("debtView").hidden) return; clearTimeout(debtResize); debtResize = setTimeout(renderDebt, 200); });
+  // Redraw the charts only when the screen gets wider or narrower. On phones the address bar sliding
+  // in and out while you scroll fires "resize" with a new height only; redrawing then made the page jump.
+  var debtResize = null, debtW = window.innerWidth;
+  window.addEventListener("resize", function () {
+    if ($("debtView").hidden || window.innerWidth === debtW) return;
+    debtW = window.innerWidth; clearTimeout(debtResize); debtResize = setTimeout(renderDebt, 200);
+  });
 
   /* ---------- bank linking (Stripe Financial Connections, read-only) ---------- */
   var bankData = { accounts: [], review: [], loading: false }, bankBusy = false, bankMsg = "", bankChoice = {};
