@@ -904,7 +904,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
 .recon{margin:12px 0 16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#F7FAFF}
 .rhist{margin-top:12px}.rhist summary{cursor:pointer;font-weight:700}.rhist .rrow b small{display:block;font-weight:400;text-align:right}.recon .dh3{margin:0 0 8px}.rtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .rtop small{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}.rtop b{font-size:20px;font-variant-numeric:tabular-nums}
-.rtot{display:flex;flex-wrap:wrap;gap:4px 18px;margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px}.rtot>b{flex:1 1 100%}.rtot small{flex:1 1 100%;color:var(--muted)}.rhow summary{cursor:pointer;font-weight:600;color:var(--blue);margin:6px 0}.rlist{margin-top:10px;border-top:1px solid var(--line)}
+.rtot{display:flex;flex-wrap:wrap;gap:4px 18px;margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px}.rtot>b{flex:1 1 100%}.rtot small{flex:1 1 100%;color:var(--muted)}.rwhy{margin:10px 0;padding:12px 14px;border:1px solid #f3c98b;background:#fff8ec;border-radius:12px}.rwhy h4{margin:0 0 6px}.rwhy p{margin:4px 0;font-size:14px;line-height:1.5}.rwhyrow+.rwhyrow{border-top:1px dashed #f3c98b;margin-top:8px;padding-top:8px}.rfix{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 0}.rfix .btn{width:auto;min-height:38px;padding:6px 14px;font-size:14px}.rfix .linkbtn{width:auto}.rmatch{color:#8a5a00;font-style:normal}.rhow summary{cursor:pointer;font-weight:600;color:var(--blue);margin:6px 0}.rlist{margin-top:10px;border-top:1px solid var(--line)}
 .rrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #E4ECFA;font-size:14px}
 .rrow b{white-space:nowrap;font-variant-numeric:tabular-nums}.rrow small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
 .rrow.rest span{color:var(--muted)}.rrow.tot{border-bottom:0;font-weight:700}
@@ -5212,10 +5212,77 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     var c2 = function (x) { return Math.round(x * 100) / 100; }, acts = {};
     Object.keys(R.acts || {}).forEach(function (k) { acts[k] = c2(R.acts[k]); });
     var last = null; for (var i = reconHist.length - 1; i >= 0; i--) if (reconHist[i].m === R.ym) { last = reconHist[i]; break; }
-    if (last && last.bank === c2(R.avail) && last.net === c2(R.net) && JSON.stringify(last.acts) === JSON.stringify(acts)) return;
-    reconHist.push({ t: new Date().toISOString(), m: R.ym, bank: c2(R.avail), net: c2(R.net), acts: acts });
+    if (last && last.bank === c2(R.avail) && last.net === c2(R.net) && JSON.stringify(last.acts) === JSON.stringify(acts) && last.off === c2(R.rest || 0)) return;
+    var snap = { t: new Date().toISOString(), m: R.ym, bank: c2(R.avail), net: c2(R.net), acts: acts, off: c2(R.rest || 0) };
+    reconHist.push(snap);
+    if (Math.abs(snap.off) >= 0.005) { var w = reconWhy(R)[0]; if (w && w.txt) snap.why = w.txt.replace(/<[^>]+>/g, ""); }
     if (reconHist.length > 300) reconHist = reconHist.slice(-300);
     reconSave();
+  }
+  /* Why isn't every dollar accounted for? Look for the exact transaction or change that matches the amount,
+     instead of leaving you to read the history and guess. */
+  function reconWhy(R) {
+    var D = Math.round((R.rest || 0) * 100) / 100; if (Math.abs(D) < 0.005) return [];
+    var c2 = function (x) { return Math.round(x * 100) / 100; }, same = function (a, b) { return Math.abs(c2(a) - c2(b)) < 0.01; };
+    var cands = [];
+    (R.rows || []).forEach(function (e) {   // bank money that isn't in your Actual numbers
+      if (e.src !== "bank" || e.held || e.fromHold || !(e.kind === "skip" || e.kind === "none")) return;
+      if (goneByBank(e) || /^hold released|before you linked|on record only/.test(e.why || "")) return;
+      var isIn = (e.dir || "out") === "in", sg = suggFor(e, R);
+      cands.push({ eff: isIn ? e.a : -e.a, e: e,
+        txt: "<b>" + money.format(e.a) + " " + esc(e.s) + "</b> (" + dayLbl(e.d) + ") " + (isIn ? "came into" : "went out of") + " your bank, but it’s " + (e.kind === "skip" ? "marked <b>Not counted</b>" : "waiting for a category") + ", so it isn’t in your Actual numbers.",
+        picks: isIn ? (R.incs || []).map(function (c) { return "in:" + c.name; }) : (sg ? sg.picks : []) });
+    });
+    (R.typedList || []).forEach(function (t) {   // typed amounts treated as outside this account
+      if (t.dup || !t.d) return;
+      cands.push({ eff: -t.d, typed: t.n, txt: "You typed <b>" + money.format(Math.abs(t.d)) + "</b> into <b>" + esc(t.n) + "</b>, and Monerem treats it as money that didn’t go through this account. If it did, mark it <b>It went through this account</b> under How it adds up." });
+    });
+    // the most recent Actual change of exactly this amount with no bank change at the same moment
+    var L = reconHist.filter(function (h) { return h.m === R.ym; }), chg = null;
+    for (var i = L.length - 1; i > 0 && !chg; i--) {
+      var h = L[i], pv = L[i - 1]; if (pv.bank !== h.bank) continue;
+      Object.keys(Object.assign({}, pv.acts, h.acts)).some(function (k) { var a = (pv.acts || {})[k] || 0, b = (h.acts || {})[k] || 0; if (Math.abs(a - b) >= 0.005 && same(Math.abs(a - b), Math.abs(D))) { chg = { k: k, a: a, b: b, t: h.t }; return true; } return false; });
+    }
+    var when = chg ? new Date(chg.t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+    var chgTxt = chg ? "On " + when + ", <b>" + esc(chg.k) + "</b> in Actual went from " + money.format(chg.a) + " to " + money.format(chg.b) + ", and nothing in your bank changed then." : "";
+    var out = [];
+    cands.filter(function (c) { return same(c.eff, D); }).forEach(function (c) { out.push({ txt: c.txt + " That’s exactly the " + money.format(Math.abs(D)) + ".", e: c.e, picks: c.picks }); });
+    if (!out.length) {   // two together that make up the amount
+      for (var a = 0; a < cands.length && !out.length; a++) for (var b = a + 1; b < cands.length && !out.length; b++)
+        if (same(cands[a].eff + cands[b].eff, D)) { out.push({ txt: cands[a].txt + " And " + cands[b].txt.charAt(0).toLowerCase() + cands[b].txt.slice(1) + " Together that’s the " + money.format(Math.abs(D)) + ".", e: cands[a].e, picks: cands[a].picks }); if (cands[b].e) out.push({ txt: "", e: cands[b].e, picks: cands[b].picks }); }
+    }
+    if (chg) { if (out.length && out[0].txt) out[0].txt = chgTxt + " " + out[0].txt; else out.unshift({ txt: chgTxt + " That change is the " + money.format(Math.abs(D)) + ". If it was a mistake, set " + esc(chg.k) + " back to " + money.format(chg.a) + "." }); }
+    if (!out.length) out.push({ txt: "No single transaction or change matches " + money.format(Math.abs(D)) + ". Compare the deposits and withdrawals below with your bank app: the one that differs is the missing or extra transaction." });
+    return out;
+  }
+  function matchFor(amt, R, cat) {
+    var A = Math.abs(Math.round(amt * 100) / 100); if (A < 0.005) return null;
+    var hit = (R.rows || []).filter(function (e) { return e.src === "bank" && !e.held && Math.abs(e.a - A) < 0.01 && !goneByBank(e); });
+    var nc = hit.filter(function (e) { return e.kind === "skip" || e.kind === "none"; });
+    if (nc.length) { var e = nc[0], isIn = (e.dir || "out") === "in"; return { e: e, picks: isIn ? (R.incs || []).map(function (c) { return "in:" + c.name; }) : ((suggFor(e, R) || {}).picks || []), txt: "<b>" + money.format(e.a) + " " + esc(e.s) + "</b> (" + dayLbl(e.d) + ") " + (isIn ? "came into your bank" : "left your bank") + " but " + (e.kind === "skip" ? "is marked <b>Not counted</b>" : "is waiting for a category") + "." }; }
+    var inCat = cat ? hit.filter(function (e) { return nk(e.cat) === nk(cat); }) : [];
+    if (inCat.length) return { e: null, txt: "<b>" + esc(inCat[0].s) + "</b> (" + dayLbl(inCat[0].d) + ", " + money.format(inCat[0].a) + ") is counted in " + esc(cat) + "." };
+    if (hit.length) return { e: null, txt: "<b>" + esc(hit[0].s) + "</b> (" + dayLbl(hit[0].d) + ", " + money.format(hit[0].a) + ") is counted in " + esc(hit[0].cat || "your budget") + "." };
+    return null;
+  }
+  /* even when every dollar is accounted for, a recent change can still be wrong: a category dropped, and a deposit of
+     exactly that amount isn't counted. Point at it. */
+  function reconLookout(R) {
+    var L = reconHist.filter(function (h) { return h.m === R.ym; }); if (L.length < 2) return "";
+    var h = L[L.length - 1], pv = L[L.length - 2], out = [];
+    Object.keys(Object.assign({}, pv.acts, h.acts)).forEach(function (k) {
+      var a = (pv.acts || {})[k] || 0, b = (h.acts || {})[k] || 0, d = Math.round((b - a) * 100) / 100; if (Math.abs(d) < 0.005) return;
+      var mt = matchFor(d, R, k); if (!mt || !mt.e) return;
+      out.push({ txt: "<b>" + esc(k) + "</b> in Actual went " + (d < 0 ? "down" : "up") + " by " + money.format(Math.abs(d)) + ". " + mt.txt + " If that’s the money you meant, count it there.", e: mt.e, picks: mt.picks });
+    });
+    if (!out.length) return "";
+    return '<div class="rwhy"><h4 class="admh4">Worth a look</h4>' + out.map(function (w) { return '<div class="rwhyrow"><p>' + w.txt + "</p>" + (w.picks && w.picks.length ? '<p class="rfix">' + w.picks.slice(0, 4).map(function (pk) { return '<button type="button" class="btn ghost" data-sugg="' + esc(w.e.id) + '" data-pick="' + esc(pk) + '">Count it in ' + esc(pk.slice(3)) + "</button>"; }).join(" ") + ' <button type="button" class="linkbtn" data-suggno="' + esc(w.e.id) + '">Leave it</button></p>' : "") + "</div>"; }).join("") + "</div>";
+  }
+  function reconWhyHtml(R) {
+    var W = reconWhy(R); if (!W.length) return "";
+    return '<div class="rwhy"><h4 class="admh4">Why it’s off by ' + money.format(Math.abs(R.rest)) + "</h4>" + W.map(function (w) {
+      return '<div class="rwhyrow">' + (w.txt ? "<p>" + w.txt + "</p>" : "") + (w.e && w.picks && w.picks.length ? '<p class="rfix">' + (w.txt ? "" : "<b>" + esc(w.e.s) + "</b> ") + w.picks.slice(0, 4).map(function (pk) { return '<button type="button" class="btn ghost" data-sugg="' + esc(w.e.id) + '" data-pick="' + esc(pk) + '">Count it in ' + esc(pk.slice(3)) + "</button>"; }).join(" ") + "</p>" : "") + "</div>";
+    }).join("") + "</div>";
   }
   function reconHistHtml(R) {
     var L = reconHist.filter(function (h) { return h.m === R.ym; });
@@ -5224,11 +5291,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     for (var i = L.length - 1; i >= 0 && rows.length < 20; i--) {
       var h = L[i], p = i > 0 ? L[i - 1] : null, ch = [];
       if (p) {
-        if (p.bank !== h.bank) ch.push("Bank balance " + m(p.bank) + " → " + m(h.bank));
-        Object.keys(Object.assign({}, p.acts, h.acts)).forEach(function (k) { var a = (p.acts || {})[k] || 0, b = (h.acts || {})[k] || 0; if (Math.abs(a - b) >= 0.005) ch.push(esc(k) + " in Actual " + m(a) + " → " + m(b)); });
+        if (p.bank !== h.bank) { var mb = matchFor(h.bank - p.bank, R); ch.push("Bank balance " + m(p.bank) + " → " + m(h.bank) + (mb ? '<br><i class="rmatch">Matches: ' + mb.txt + "</i>" : "")); }
+        Object.keys(Object.assign({}, p.acts, h.acts)).forEach(function (k) { var a = (p.acts || {})[k] || 0, b = (h.acts || {})[k] || 0; if (Math.abs(a - b) >= 0.005) { var mt = p.bank === h.bank ? matchFor(b - a, R, k) : null; ch.push(esc(k) + " in Actual " + m(a) + " → " + m(b) + (mt ? '<br><i class="rmatch">Matches: ' + mt.txt + "</i>" : p.bank === h.bank ? '<br><i class="rmatch">No bank transaction of ' + m(Math.abs(b - a)) + " behind this change: typed or edited by hand.</i>" : "")); } });
       }
-      var gap = Math.round((h.bank - h.net) * 100) / 100;
-      rows.push('<div class="rrow"><span>' + esc(new Date(h.t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) + "<small>" + (p ? (ch.length ? ch.join("<br>") : "No change") : "First record") + "</small></span><b>" + (Math.abs(gap) < 0.005 ? "Even" : m(Math.abs(gap)) + " off") + "<small>bank " + m(h.bank) + " · net " + m(h.net) + "</small></b></div>");
+      var gap = typeof h.off === "number" ? h.off : Math.round((h.bank - h.net) * 100) / 100;
+      if (h.why) ch.push("<i>Why: " + esc(h.why) + "</i>");
+      rows.push('<div class="rrow"><span>' + esc(new Date(h.t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) + "<small>" + (p ? (ch.length ? ch.join("<br>") : "No change") : "First record") + "</small></span><b>" + (Math.abs(gap) < 0.005 ? (typeof h.off === "number" ? "All accounted for" : "Even") : m(Math.abs(gap)) + (typeof h.off === "number" ? " not accounted for" : " off")) + "<small>bank " + m(h.bank) + " · net " + m(h.net) + "</small></b></div>");
     }
     return '<details class="rhist"><summary>History of this check (' + L.length + ")</summary>" +
       '<p class="sub">Each time your bank balance or an Actual amount changes, Monerem records it here, so you can see what moved and when.</p><div class="rlist">' + rows.join("") + "</div></details>";
@@ -5443,6 +5511,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var ok = Math.abs(rest) < 0.005, record = Math.round((avail - rest) * 100) / 100;
       var h = '<h3 class="dh3">Check against my bank</h3><div class="rtop"><div><small>Your bank, available</small><b>' + money.format(avail) + "</b></div><div><small>Monerem’s record adds up to</small><b>" + money.format(record) + "</b></div><div><small>Not accounted for</small><b>" + (ok ? '<span class="stgood">None ✓</span>' : money.format(Math.abs(rest))) + "</b></div></div>";
       h += ok ? '<p class="rok">&#10003; Every dollar in your bank is accounted for.</p>' : "";
+      if (!ok) h += reconWhyHtml(R);   // name the exact transaction or change behind the difference
+      else h += reconLookout(R);
       if (dups) h += '<p class="rwarn">' + dups + (dups === 1 ? " purchase might be" : " purchases might be") + " counted twice. Answer the “Same purchase?” question" + (dups === 1 ? "" : "s") + " below.</p>";
       {
         h += (ok ? '<details class="rhow"><summary>How it adds up</summary>' : "") + '<p class="sub" style="margin:4px 0 6px">Your Actual numbers cover only this month, and they can include money that never touched this account. These lines show how they connect to what your bank holds.</p><div class="rlist"><div class="rrow"><span>This month’s income minus spending (your Actual)</span><b>' + money.format(net) + "</b></div>" +
@@ -5488,7 +5558,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       h += "</div>";
       if (R.start !== null && Math.abs(R.rest) < 0.005) h += '<p class="rok">&#10003; Every dollar in your bank is accounted for.</p>';
       else if (R.start === null) h += '<form class="rstart" id="actStartF"><label>Your balance on ' + R.mon + ' 1<span class="wizmoney"><i>$</i><input id="actStartIn" inputmode="decimal" autocomplete="off" placeholder="from your statement"></span></label><button class="btn" type="submit">Save</button></form>';
-      else h += '<p class="rwarn">Off by ' + money.format(Math.abs(R.rest)) + '. Usually a charge your bank hasn’t sent yet, something counted twice, or a typo. Open <b>Bank</b> → <b>Check against my bank</b> to find it.</p>';
+      else h += reconWhyHtml(R);   // the exact transaction or change behind it, with the fix
       box.innerHTML = h;
     }).catch(function () { box.hidden = true; });
   }
