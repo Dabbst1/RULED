@@ -4866,6 +4866,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
               var dd = Math.round((tw.a - e.a) * 100) / 100; if (dd) apply(e, Math.abs(dd), dd > 0 ? 1 : -1);
               drop[tw.id] = tw;
               e.id = tw.id; e.a = tw.a; e.d = tw.d; e.s = tw.s; e.raw = tw.raw; e.pend = false; e.fromPend = oldId; if (e.kind === "none") { e.kind = tw.kind; e.cat = tw.cat; }
+              if (e.mv && bankKey(e) === e.key) delete e.mv;   // it posted in the month you chose: nothing left to explain
               holdName(e); out.posted.push(e.id); return;
             }
             if (e.kind === "none") { if (act.v) { e.kind = "skip"; e.why = gone; out.voided.push(e.id); } else e.a = act.na; e.pend = act.v || act.post ? false : e.pend; return; }   // never placed: nothing to fix in Actual
@@ -5692,7 +5693,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     };
     // which month's budget it counts in: the month it came out (the usual), or the one before or after it
     var moPick = function (e) {
-      if ((e.kind !== "ex" && e.kind !== "in") || e.pend || !/^\d{4}-\d{2}-\d{2}$/.test(e.d || "")) return "";
+      if ((e.kind !== "ex" && e.kind !== "in") || !/^\d{4}-\d{2}-\d{2}$/.test(e.d || "")) return "";
       var home = bankKey(e), ks = [keyShift(home, -1), home, keyShift(home, 1)]; if (ks.indexOf(e.key) < 0) ks.push(e.key);
       return '<label class="smo">Counts in <select data-spendmo="' + esc(e.id) + '" aria-label="Budget month for ' + esc(e.s) + '">' + ks.map(function (k) { return '<option value="' + k + '"' + (k === e.key ? " selected" : "") + ">" + mLabel(k) + (k === home ? " (paid)" : "") + "</option>"; }).join("") + "</select></label>";
     };
