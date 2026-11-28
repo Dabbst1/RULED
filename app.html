@@ -771,6 +771,7 @@ details.panel summary{cursor:pointer;list-style-position:outside}
 .srow.wait{background:#FFF8EB;margin:0 -10px;padding:10px;border-radius:10px;border-top:0}
 .srow.off .ss b,.srow.off .sa{color:var(--muted);font-weight:500}
 .stot{margin:12px 0 4px;font-size:15px}
+.srow .smo{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);white-space:nowrap}.srow .smo select{font-size:13px;padding:5px 6px}
 #spendMon{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 #planTip h4.tipspent{margin:10px 0 4px;padding-top:8px;border-top:1px solid #E1EEF0}
 @media (max-width:700px){.srow{grid-template-columns:52px 1fr auto;gap:8px}.srow .sc{grid-column:1/-1}.srow .sc:empty{display:none}}
@@ -4744,6 +4745,19 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
     return out === out.toUpperCase() ? out.toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); }) : out;
   }
   function monthKeyOf(d) { return "monthly-budget:" + d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+  /* Two months per transaction: the month the money moved at the bank (its date), and the budget month it counts in (e.key).
+     They're the same unless you chose to count it in another month (like next month's rent paid early): then e.mv is set. */
+  function bankKey(e) { return e && /^\d{4}-\d{2}-\d{2}$/.test(e.d || "") ? monthKeyOf(parseD(e.d)) : e.key; }
+  function keyShift(key, n) { var m = /(\d{4})-(\d{2})$/.exec(key || ""); return m ? monthKeyOf(new Date(+m[1], +m[2] - 1 + n, 1)) : key; }
+  function keyMonth(key) { var m = /(\d{4})-(\d{2})$/.exec(key || ""); return m ? MONTHS[+m[2] - 1] : ""; }
+  // add (sign 1) or take out (sign -1) one record entry's amount in a month's Actual boxes
+  function entryApply(s, e, amt, sign) {
+    if (e.kind === "ex") return rcApply(s, e.cat, e.col || 0, amt, sign) !== null;
+    if (e.kind !== "in") return false;
+    var c = activeEntries(s.Lm, s.st).income.filter(function (x) { return nk(x.name) === nk(e.cat); })[0]; if (!c) return false;
+    var a = c.addrs[Math.min(e.col || 0, c.addrs.length - 1)], cur = typeof s.doc["a:" + a] === "number" ? s.doc["a:" + a] : 0, v = Math.round((cur + sign * amt) * 100) / 100;
+    s.doc["a:" + a] = v < 0 ? 0 : v; return true;
+  }
   function spendPut(e) { var old = spendFind(e.id); if (old) Object.assign(old, e); else spend.push(e); }
   // the month table that's open on screen reloads after a background change, unless you're mid-edit
   function refreshOpenMonth(keys) {
@@ -4799,7 +4813,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   /* a pending purchase was counted right away; now it posted (maybe for a different amount) or the bank dropped it */
   function settlePending(list, full) {
     var byId = {}, out = { posted: [], voided: [], touched: [] }; (list || []).forEach(function (t) { if (t && t.id) byId[t.id] = t; });
-    var months = {}, now = Date.now(), taken = {}, drop = {};
+    var months = {}, now = Date.now(), taken = {}, drop = {}, elsewhere = [];
     // older versions kept the pending line next to its posted twin, marked "canceled". Those lines are already settled
     // (their amounts were taken back out), so they just go: the posted line is the one record of the payment.
     spend = spend.filter(function (e) { return !(e.kind === "skip" && (e.why === TWIN_WHY || e.why === WAIT_WHY)); });
@@ -4836,6 +4850,14 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
                  posted line goes away. The bank may do it as two transactions; Monerem records one payment. */
               var tw = act.twin, oldId = e.id;
               out.voided.push(oldId);
+              if (e.mv && e.kind !== "none" && tw.key !== e.key) {   // you chose to count this one in another month: the posted one stays there too
+                if (tw.kind === "ex" || tw.kind === "in") elsewhere.push(Object.assign({}, tw));   // its own count in the bank's month comes back out below
+                var d2 = Math.round((tw.a - e.a) * 100) / 100; if (d2) apply(e, Math.abs(d2), d2 > 0 ? 1 : -1);
+                drop[tw.id] = tw;
+                e.id = tw.id; e.a = tw.a; e.d = tw.d; e.s = tw.s; e.raw = tw.raw; e.pend = false; e.fromPend = oldId;
+                if (bankKey(e) === e.key) delete e.mv;
+                holdName(e); out.posted.push(e.id); return;
+              }
               if (e.kind === "none" || tw.key !== e.key) {   // pending was never counted (or the posted one landed in another month): keep the posted line as is
                 if (e.kind !== "none") apply(e, e.a, -1);
                 drop[oldId] = e; tw.fromPend = oldId; out.posted.push(tw.id); return;
@@ -4853,6 +4875,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
           });
           if (changed) { out.touched.push(k); delete s.doc.__filled; return doSave(s.key, s.doc); }
         });
+      });
+    });
+    elsewhere.forEach(function (tw) {   // posted copies counted in their own month while the payment counts in the month you chose
+      chain = chain.then(function () {
+        var m = /(\d{4})-(\d{2})$/.exec(tw.key || ""); if (!m) return;
+        return rcMonthState(+m[1], +m[2] - 1).then(function (s) { if (!entryApply(s, tw, tw.a, -1)) return; out.touched.push(s.key); delete s.doc.__filled; return doSave(s.key, s.doc); });
       });
     });
     return chain.then(function () { spend = spend.filter(function (e) { return drop[e.id] !== e; }); return out; });
@@ -5141,6 +5169,25 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   var bankQ = Promise.resolve();
   function inBankQ(fn) { var p = bankQ.then(fn, fn); bankQ = p.then(function () {}, function () {}); return p; }
   function spendRecatQ(id, pick) { return inBankQ(function () { return spendRecat(id, pick); }); }
+  /* Count a transaction in another month's budget (next month's rent paid early, or last month's bill paid late).
+     The bank record keeps its real date; only the budget month changes. It leaves this month's Actual and joins that month's. */
+  function spendMoveQ(id, toKey) { return inBankQ(function () { return spendMove(id, toKey); }); }
+  function spendMove(id, toKey) {
+    var e = spendFind(id); if (!e || (e.kind !== "ex" && e.kind !== "in") || !toKey || toKey === e.key) return Promise.resolve();
+    var from = /(\d{4})-(\d{2})$/.exec(e.key || ""), to = /(\d{4})-(\d{2})$/.exec(toKey); if (!from || !to) return Promise.resolve();
+    try { flushSave(); } catch (x) {}
+    // which paycheck column: its own when it goes back home; the 1st for an early payment; the 2nd for a late one
+    var home = bankKey(e), col = toKey === home ? (parseD(e.d).getDate() <= 15 ? 0 : 1) : toKey > home ? 0 : 1;
+    return rcMonthState(+to[1], +to[2] - 1).then(function (s2) {
+      if (!entryApply(s2, Object.assign({}, e, { col: col }), e.a, 1)) throw new Error("nocat");
+      return rcMonthState(+from[1], +from[2] - 1).then(function (s1) {
+        entryApply(s1, e, e.a, -1);
+        delete s1.doc.__filled; delete s2.doc.__filled;
+        var oldKey = e.key; e.key = toKey; e.col = col; if (toKey === home) delete e.mv; else e.mv = 1;
+        return doSave(s1.key, s1.doc).then(function () { return doSave(s2.key, s2.doc); }).then(spendSave).then(function () { refreshOpenMonth([oldKey, toKey]); });
+      });
+    });
+  }
   function spendRecat(id, pick) {
     var e = spendFind(id); if (!e) return Promise.resolve();
     var m = /(\d{4})-(\d{2})$/.exec(e.key || ""); if (!m) return Promise.resolve();
@@ -5325,18 +5372,25 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       var net = v.D35, hid = ((st.doc.__meta || {}).hidden || []).map(Number);   // net is recomputed below from the rows themselves
       var linkedIds = accts.map(function (a) { return a.id; });
       var rows = spend.filter(function (e) { return e.key === key && (!e.acct || e.src !== "bank" || linkedIds.indexOf(e.acct) >= 0); });   // an unlinked account's transactions aren't this bank's money
+      // the bank's own view: everything that moved in or out this month, whichever month's budget it counts in
+      var bankRows = spend.filter(function (e) { return bankKey(e) === key && (!e.acct || e.src !== "bank" || linkedIds.indexOf(e.acct) >= 0); });
       var G = { skipIn: [], skipOut: [], waitIn: [], waitOut: [], card: [], cardIn: [], handOut: [], handIn: [] }, pendOut = 0, recBy = {};
       rows.forEach(function (e) {
         var isIn = e.kind === "in" || (e.dir === "in" && e.kind !== "ex");
         if ((e.kind === "in" || e.kind === "ex") && e.cat) recBy[nk(e.cat)] = (recBy[nk(e.cat)] || 0) + e.a;
         if (e.src === "bank") {
           if (e.kind === "skip" && goneByBank(e)) return;
-          if (e.pend && !isIn && !credit[e.acct]) pendOut += e.a;
           if (credit[e.acct]) { if (e.kind === "ex") G.card.push(e); else if (e.kind === "in") G.cardIn.push(e); return; }
           if (e.kind === "skip") (isIn ? G.skipIn : G.skipOut).push(e);
           else if (e.kind === "none") (isIn ? G.waitIn : G.waitOut).push(e);
         } else if (e.kind === "ex") G.handOut.push(e); else if (e.kind === "in") G.handIn.push(e);
       });
+      bankRows.forEach(function (e) { var isIn = e.kind === "in" || (e.dir === "in" && e.kind !== "ex"); if (e.src === "bank" && !(e.kind === "skip" && goneByBank(e)) && e.pend && !isIn && !credit[e.acct]) pendOut += e.a; });
+      // counted in another month on purpose (next month's rent paid early, a late bill): the bank and the budget each see it in a different month
+      var cashOf = function (e) { return e.src === "bank" && (cashIds[e.acct] || (!e.acct && !Object.keys(credit).length)); };
+      var aheadL = bankRows.filter(function (e) { return e.mv && e.key !== key && cashOf(e) && (e.kind === "in" || e.kind === "ex"); });
+      var otherL = rows.filter(function (e) { return e.mv && bankKey(e) !== key && cashOf(e) && (e.kind === "in" || e.kind === "ex"); });
+      var mvSum = function (L) { return L.reduce(function (t, e) { return t + (e.kind === "in" ? e.a : -e.a); }, 0); };
       // which categories hold amounts that didn't come from your bank, + Log, or a receipt
       var typedList = [], typedSum = 0, incSum = 0, expSum = 0, acts = {}, ents = activeEntries(st.Lm, st.st), inc = {};
       ents.income.forEach(function (e) { inc[e.row] = 1; });
@@ -5372,7 +5426,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
             var kk = monthKeyOf(dd);
             spend.forEach(function (e) {
               var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);   // older entries without an account: only one kind is linked
-              if (e.key !== kk || e.src !== "bank" || !isCash || (e.kind === "skip" && goneByBank(e))) return;
+              if (bankKey(e) !== kk || e.src !== "bank" || !isCash || (e.kind === "skip" && goneByBank(e))) return;
               bal0 += (e.kind === "in" || (e.dir === "in" && e.kind !== "ex")) ? e.a : -e.a;
             });
             dd.setMonth(dd.getMonth() + 1);
@@ -5382,7 +5436,7 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       }
       var autoStart = false, flows = 0, tot = { inP: 0, outP: 0, inQ: 0, outQ: 0 };   // this account's deposits and withdrawals, posted and pending, as Monerem has them
       // what your bank's own transactions say your balance was on the 1st: today's balance minus everything in and out since
-      rows.forEach(function (e) {
+      bankRows.forEach(function (e) {
         var isCash = cashIds[e.acct] || (!e.acct && !Object.keys(credit).length);
         if (e.src !== "bank" || !isCash || (e.kind === "skip" && goneByBank(e))) return;
         var inn = (e.kind === "in" || (e.dir === "in" && e.kind !== "ex"));
@@ -5397,6 +5451,8 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
         [fresh ? "Started at $0 (this account was opened in " + mon + ")" : "Already in your account when " + mon + " started (worked out from your bank’s transactions)", start || 0, [], fresh ? ' <button type="button" class="linkbtn" data-fresh="0">Undo</button>' : ' <button type="button" class="linkbtn" data-fresh="1">This account opened in ' + mon + " with $0</button>", "keep"],
         ["Money into your account that isn’t income (transfers in, refunds, Zelle)", sum(G.skipIn), G.skipIn],
         ["Money out of your account that isn’t spending (transfers, card payments, ATM)", -sum(G.skipOut), G.skipOut],
+        ["Paid this month but counted in another month’s budget (like next month’s rent paid early)", mvSum(aheadL), aheadL.map(function (e) { return { s: e.s + " (counted in " + keyMonth(e.key) + ")", a: e.a }; })],
+        ["Counted in this month’s budget, but the money moved in another month", -mvSum(otherL), otherL.map(function (e) { return { s: e.s + " (paid " + parseD(e.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ")", a: e.a }; })],
         ["Waiting for a category, so not in Actual yet (pick one below)", sum(G.waitIn) - sum(G.waitOut), G.waitIn.concat(G.waitOut)],
         ["Bought on a credit card (your account pays for it later)", sum(G.card), G.card],
         ["Refunds to a credit card", -sum(G.cardIn), G.cardIn],
@@ -5634,12 +5690,18 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       o += inSide ? incG + exG : exG + incG;
       return o;
     };
+    // which month's budget it counts in: the month it came out (the usual), or the one before or after it
+    var moPick = function (e) {
+      if ((e.kind !== "ex" && e.kind !== "in") || e.pend || !/^\d{4}-\d{2}-\d{2}$/.test(e.d || "")) return "";
+      var home = bankKey(e), ks = [keyShift(home, -1), home, keyShift(home, 1)]; if (ks.indexOf(e.key) < 0) ks.push(e.key);
+      return '<label class="smo">Counts in <select data-spendmo="' + esc(e.id) + '" aria-label="Budget month for ' + esc(e.s) + '">' + ks.map(function (k) { return '<option value="' + k + '"' + (k === e.key ? " selected" : "") + ">" + mLabel(k) + (k === home ? " (paid)" : "") + "</option>"; }).join("") + "</select></label>";
+    };
     var row = function (e) {
       var d = parseD(e.d);
       return '<div class="srow' + (e.kind === "none" || e.unsorted ? " wait" : e.kind === "skip" ? " off" : "") + '"><span class="sd">' + d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" +
-        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (goneByBank(e) ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.unsorted ? ' · <b class="bdead">counted in ' + esc(e.cat) + " until you pick where it goes</b>" : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
+        '<span class="ss"><b title="' + esc(e.raw || e.s) + '">' + esc(e.s) + "</b><small>" + (HOLD.test(String(e.raw || "") + " " + String(e.s || "")) ? (holdName(e), heldNow(e) ? "Your bank is holding this deposit for now; it counts as income and will show as released when your bank lets it go · " : "Your bank held this deposit at first; it’s been released · ") : e.raw && nk(e.raw) !== nk(e.s) ? esc(e.raw) + " · " : "") + (e.src === "receipt" ? "Receipt" : e.src === "manual" ? "Logged by you" : e.was ? (e.was === "receipt" ? "Receipt" : "Logged by you") + ", matched to your bank" : "Bank") + (e.pend ? " · pending, counted now" : "") + (e.kind === "skip" ? (goneByBank(e) ? " · canceled by the bank, taken back out" : /^hold released/.test(e.why || "") ? " · " + esc(e.why) : " · not counted in your budget") : e.unsorted ? ' · <b class="bdead">counted in ' + esc(e.cat) + " until you pick where it goes</b>" : e.kind === "none" ? (e.fixedBack || e.wasCat || e.want ? ' · <b class="bdead">' + esc(e.why || "pick a category to add it") + "</b>" : " · pick a category to add it") : e.fromHold ? " · " + esc(e.why || "released from a hold") : e.auto ? " · added automatically" : "") + (e.mv && (e.kind === "ex" || e.kind === "in") ? (e.key === spendMonth ? ' · <b class="stgood">came out in ' + keyMonth(bankKey(e)) + ", counted in " + keyMonth(e.key) + "</b>" : ' · <b class="stgood">counted in ' + keyMonth(e.key) + "’s budget</b>") : "") + (e.kind === "ex" && e.off ? ' <em class="offtag">Not in plan' + (e.why === "nothing planned" ? "" : ": closest match" + (e.want ? " (" + esc(e.want) + " isn’t in your budget)" : "")) + "</em>" : "") + "</small></span>" +
         '<span class="sa ' + (e.kind === "in" ? "in" : "") + '">' + (e.dir === "in" || (e.kind === "in" && e.auto === false) ? "+" : "") + money.format(e.a) + "</span>" +
-        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select></span></div>" + dupAsk(e) + unmatchHtml(e);
+        '<span class="sc"><select data-spend="' + esc(e.id) + '" aria-label="Category for ' + esc(e.s) + '">' + opts(e) + "</select>" + moPick(e) + "</span></div>" + dupAsk(e) + unmatchHtml(e);
     };
     var h = '<div class="panel" id="spendRec"><div class="bhead"><h2>Spending record</h2><select id="spendMon" aria-label="Month">' + list.map(function (k) { return '<option value="' + k + '"' + (k === spendMonth ? " selected" : "") + ">" + mLabel(k) + "</option>"; }).join("") + "</select></div>" +
       '<p class="sub">New transactions go into your budget’s <b>Actual</b> numbers automatically. Here’s what each one was and where it went. Change a category any time and the budget moves with it.</p>';
@@ -5656,9 +5718,12 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
       setTimeout(function () { typedFill(spendMonth, tot, spent.length); }, 0);
       h += shown.map(row).join("") + "</details>";
     }
+    var ahead = spend.filter(function (e) { return e.mv && e.key !== spendMonth && bankKey(e) === spendMonth && (e.kind === "ex" || e.kind === "in"); }).sort(function (a, b) { return a.d < b.d ? 1 : -1; });
+    if (ahead.length) h += '<h3 class="dh3" style="margin-top:14px">Paid in ' + mLabel(spendMonth) + ", counted in another month (" + ahead.length + ')</h3><p class="sub" style="margin:0 0 4px">These came out of your bank this month but count in another month’s budget, so they’re not in this month’s totals. Change “Counts in” to move one back.</p>' + ahead.map(row).join("");
     return h + "</div>";
   }
   var spendMsg = "";
+  function mLabelOf(k) { var m = /(\d{4})-(\d{2})$/.exec(k || ""); return m ? MONTHS[+m[2] - 1] + " " + m[1] : ""; }
   // Keep your place: after you pick a category the page redraws, so the next item is put right where the one you just did was.
   var pin = null;
   function pinNext(sel) {
@@ -5690,6 +5755,21 @@ tr.woff .budwarn{background:#EDE9FE;color:#6D28D9}
   $("bankView").addEventListener("change", function (e) {
     var t = e.target;
     if (t.id === "spendMon") { spendMonth = t.value; spendMsg = ""; renderBank(); return; }
+    var mid = t.getAttribute && t.getAttribute("data-spendmo");
+    if (mid) {
+      var me = spendFind(mid), was = me ? me.key : ""; if (!me || !t.value || t.value === was) return;
+      var want = t.value; t.disabled = true;
+      spendMoveQ(mid, want).then(function () {
+        var x = spendFind(mid);
+        spendMsg = x ? "“" + esc(x.s) + "” (" + money.format(x.a) + ") now counts in <b>" + mLabelOf(x.key) + "</b>" + (x.mv ? ". It still shows as paid on " + parseD(x.d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ", and the check against your bank accounts for it." : ", the month it was paid.") : "";
+        renderBank(); if (tool && (tool.type === "home" || tool.id === "monthly-budget")) openTool();
+      }).catch(function (er) {
+        t.disabled = false; t.value = was;
+        spendMsg = er && er.message === "nocat" ? "“" + esc(me.cat) + "” isn’t in " + mLabelOf(want) + "’s budget yet. Add it to that month first, then try again." : "Couldn’t move it right now. Try again.";
+        renderBank();
+      });
+      return;
+    }
     var id = t.getAttribute && t.getAttribute("data-spend"); if (!id || !t.value) return;
     var ent = spendFind(id);
     if (ent && t.value.indexOf("in:") === 0 && notIncome(ent) && !window.confirm(money.format(ent.a) + " “" + ent.s + "” left your account (your bank shows it as money out). Counting it as income adds " + money.format(ent.a) + " to your income while your bank went down by that much, so they won’t match.\n\nCount it as income anyway?")) { t.value = ent.kind === "none" ? "" : ent.kind === "skip" ? "skip" : ent.kind + ":" + ent.cat; return; }
